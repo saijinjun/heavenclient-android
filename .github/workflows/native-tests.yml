@@ -2,9 +2,9 @@ name: native-tests
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
   push:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: native-tests-${{ github.event.pull_request.number || github.ref }}

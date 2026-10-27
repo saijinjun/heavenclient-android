@@ -16,7 +16,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.    //
 //////////////////////////////////////////////////////////////////////////////
 #include "SocketWinsock.h"
-#ifndef JOURNEY_USE_ASIO
+// SDL builds use the POSIX implementation in SocketPosix.cpp.
+#if !defined(JOURNEY_USE_ASIO) && !defined(MS_PLATFORM_SDL)
 
 #ifdef MS_PLATFORM_WASM
 #include "SockInternal.h"

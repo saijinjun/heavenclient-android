@@ -1,0 +1,68 @@
+name: android-build
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: android-apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Cache native dependencies
+        uses: actions/cache@v4
+        with:
+          path: android/third_party
+          key: android-third-party-${{ hashFiles('android/fetch-deps.sh') }}
+
+      - name: Fetch SDL2 and FreeType
+        run: ./android/fetch-deps.sh
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: heavenclient-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  desktop-sdl:
+    name: desktop-sdl-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SDL2, FreeType and GL ES headers
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libfreetype-dev libgles-dev zlib1g-dev ninja-build
+
+      - name: Build desktop SDL client
+        run: |
+          cmake -S src/client -B build/sdl -G Ninja
+          cmake --build build/sdl

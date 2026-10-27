@@ -191,16 +191,26 @@ namespace jrc
         VSync() : BoolEntry("VSync", "true") {}
     };
 
+    // Fonts live at the root of the WASM virtual filesystem, and next to the
+    // NX files (the working directory) everywhere else.
+#ifdef MS_PLATFORM_WASM
+#define JOURNEY_FONT_DIR "/fonts/Arial/"
+#else
+#define JOURNEY_FONT_DIR "fonts/Arial/"
+#endif
+
     // The normal font which will be used.
     struct FontPathNormal : public Configuration::StringEntry
     {
-        FontPathNormal() : StringEntry("FontPathNormal", "/fonts/Arial/Arial.ttf") {}
+        static constexpr const char* DEFAULT = JOURNEY_FONT_DIR "Arial.ttf";
+        FontPathNormal() : StringEntry("FontPathNormal", DEFAULT) {}
     };
 
     // The bold font which will be used.
     struct FontPathBold : public Configuration::StringEntry
     {
-        FontPathBold() : StringEntry("FontPathBold", "/fonts/Arial/Arial-Bold.ttf") {}
+        static constexpr const char* DEFAULT = JOURNEY_FONT_DIR "Arial-Bold.ttf";
+        FontPathBold() : StringEntry("FontPathBold", DEFAULT) {}
     };
 
     // Music Volume, a number from 0 to 100.

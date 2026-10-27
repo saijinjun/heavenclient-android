@@ -43,6 +43,13 @@ MapleStory WASM brings the classic MapleStory v83 client to modern web browsers 
 
 ---
 
+## 📱 Android
+
+This fork adds a native Android build. See [docs/android.md](docs/android.md)
+for getting the APK, where the game files go, and current controls.
+
+---
+
 ## ⚠️ Required Game Assets
 
 > [!IMPORTANT]

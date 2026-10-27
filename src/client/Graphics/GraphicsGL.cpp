@@ -33,10 +33,12 @@ namespace jrc
 
     Error GraphicsGL::init()
     {
+#ifndef MS_PLATFORM_SDL
         if (glewInit())
         {
             return Error::GLEW;
         }
+#endif
 
         if (FT_Init_FreeType(&ftlibrary))
         {
@@ -154,8 +156,8 @@ namespace jrc
             );
         }
 
-        constexpr const char* FALLBACK_FONT_NORMAL = "/fonts/Arial/Arial.ttf";
-        constexpr const char* FALLBACK_FONT_BOLD = "/fonts/Arial/Arial-Bold.ttf";
+        constexpr const char* FALLBACK_FONT_NORMAL = FontPathNormal::DEFAULT;
+        constexpr const char* FALLBACK_FONT_BOLD = FontPathBold::DEFAULT;
 
         if (font_normal.empty())
         {
@@ -295,7 +297,7 @@ namespace jrc
 
             if (w > 0 && h > 0)
             {
-#ifdef MS_PLATFORM_WASM
+#if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
                 // WebGL path: expand single-channel glyph bitmap to RGBA.
                 std::vector<uint8_t> rgba_buffer(static_cast<size_t>(w) * h * 4);
                 for (int32_t i = 0; i < static_cast<int32_t>(w) * h; ++i)
@@ -515,7 +517,7 @@ namespace jrc
         Console::get().print("Used: " + std::to_string(usedpercent) + ", wasted: " + std::to_string(wastedpercent));
         */
 
-#ifdef MS_PLATFORM_WASM
+#if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
         // WebGL 2 does not support GL_BGRA, so we need to manually swap the channels
         // from BGRA (what the game uses) to RGBA (what WebGL expects).
         int32_t len = w * h * 4;
@@ -959,7 +961,7 @@ namespace jrc
         glBufferData(GL_ARRAY_BUFFER, csize, quads.data(), GL_STREAM_DRAW);
         glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
         glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
-#ifdef MS_PLATFORM_WASM
+#if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
         // Initialize indices for GL_TRIANGLES (2 triangles per quad, 6 indices per quad)
         std::vector<GLushort> indices;
         indices.reserve(quads.size() * 6);

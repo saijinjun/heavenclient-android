@@ -25,7 +25,7 @@
 #include "../Console.h"
 #include "../Configuration.h"
 
-#include <GLFW/glfw3.h>
+#include "KeyCodes.h"
 #include <list>
 
 namespace jrc
@@ -321,6 +321,11 @@ namespace jrc
         }
 
         focusedtextfield = {};
+    }
+
+    bool UI::has_focused_textfield() const
+    {
+        return static_cast<bool>(focusedtextfield);
     }
 
     void UI::drag_icon(Icon* icon)

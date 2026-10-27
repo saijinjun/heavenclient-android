@@ -71,6 +71,8 @@ namespace jrc
         void focus_textfield(Textfield* textfield);
         void blur_textfield(Textfield* textfield);
         void remove_textfield();
+        // Whether a text field currently has keyboard focus.
+        bool has_focused_textfield() const;
         void drag_icon(Icon* icon);
         Keyboard& get_keyboard();
         uint64_t get_cursor_press_id() const;

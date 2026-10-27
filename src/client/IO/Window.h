@@ -18,9 +18,15 @@
 #pragma once
 #include "../Error.h"
 #include "../Template/Singleton.h"
+#include "../Template/Point.h"
 
-#include <GL/glew.h>
+#include "../Graphics/GLHeaders.h"
+
+#ifdef MS_PLATFORM_SDL
+#include <SDL.h>
+#else
 #include <GLFW/glfw3.h>
+#endif
 
 #include <string>
 #include <functional>
@@ -49,8 +55,25 @@ namespace jrc
     private:
         void updateopc();
 
+#ifdef MS_PLATFORM_SDL
+        void handle_event(const SDL_Event& event);
+        void update_viewport();
+        void update_text_input();
+        Point<int16_t> to_view(int32_t x, int32_t y) const;
+
+        SDL_Window* glwnd;
+        SDL_GLContext context;
+        bool closed;
+        bool text_input;
+        // Where the fixed-size game view is drawn inside the window, in pixels.
+        int32_t view_x;
+        int32_t view_y;
+        int32_t view_w;
+        int32_t view_h;
+#else
         GLFWwindow* glwnd;
         GLFWwindow* context;
+#endif
         bool fullscreen;
         bool f11_down;
         float opacity;

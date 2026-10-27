@@ -19,6 +19,7 @@
 #ifdef MS_PLATFORM_WASM
 #include <emscripten.h>
 #endif
+#include "Console.h"
 #include "Constants.h"
 #include "Error.h"
 #include "Timer.h"
@@ -34,6 +35,14 @@
 #include "Util/NxFiles.h"
 
 #include <iostream>
+
+#ifdef MS_PLATFORM_SDL
+#include <SDL.h>
+
+#include <fstream>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 
 namespace jrc
@@ -215,6 +224,114 @@ namespace jrc
 #endif
     }
 
+#ifdef MS_PLATFORM_SDL
+    // Copies a file bundled with the app into the working directory, unless a
+    // copy is already there. Android bundles files as APK assets; desktop
+    // builds keep them next to the executable.
+    void extract_bundled_file(const std::string& path)
+    {
+        if (std::ifstream{ path }.good())
+        {
+            return;
+        }
+
+#ifdef __ANDROID__
+        std::string bundled = path;
+#else
+        char* base = SDL_GetBasePath();
+        std::string bundled = (base ? base : "") + path;
+        SDL_free(base);
+#endif
+
+        SDL_RWops* source = SDL_RWFromFile(bundled.c_str(), "rb");
+
+        if (!source)
+        {
+            return;
+        }
+
+        size_t size = 0;
+        void* data = SDL_LoadFile_RW(source, &size, 1);
+
+        if (!data)
+        {
+            return;
+        }
+
+        // Create the parent folders, e.g. fonts and fonts/Arial.
+        for (size_t slash = path.find('/'); slash != std::string::npos; slash = path.find('/', slash + 1))
+        {
+            ::mkdir(path.substr(0, slash).c_str(), 0755);
+        }
+
+        std::ofstream out(path, std::ios::binary);
+        out.write(static_cast<const char*>(data), static_cast<std::streamsize>(size));
+        SDL_free(data);
+    }
+
+    // Moves into the folder holding the NX files and the Settings file.
+    // Android uses the app's external files folder, which is reachable over
+    // USB at Android/data/<package>/files. Desktop builds take the folder as
+    // the first argument and otherwise stay in the current directory.
+    std::string prepare_data_directory(int argc, char* argv[])
+    {
+        std::string directory;
+
+#ifdef __ANDROID__
+        const char* external = SDL_AndroidGetExternalStoragePath();
+        directory = external ? external : "";
+#else
+        if (argc > 1)
+        {
+            directory = argv[1];
+        }
+#endif
+
+        if (!directory.empty() && ::chdir(directory.c_str()) != 0)
+        {
+            Console::get().print("Could not open data folder " + directory);
+        }
+
+        char buffer[4096];
+        directory = ::getcwd(buffer, sizeof(buffer)) ? buffer : directory;
+
+        extract_bundled_file(FontPathNormal::DEFAULT);
+        extract_bundled_file(FontPathBold::DEFAULT);
+
+        // Write the Settings file now so it exists to edit before the first
+        // successful start. Android often ends the app without running the
+        // destructor that would otherwise save it.
+        Configuration::get().save();
+
+        return directory;
+    }
+
+    void show_error(const Error& error, const std::string& directory)
+    {
+        std::string message = std::string(error.get_message()) + error.get_args();
+        message += "\n\nGame files and the Settings file go in:\n" + directory;
+        message += "\n\nThe server address is MapleStoryServerIp in Settings.";
+
+        std::cout << "Error: " << message << std::endl;
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Journey", message.c_str(), nullptr);
+    }
+
+    void start(int argc, char* argv[])
+    {
+        std::string directory = prepare_data_directory(argc, argv);
+
+        if (Error error = init())
+        {
+            show_error(error, directory);
+        }
+        else
+        {
+            loop();
+        }
+
+        Configuration::get().save();
+    }
+#else
     void start()
     {
         // Initialize and check for errors.
@@ -239,10 +356,20 @@ namespace jrc
             loop();
         }
     }
+#endif
 }
 
+#ifdef MS_PLATFORM_SDL
+// SDL renames main so that Android can call it from its Java activity.
+int main(int argc, char* argv[])
+{
+    jrc::start(argc, argv);
+    return 0;
+}
+#else
 int main()
 {
     jrc::start();
     return 0;
 }
+#endif

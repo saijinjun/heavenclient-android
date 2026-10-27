@@ -1,0 +1,79 @@
+plugins {
+    id "com.android.application"
+}
+
+def thirdParty = file("../third_party")
+def clientSource = file("../../src/client")
+def generatedAssets = layout.buildDirectory.dir("generated/journeyAssets")
+
+android {
+    namespace "com.saijinjun.heavenclient"
+    compileSdk 35
+    ndkVersion "27.2.12479018"
+
+    defaultConfig {
+        applicationId "com.saijinjun.heavenclient"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "0.1"
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DSDL2_SOURCE_DIR=${new File(thirdParty, "SDL2").absolutePath}",
+                          "-DFREETYPE_SOURCE_DIR=${new File(thirdParty, "freetype").absolutePath}",
+                          "-DANDROID_STL=c++_static",
+                          "-DWARNINGS_AS_ERRORS=OFF"
+            }
+        }
+
+        ndk {
+            abiFilters "arm64-v8a"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Signed with the debug key so the APK installs directly. Fine for
+            // personal sideloading, not for a store release.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "${clientSource}/CMakeLists.txt"
+        }
+    }
+
+    sourceSets {
+        main {
+            // SDL's Java activity and helpers come from the SDL2 source release.
+            java.srcDirs += new File(thirdParty, "SDL2/android-project/app/src/main/java")
+            assets.srcDirs += generatedAssets
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// Fonts are bundled as assets; the game copies them to its data folder.
+def copyFonts = tasks.register("copyFonts", Copy) {
+    from(new File(clientSource, "fonts")) {
+        into "fonts"
+    }
+    into generatedAssets
+}
+
+preBuild.dependsOn copyFonts
+
+preBuild.doFirst {
+    if (!new File(thirdParty, "SDL2/CMakeLists.txt").exists() ||
+        !new File(thirdParty, "freetype/CMakeLists.txt").exists()) {
+        throw new GradleException("Native dependencies are missing. Run android/fetch-deps.sh first.")
+    }
+}
