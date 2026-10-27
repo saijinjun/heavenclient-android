@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapleStory WASM Client</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #fff;
+        }
+
+        #container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas {
+            border: none;
+            background-color: #000;
+            display: block;
+            outline: none;
+            cursor: none;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <canvas id="canvas" tabindex="-1"></canvas>
+    </div>
+
+    <script>
+        (function () {
+            const GAME_WIDTH = 800;
+            const GAME_HEIGHT = 600;
+
+            function syncCanvasResolution(canvas) {
+                if (canvas.width === GAME_WIDTH && canvas.height === GAME_HEIGHT) {
+                    return;
+                }
+
+                if (typeof Module !== 'undefined' && typeof Module.setCanvasSize === 'function') {
+                    Module.setCanvasSize(GAME_WIDTH, GAME_HEIGHT);
+                } else {
+                    canvas.width = GAME_WIDTH;
+                    canvas.height = GAME_HEIGHT;
+                }
+            }
+
+            function getFittedCanvasSize(viewW, viewH) {
+                if (viewW * GAME_HEIGHT <= viewH * GAME_WIDTH) {
+                    const width = Math.max(1, Math.floor(viewW));
+                    return {
+                        width,
+                        height: Math.max(1, Math.floor(width * GAME_HEIGHT / GAME_WIDTH))
+                    };
+                }
+
+                const height = Math.max(1, Math.floor(viewH));
+                return {
+                    width: Math.max(1, Math.floor(height * GAME_WIDTH / GAME_HEIGHT)),
+                    height
+                };
+            }
+
+            function fitCanvas() {
+                const canvas = document.getElementById('canvas');
+                if (!canvas) {
+                    return;
+                }
+
+                // Keep the render surface fixed and only scale it with CSS.
+                syncCanvasResolution(canvas);
+
+                const { width, height } = getFittedCanvasSize(window.innerWidth, window.innerHeight);
+
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+            }
+
+            window.MapleWasmUI = {
+                applyScale: fitCanvas
+            };
+
+            window.addEventListener('resize', fitCanvas);
+            document.addEventListener('fullscreenchange', fitCanvas);
+            fitCanvas();
+        })();
+
+        Module = {
+            canvas: (function () {
+                let canvas = document.getElementById('canvas');
+                canvas.addEventListener("webglcontextlost", function (e) {
+                    alert('WebGL context lost. You will need to reload the page.');
+                    e.preventDefault();
+                }, false);
+                canvas.addEventListener("click", function () {
+                    canvas.focus();
+                });
+                return canvas;
+            })(),
+
+            // Disable stdin to prevent annoying prompt() popups
+            preRun: [function () {
+                function stdin() {
+                    return null; // Return null for EOF
+                }
+                FS.init(stdin, null, null);
+            }],
+
+            print: function (text) {
+                console.log('[stdout]', text);
+            },
+
+            printErr: function (text) {
+                console.error('[stderr]', text);
+            },
+
+            setStatus: function (text) {
+                if (text) {
+                    console.log('[status]', text);
+                }
+            },
+
+            monitorRunDependencies: function (left) {
+                console.log('[dependencies]', left, 'remaining');
+            },
+
+            onRuntimeInitialized: function () {
+                console.log('[runtime] Initialized');
+                if (window.MapleWasmUI && window.MapleWasmUI.applyScale) {
+                    window.MapleWasmUI.applyScale();
+                }
+            },
+
+            // Function to add C++ logs - now just console
+            addCppLog: function (level, message) {
+                let timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+                console.log('[' + timestamp + '] [' + level + '] ' + message);
+            }
+        };
+
+        console.log('[status] Downloading...');
+
+        window.onerror = function (event) {
+            console.error('[post-exception status] Exception thrown, see JavaScript console');
+        };
+
+        // Fetch configuration before loading the client
+        fetch('/web/config.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(config => {
+                if (config) {
+                    let hasConfig = false;
+                    const lazyConfig = {};
+
+                    const lazyConfigKeys = [
+                        'AssetsServerIP', 'AssetsServerPort',
+                        'MapleStoryServerIp', 'MapleStoryServerPort',
+                        'ProxyIP', 'ProxyPort', 'AssetsServerProtocol'
+                    ];
+
+                    lazyConfigKeys.forEach(key => {
+                        if (config[key] !== undefined && config[key] !== null) {
+                            lazyConfig[key] = config[key];
+                            console.log(`[config] Set ${key} from config.json:`, config[key]);
+                            hasConfig = true;
+                        }
+                    });
+
+                    if (hasConfig) {
+                        Module.LazyFS = Object.assign(Module.LazyFS || {}, lazyConfig);
+                    }
+                }
+                loadWasmClient();
+            })
+            .catch(err => {
+                console.warn('[config] Could not load /web/config.json, proceeding with defaults. Error:', err.message);
+                loadWasmClient();
+            });
+
+        function loadWasmClient() {
+            const script = document.createElement('script');
+            script.src = '/build/JourneyClient.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+    </script>
+</body>
+
+</html>

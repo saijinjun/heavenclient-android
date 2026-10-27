@@ -1,0 +1,221 @@
+//////////////////////////////////////////////////////////////////////////////
+// This file is part of the Journey MMORPG client                           //
+// Copyright © 2015-2016 Daniel Allendorf                                   //
+//                                                                          //
+// This program is free software: you can redistribute it and/or modify     //
+// it under the terms of the GNU Affero General Public License as           //
+// published by the Free Software Foundation, either version 3 of the       //
+// License, or (at your option) any later version.                          //
+//                                                                          //
+// This program is distributed in the hope that it will be useful,          //
+// but WITHOUT ANY WARRANTY; without even the implied warranty of           //
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            //
+// GNU Affero General Public License for more details.                      //
+//                                                                          //
+// You should have received a copy of the GNU Affero General Public License //
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.    //
+//////////////////////////////////////////////////////////////////////////////
+#include "UIElement.h"
+#include "UI.h"
+
+#include "../Constants.h"
+#include "../Audio/Audio.h"
+
+#include <iostream>
+
+namespace jrc
+{
+    UIElement::UIElement(Point<int16_t> p, Point<int16_t> d, bool a)
+        : position(p), dimension(d), active(a), type(NONE), handled_button_press_id(0) {}
+
+    UIElement::UIElement(Point<int16_t> p, Point<int16_t> d)
+        : UIElement(p, d, true) {}
+
+    UIElement::UIElement()
+        : UIElement({}, {}) {}
+
+    void UIElement::draw(float alpha) const
+    {
+        draw_sprites(alpha);
+        draw_buttons(alpha);
+    }
+
+    void UIElement::draw_checked(float alpha) const
+    {
+        const auto bounds = draw_bounds();
+        DrawBounds scope(bounds, [this, &bounds](DrawBounds::Kind kind, size_t id, const Rectangle<int16_t>& rect)
+        {
+            // Key by the control/asset rather than its absolute coordinates:
+            // dragging an invalid window must not generate a warning per frame.
+            if (!reported_draw_bounds.emplace(kind, id).second)
+                return;
+            static constexpr const char* kinds[] = {"button", "texture", "text", "rectangle"};
+            static constexpr const char* windows[] = {
+                "NONE", "LOGIN", "LOGINWAIT", "LOGINNOTICE", "WORLDSELECT", "CHARSELECT",
+                "CHARCREATION", "SOFTKEYBOARD", "STATUSMESSENGER", "STATUSBAR", "BUFFLIST",
+                "NOTICE", "NPCTALK", "SHOP", "STORAGE", "STATSINFO", "ITEMINVENTORY",
+                "EQUIPINVENTORY", "SKILLBOOK", "KEYCONFIG", "PARTY", "MINIMAP", "WORLDMAP",
+                "QUESTLOG", "QUESTTRACKER", "CASHSHOP", "CASHDIALOG"
+            };
+            static_assert(sizeof(windows) / sizeof(*windows) == NUM_TYPES);
+            std::cerr << "[UI layout] " << windows[type] << ' ' << kinds[static_cast<size_t>(kind)]
+                << " #" << id << " bounds (" << rect.l() - position.x() << ',' << rect.t() - position.y()
+                << " .. " << rect.r() - position.x() << ',' << rect.b() - position.y()
+                << ") exceed window bounds (" << bounds->l() - position.x() << ',' << bounds->t() - position.y()
+                << " .. " << bounds->r() - position.x() << ',' << bounds->b() - position.y()
+                << "). Check canvas origins, control offsets and window dimensions.\n";
+        });
+        for (const auto& entry : buttons)
+            if (entry.second && entry.second->is_visible())
+                DrawBounds::check(entry.second->bounds(position), DrawBounds::Kind::BUTTON, entry.first);
+        draw(alpha);
+    }
+
+    void UIElement::draw_sprites(float alpha) const
+    {
+        for (const Sprite& sprite : sprites)
+        {
+            sprite.draw(position, alpha);
+        }
+    }
+
+    void UIElement::draw_buttons(float) const
+    {
+        for (auto& iter : buttons)
+        {
+            if (const Button* button = iter.second.get())
+            {
+                button->draw(position);
+            }
+        }
+    }
+
+    void UIElement::update()
+    {
+        for (auto& sprite : sprites)
+        {
+            sprite.update();
+        }
+    }
+
+    void UIElement::update_screen(int16_t, int16_t)
+    {
+    }
+
+    void UIElement::makeactive()
+    {
+        active = true;
+    }
+
+    void UIElement::deactivate()
+    {
+        active = false;
+    }
+
+    bool UIElement::is_active() const
+    {
+        return active;
+    }
+
+    void UIElement::toggle_active()
+    {
+        active = !active;
+    }
+
+    Button::State UIElement::button_pressed(uint16_t) { return Button::DISABLED; }
+
+    void UIElement::send_icon(const Icon&, Point<int16_t>) {}
+
+    void UIElement::doubleclick(Point<int16_t>) {}
+
+    void UIElement::rightclick(Point<int16_t>) {}
+
+    bool UIElement::is_in_range(Point<int16_t> cursorpos) const
+    {
+        auto bounds = Rectangle<int16_t>(position, position + dimension);
+        return bounds.contains(cursorpos);
+    }
+
+    bool UIElement::remove_cursor(bool, Point<int16_t>)
+    {
+        for (auto& btit : buttons)
+        {
+            Button* button = btit.second.get();
+            switch (button->get_state())
+            {
+            case Button::MOUSEOVER:
+                button->set_state(Button::NORMAL);
+                break;
+            default:
+                break;
+            }
+        }
+        return false;
+    }
+
+    UIElement::CursorResult UIElement::send_cursor(bool down, Point<int16_t> pos)
+    {
+        uint64_t current_press_id = UI::get().get_cursor_press_id();
+
+        if (down && handled_button_press_id == current_press_id)
+        {
+            return { Cursor::CLICKING, true };
+        }
+
+        for (auto& btit : buttons)
+        {
+            if (btit.second->is_active() && btit.second->bounds(position).contains(pos))
+            {
+                if (down)
+                {
+                    handled_button_press_id = current_press_id;
+
+                    if (btit.second->get_state() == Button::NORMAL)
+                    {
+                        Sound(Sound::BUTTONOVER).play();
+                    }
+
+                    Sound(Sound::BUTTONCLICK).play();
+
+                    btit.second->set_state(button_pressed(btit.first));
+                    return { Cursor::CLICKING, true };
+                }
+
+                if (btit.second->get_state() == Button::NORMAL)
+                {
+                    Sound(Sound::BUTTONOVER).play();
+                    btit.second->set_state(Button::MOUSEOVER);
+                }
+
+                return { Cursor::CANCLICK, true };
+            }
+            else if (btit.second->get_state() == Button::MOUSEOVER)
+            {
+                btit.second->set_state(Button::NORMAL);
+            }
+        }
+
+        // Do not keep a synthetic "pressed" cursor when no control handled
+        // the current press. Otherwise, dragging onto a button while holding
+        // the mouse can incorrectly fire that button.
+        return { Cursor::IDLE, false };
+    }
+
+    void UIElement::send_scroll(double)
+    {
+    }
+
+    void UIElement::send_key(int32_t, bool, bool)
+    {
+    }
+
+    UIElement::Type UIElement::get_type() const
+    {
+        return type;
+    }
+
+    void UIElement::set_type(UIElement::Type value)
+    {
+        type = value;
+    }
+}
