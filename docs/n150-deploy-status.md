@@ -6,8 +6,9 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `2b51c4b` | ok |
+| server | `13531d9` | ok |
 | client | `7732617` | ok |
 
 ## Recent events (newest first)
 
+- 2026-10-29 00:03 · server · ✅ deployed `13531d9` - no runtime change (container not recreated), 8484 open
