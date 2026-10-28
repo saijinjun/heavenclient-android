@@ -832,6 +832,15 @@ namespace ms
 
 	void Window::begin() const
 	{
+		// The HD-2D effects follow the options menu's Graphics quality
+		// slider: below a third none, below two thirds only the color grade.
+		uint8_t quality = Setting<GraphicsQuality>::get().load();
+		PostProcess::Options effects;
+		effects.glow = quality >= 67 && Setting<HdGlow>::get().load();
+		effects.depth = quality >= 67 && Setting<HdDepthBlur>::get().load();
+		effects.grade = quality >= 34 && Setting<HdColorGrade>::get().load();
+		GraphicsGL::get().set_effects(effects);
+
 		GraphicsGL::get().clearscene();
 	}
 

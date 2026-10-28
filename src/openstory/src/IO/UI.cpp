@@ -19,6 +19,8 @@
 
 #include <vector>
 
+#include "../Graphics/GraphicsGL.h"
+
 #include "UIStateCashShop.h"
 #include "UIStateGame.h"
 #include "UIStateLogin.h"
@@ -66,6 +68,11 @@ namespace ms
 
 	void UI::draw(float alpha) const
 	{
+#if defined(MS_PLATFORM_SDL)
+		// The HD-2D effects stop here: the UI is drawn sharp on top.
+		GraphicsGL::get().mark_ui();
+#endif
+
 		state->draw(alpha, cursor.get_position());
 
 		// The scrolling world notice stays out of the cash shop — it lands

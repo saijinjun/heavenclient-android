@@ -325,15 +325,11 @@ namespace ms
 		RopeAssist() : BoolEntry("RopeAssist", "true") {}
 	};
 
-	// The HD-2D look for the game world (SDL builds): a pixel-art upscaler,
-	// glow around bright things, a blurred far background, and a color grade.
+	// The HD-2D look for the game world (SDL builds): glow around bright
+	// things, a blurred far background, and a color grade. DayNight tints
+	// the world by the time of day (see Gameplay/DayNight.h).
 	// The Graphics quality slider turns them down as a group: below a third
 	// none, below two thirds only the cheap upscale and color grade.
-	struct HdUpscale : public Configuration::BoolEntry
-	{
-		HdUpscale() : BoolEntry("HdUpscale", "true") {}
-	};
-
 	struct HdGlow : public Configuration::BoolEntry
 	{
 		HdGlow() : BoolEntry("HdGlow", "true") {}
@@ -347,6 +343,11 @@ namespace ms
 	struct HdColorGrade : public Configuration::BoolEntry
 	{
 		HdColorGrade() : BoolEntry("HdColorGrade", "true") {}
+	};
+
+	struct DayNightCycle : public Configuration::BoolEntry
+	{
+		DayNightCycle() : BoolEntry("DayNight", "true") {}
 	};
 
 	// The normal font which will be used.

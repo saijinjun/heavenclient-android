@@ -35,10 +35,10 @@ namespace ms
 		settings.emplace<TouchVibration>();
 		settings.emplace<TouchLayout>();
 		settings.emplace<RopeAssist>();
-		settings.emplace<HdUpscale>();
 		settings.emplace<HdGlow>();
 		settings.emplace<HdDepthBlur>();
 		settings.emplace<HdColorGrade>();
+		settings.emplace<DayNightCycle>();
 		settings.emplace<FontPathNormal>();
 		settings.emplace<FontPathBold>();
 		settings.emplace<FontPathEmoji>();

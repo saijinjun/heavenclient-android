@@ -1808,6 +1808,57 @@ namespace ms
 		}
 #endif
 
+#if defined(PLATFORM_SDL)
+		// The world goes through the HD-2D effects when they are on and this
+		// frame has a world at all; the UI is drawn sharp on top.
+		if (!post_tried)
+		{
+			post.init();
+			post_tried = true;
+		}
+
+		bool has_world = ui_mark != NO_MARK && ui_mark > 0 && ui_mark <= quads.size();
+
+		if (has_world && post.ready() && post.get_options().any())
+		{
+			GLint view[4];
+			glGetIntegerv(GL_VIEWPORT, view);
+			post.resize(view[2], view[3]);
+
+			size_t background_end = world_mark != NO_MARK && world_mark <= ui_mark ? world_mark : 0;
+
+			if (post.get_options().depth && background_end > 0)
+			{
+				post.begin_background();
+				bind_quad_state();
+				draw_quad_range(0, background_end);
+				post.begin_world(true);
+			}
+			else
+			{
+				post.begin_world(false);
+				background_end = 0;
+			}
+
+			bind_quad_state();
+			draw_quad_range(background_end, ui_mark);
+			post.present(0, view[0], view[1], view[2], view[3]);
+
+			glViewport(view[0], view[1], view[2], view[3]);
+			bind_quad_state();
+			draw_quad_range(ui_mark, quads.size());
+
+			glDisableVertexAttribArray(attribute_coord);
+			glDisableVertexAttribArray(attribute_color);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			if (coverscene)
+				quads.pop_back();
+
+			return;
+		}
+#endif
+
 		// One draw call for a run of `count` quads starting at quad `from`.
 		// Windows/Linux keep the legacy GL_QUADS primitive; macOS issues the
 		// same run as indexed triangles from the element buffer filled above.
@@ -1862,6 +1913,79 @@ namespace ms
 	}
 
 #if defined(PLATFORM_SDL)
+	void GraphicsGL::mark_world()
+	{
+		world_mark = quads.size();
+	}
+
+	void GraphicsGL::mark_ui()
+	{
+		ui_mark = quads.size();
+	}
+
+	void GraphicsGL::set_effects(const PostProcess::Options& options)
+	{
+		// The tint is set separately, per frame.
+		PostProcess::Options merged = options;
+		std::copy(std::begin(post.get_options().tint), std::end(post.get_options().tint), merged.tint);
+		post.set_options(merged);
+	}
+
+	void GraphicsGL::set_tint(const std::array<float, 3>& tint)
+	{
+		PostProcess::Options options = post.get_options();
+		std::copy(tint.begin(), tint.end(), options.tint);
+		post.set_options(options);
+	}
+
+	void GraphicsGL::bind_quad_state()
+	{
+		glUseProgram(shaderProgram);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, atlas);
+		glUniform1i(uniform_texture, 0);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glEnableVertexAttribArray(attribute_coord);
+		glEnableVertexAttribArray(attribute_color);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+		glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	}
+
+	void GraphicsGL::draw_quad_range(size_t first, size_t last)
+	{
+		auto draw = [](size_t from, size_t to)
+		{
+			if (to > from)
+				glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((to - from) * 6), GL_UNSIGNED_INT, (const void*)(from * 6 * sizeof(GLuint)));
+		};
+
+		auto ranges = additive_ranges;
+		if (additive_active && quads.size() > additive_from)
+			ranges.emplace_back(additive_from, quads.size());
+
+		size_t cursor = first;
+
+		for (const auto& range : ranges)
+		{
+			size_t from = std::max(range.first, first);
+			size_t to = std::min(range.second, last);
+
+			if (from >= to)
+				continue;
+
+			draw(cursor, from);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+			draw(from, to);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			cursor = to;
+		}
+
+		draw(cursor, last);
+	}
+
 	void GraphicsGL::set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height)
 	{
 		if (!overlay)
@@ -1982,6 +2106,10 @@ namespace ms
 			additive_ranges.clear();
 			additive_active = false;
 			additive_from = 0;
+#if defined(PLATFORM_SDL)
+			world_mark = NO_MARK;
+			ui_mark = NO_MARK;
+#endif
 		}
 	}
 }

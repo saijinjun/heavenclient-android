@@ -18,6 +18,9 @@
 #pragma once
 
 #include "Text.h"
+#if defined(MS_PLATFORM_SDL)
+#include "PostProcess.h"
+#endif
 
 #include "../Constants.h"
 #include "../Error.h"
@@ -117,6 +120,15 @@ namespace ms
 			int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color);
 		void draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
 		void flush_screen(int16_t width, int16_t height);
+
+		// Where the world starts (after the far background) and where the UI
+		// starts in this frame's drawing, so the HD-2D effects apply to the
+		// world only.
+		void mark_world();
+		void mark_ui();
+		void set_effects(const PostProcess::Options& options);
+		// Multiplies the world's colors, for the time of day.
+		void set_tint(const std::array<float, 3>& tint);
 #endif
 
 	private:
@@ -381,6 +393,17 @@ namespace ms
 		std::vector<std::pair<size_t, size_t>> additive_ranges;
 		bool additive_active = false;
 		size_t additive_from = 0;
+#if defined(MS_PLATFORM_SDL)
+		static constexpr size_t NO_MARK = static_cast<size_t>(-1);
+		size_t world_mark = NO_MARK;
+		size_t ui_mark = NO_MARK;
+		PostProcess post;
+		bool post_tried = false;
+
+		void bind_quad_state();
+		// Draws quads [first, last), with the additive ranges inside it.
+		void draw_quad_range(size_t first, size_t last);
+#endif
 
 		QuadTree<size_t, Leftover> leftovers;
 		size_t rlid;
