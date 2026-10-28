@@ -41,10 +41,12 @@ namespace jrc
         constexpr int OUTPUT_CHANNELS = 2;
         constexpr size_t MAX_VOICES = 16;
 
+        // The game's audio comes from .nx files that are read in pieces and
+        // cached, so a pointer into them only stays valid for a moment.
+        // Clips keep their own copy of the encoded bytes.
         struct Clip
         {
-            const uint8_t* data = nullptr;
-            size_t length = 0;
+            std::vector<uint8_t> bytes;
             bool decoded = false;
             // Interleaved stereo at OUTPUT_RATE. Empty if decoding failed.
             std::vector<int16_t> pcm;
@@ -59,6 +61,8 @@ namespace jrc
         // Streams one MP3 from memory, decoding inside the audio callback.
         struct MusicTrack
         {
+            // The encoded MP3, which the decoder reads while playing.
+            std::vector<uint8_t> source;
             mp3dec_ex_t decoder;
             SDL_AudioStream* stream = nullptr;
             // Set when the track is WAV: it is decoded up front and looped.
@@ -197,10 +201,12 @@ namespace jrc
 
             if (!clip.decoded)
             {
-                clip.pcm = is_wav(clip.data, clip.length) ?
-                    decode_wav(clip.data, clip.length) :
-                    decode_mp3(clip.data, clip.length);
+                clip.pcm = is_wav(clip.bytes.data(), clip.bytes.size()) ?
+                    decode_wav(clip.bytes.data(), clip.bytes.size()) :
+                    decode_mp3(clip.bytes.data(), clip.bytes.size());
                 clip.decoded = true;
+                // Only the decoded samples are needed from now on.
+                clip.bytes = {};
             }
 
             return clip.pcm.empty() ? nullptr : &clip;
@@ -382,8 +388,8 @@ namespace jrc
         if (!clips.count(id))
         {
             Clip clip;
-            clip.data = static_cast<const uint8_t*>(data);
-            clip.length = static_cast<size_t>(length);
+            auto bytes = static_cast<const uint8_t*>(data);
+            clip.bytes.assign(bytes, bytes + length);
             clips.emplace(id, std::move(clip));
         }
 
@@ -429,9 +435,9 @@ namespace jrc
         }
 
         auto track = std::make_unique<MusicTrack>();
-        const Clip& source = iter->second;
+        Clip& source = iter->second;
 
-        if (is_wav(source.data, source.length))
+        if (source.decoded || is_wav(source.bytes.data(), source.bytes.size()))
         {
             track->clip = decoded_clip(id);
 
@@ -442,7 +448,12 @@ namespace jrc
         }
         else
         {
-            if (mp3dec_ex_open_buf(&track->decoder, source.data, source.length, MP3D_SEEK_TO_BYTE | MP3D_DO_NOT_SCAN) != 0)
+            // The track takes the bytes, so a long song is not kept twice and
+            // songs from maps left behind do not pile up.
+            track->source = std::move(source.bytes);
+            clips.erase(iter);
+
+            if (mp3dec_ex_open_buf(&track->decoder, track->source.data(), track->source.size(), MP3D_SEEK_TO_BYTE | MP3D_DO_NOT_SCAN) != 0)
             {
                 return;
             }

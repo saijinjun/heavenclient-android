@@ -32,6 +32,8 @@
 #include "../Console.h"
 
 
+#include <exception>
+
 namespace jrc
 {
     // Opcodes for InPackets.
@@ -290,6 +292,12 @@ namespace jrc
                 catch (const PacketError& err)
                 {
                     // Notice about an error.
+                    warn(err.what(), opcode);
+                }
+                catch (const std::exception& err)
+                {
+                    // E.g. game data that failed to load while handling the
+                    // packet. Better a warning than a crash.
                     warn(err.what(), opcode);
                 }
             }
