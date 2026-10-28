@@ -18,7 +18,7 @@ jobs:
   apk:
     name: android-apk
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
 
@@ -35,24 +35,31 @@ jobs:
           path: android/third_party
           key: android-third-party-${{ hashFiles('android/fetch-deps.sh') }}
 
-      - name: Fetch SDL2 and FreeType
+      - name: Fetch SDL2, FreeType and Asio
         run: ./android/fetch-deps.sh
 
-      - name: Build APK and run unit tests
+      - name: Build APKs and run unit tests
         working-directory: android
-        run: ./gradlew --no-daemon assembleRelease testReleaseUnitTest
+        run: ./gradlew --no-daemon assembleRelease testJourneyReleaseUnitTest
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: heavenclient-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/apk/journey/release/*.apk
+          if-no-files-found: error
+
+      - name: Upload OpenStory APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: openstory-apk
+          path: android/app/build/outputs/apk/openstory/release/*.apk
           if-no-files-found: error
 
   desktop-sdl:
     name: desktop-sdl-build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       CC: clang
       CXX: clang++
@@ -60,9 +67,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install SDL2, FreeType and GL ES headers
-        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libfreetype-dev libgles-dev zlib1g-dev ninja-build
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libfreetype-dev libgles-dev zlib1g-dev libasio-dev ninja-build
 
       - name: Build desktop SDL client
         run: |
           cmake -S src/client -B build/sdl -G Ninja
           cmake --build build/sdl
+
+      - name: Build desktop OpenStory client
+        run: |
+          cmake -S src/openstory -B build/openstory -G Ninja
+          cmake --build build/openstory

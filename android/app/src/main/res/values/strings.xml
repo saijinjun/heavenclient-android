@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">HeavenClient</string>
     <string name="setup_title">Game files</string>
     <string name="setup_connecting">Connecting to the game server…</string>
     <string name="setup_offer">Play now and the game loads its files from the server as you go. Each new area takes a moment the first time, then it\'s kept on the phone.\n\nOr download all %1$s first (Wi-Fi recommended) to never wait.</string>

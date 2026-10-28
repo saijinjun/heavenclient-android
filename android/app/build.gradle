@@ -31,14 +31,41 @@ android {
                 arguments "-DSDL2_SOURCE_DIR=${new File(thirdParty, "SDL2").absolutePath}",
                           "-DFREETYPE_SOURCE_DIR=${new File(thirdParty, "freetype").absolutePath}",
                           "-DANDROID_STL=c++_static",
-                          "-DWARNINGS_AS_ERRORS=OFF",
-                          "-DJOURNEY_DEFAULT_SERVER_IP=${serverIp}",
-                          "-DJOURNEY_ASSETS_URL=${assetsUrl}"
+                          "-DWARNINGS_AS_ERRORS=OFF"
             }
         }
 
         ndk {
             abiFilters "arm64-v8a"
+        }
+    }
+
+    // Two apps from the same project: "journey" is the current client
+    // (src/client); "openstory" is the OpenStory-based client (src/openstory),
+    // installed beside it under its own id while it is being tested.
+    flavorDimensions = ["client"]
+    productFlavors {
+        journey {
+            dimension "client"
+            externalNativeBuild {
+                cmake {
+                    arguments "-DCLIENT=journey",
+                              "-DJOURNEY_DEFAULT_SERVER_IP=${serverIp}",
+                              "-DJOURNEY_ASSETS_URL=${assetsUrl}"
+                }
+            }
+        }
+        openstory {
+            dimension "client"
+            applicationIdSuffix ".openstory"
+            externalNativeBuild {
+                cmake {
+                    arguments "-DCLIENT=openstory",
+                              "-DASIO_INCLUDE_DIR=${new File(thirdParty, "asio/asio/include").absolutePath}",
+                              "-DOPENSTORY_DEFAULT_SERVER_IP=${serverIp}",
+                              "-DOPENSTORY_ASSETS_URL=${assetsUrl}"
+                }
+            }
         }
     }
 
@@ -53,7 +80,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            path "${clientSource}/CMakeLists.txt"
+            path "native/CMakeLists.txt"
         }
     }
 
@@ -87,7 +114,8 @@ preBuild.dependsOn copyFonts
 
 preBuild.doFirst {
     if (!new File(thirdParty, "SDL2/CMakeLists.txt").exists() ||
-        !new File(thirdParty, "freetype/CMakeLists.txt").exists()) {
+        !new File(thirdParty, "freetype/CMakeLists.txt").exists() ||
+        !new File(thirdParty, "asio/asio/include/asio.hpp").exists()) {
         throw new GradleException("Native dependencies are missing. Run android/fetch-deps.sh first.")
     }
 }
