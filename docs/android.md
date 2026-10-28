@@ -21,31 +21,30 @@ cd android && ./gradlew assembleRelease
 The APK is written to `android/app/build/outputs/apk/release/`. It is signed
 with the debug key, which is fine for sideloading but not for a store.
 
-## Connecting to the server
+## First start
 
-The APK is built to connect to the n150 game server at `100.91.238.34:8484`.
-That address is only reachable over Tailscale, so the phone must have the
-Tailscale app running and signed in to the same tailnet. To build for another
-server, pass `-PserverIp=<address>` to Gradle, or edit `MapleStoryServerIp` in
-the `Settings` file after the first start.
+1. Install the APK, turn on Tailscale on the phone, and make sure the game
+   server and the web stack are running on the n150.
+2. Open the app. The setup screen shows how much it needs to download (the
+   17 `.nx` files, several GB) and checks there is room on the phone.
+3. Tap **Download**. Wi-Fi is recommended. The game starts by itself when the
+   download finishes, and later starts open the game directly.
 
-## Game files
+If the download stops (Wi-Fi drops, the app is closed), open the app again
+and tap **Resume**: finished files are kept, and a half-done file continues
+where it stopped. If the n150 can't be reached, the screen says so and offers
+**Try again**.
 
-Start the app once. It creates its data folder and a `Settings` file in it:
+The files come from the web stack's `assets/` folder at
+`http://100.91.238.34:8090/assets/`, and the game connects to
+`100.91.238.34:8484`. Both addresses are only reachable over Tailscale. To
+build for another server, pass `-PassetsUrl=<url>` and `-PserverIp=<address>`
+to Gradle.
 
-```
-Android/data/com.saijinjun.heavenclient/files/
-```
-
-Connect the phone to a computer over USB to reach that folder and copy these
-17 `.nx` files into it (several GB, so leave room on the phone):
-
-`Base`, `Character`, `Effect`, `Etc`, `Item`, `Map`, `Mob`, `Morph`, `Npc`,
-`Quest`, `Reactor`, `Skill`, `Sound`, `String`, `TamingMob`, `UI` (v153+), and
-`UI_83` (cash shop).
-
-The same set is in `assets/` on the n150. If a file is missing, the app shows
-a message naming it and the folder path.
+The files land in `Android/data/com.saijinjun.heavenclient/files/`. Copying
+them there over USB also works: the app skips any file that is already
+present. To force a fresh download, clear the app's storage in Android
+settings.
 
 ## Controls
 

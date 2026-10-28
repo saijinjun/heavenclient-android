@@ -38,9 +38,9 @@ jobs:
       - name: Fetch SDL2 and FreeType
         run: ./android/fetch-deps.sh
 
-      - name: Build APK
+      - name: Build APK and run unit tests
         working-directory: android
-        run: ./gradlew --no-daemon assembleRelease
+        run: ./gradlew --no-daemon assembleRelease testReleaseUnitTest
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

@@ -8,6 +8,9 @@ def generatedAssets = layout.buildDirectory.dir("generated/journeyAssets")
 // Game server a fresh install connects to: the n150 over Tailscale. Override
 // with ./gradlew assembleRelease -PserverIp=<address>.
 def serverIp = project.findProperty("serverIp") ?: "100.91.238.34"
+// Where the setup screen downloads the .nx files: the web stack's assets
+// folder on the n150. Override with -PassetsUrl=<url>.
+def assetsUrl = project.findProperty("assetsUrl") ?: "http://100.91.238.34:8090/assets/"
 
 android {
     namespace "com.saijinjun.heavenclient"
@@ -20,6 +23,8 @@ android {
         targetSdk 35
         versionCode 1
         versionName "0.1"
+
+        buildConfigField "String", "ASSETS_URL", "\"${assetsUrl}\""
 
         externalNativeBuild {
             cmake {
@@ -59,6 +64,10 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -80,4 +89,8 @@ preBuild.doFirst {
         !new File(thirdParty, "freetype/CMakeLists.txt").exists()) {
         throw new GradleException("Native dependencies are missing. Run android/fetch-deps.sh first.")
     }
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
 }
