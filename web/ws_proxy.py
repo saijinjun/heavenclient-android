@@ -12,6 +12,14 @@ Usage:
 Default configuration:
     - WebSocket listens on: ws://0.0.0.0:8080
     - TCP connects to: 127.0.0.1:8484
+
+Target allowlist:
+    The browser names the host:port it wants, so without a limit the proxy
+    relays to anything this machine can reach. Set WS_PROXY_ALLOWED_TARGETS to
+    a comma-separated list of host:port or host:lo-hi entries, e.g.
+        WS_PROXY_ALLOWED_TARGETS=100.91.238.34:8484,100.91.238.34:7575-7577
+    and every other target is refused. Unset keeps the open behavior for local
+    development and prints a warning at startup.
 """
 
 import asyncio
@@ -21,8 +29,43 @@ import sys
 import os
 
 
+def parse_allowed_targets(raw):
+    """Parse WS_PROXY_ALLOWED_TARGETS into {host: [(lo, hi), ...]}, or None when unset."""
+    if raw is None or not raw.strip():
+        return None
+    allowed = {}
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        # rpartition so the port split is on the last colon only.
+        host, _, ports = entry.rpartition(":")
+        if not host or not ports:
+            raise ValueError(f"Bad allowlist entry '{entry}', expected host:port or host:lo-hi")
+        lo, _, hi = ports.partition("-")
+        lo = int(lo)
+        hi = int(hi) if hi else lo
+        if lo > hi:
+            raise ValueError(f"Bad port range in allowlist entry '{entry}'")
+        allowed.setdefault(host.strip().lower(), []).append((lo, hi))
+    # A set-but-empty list would silently allow nothing; treat it as a config error instead.
+    if not allowed:
+        raise ValueError("WS_PROXY_ALLOWED_TARGETS is set but has no entries")
+    return allowed
+
+
+def is_target_allowed(allowed, host, port):
+    """True when no allowlist is configured or host:port matches an entry."""
+    if allowed is None:
+        return True
+    return any(lo <= port <= hi for lo, hi in allowed.get(host.lower(), []))
+
+
 class MapleStoryProxy:
     """Proxy that forwards data between WebSocket and TCP connections."""
+
+    def __init__(self, allowed_targets=None):
+        self.allowed_targets = allowed_targets
 
     async def handle_client(self, websocket):
         """Handle a WebSocket client connection."""
@@ -61,6 +104,13 @@ class MapleStoryProxy:
                 return
             
             print(f"[WebSocket] Client requested connection to {tcp_host}:{tcp_port}")
+
+            # Checked after the Docker localhost remap so the allowlist names the
+            # address the proxy actually dials, not what the browser typed.
+            if not is_target_allowed(self.allowed_targets, tcp_host, tcp_port):
+                print(f"[Proxy] Refused {tcp_host}:{tcp_port} (not in WS_PROXY_ALLOWED_TARGETS)")
+                await websocket.close(code=1008, reason="target not allowed")
+                return
 
             # Connect to target TCP server
             print(f"[TCP] Connecting to {tcp_host}:{tcp_port}")
@@ -151,8 +201,15 @@ async def main():
 
     args = parser.parse_args()
 
+    try:
+        allowed_targets = parse_allowed_targets(os.environ.get("WS_PROXY_ALLOWED_TARGETS"))
+    except ValueError as e:
+        # Fail closed: a typo in the allowlist must not fall back to an open relay.
+        print(f"[Error] {e}")
+        sys.exit(1)
+
     # Create proxy instance
-    proxy = MapleStoryProxy()
+    proxy = MapleStoryProxy(allowed_targets)
 
     # Start WebSocket server
     print("=" * 60)
@@ -160,6 +217,12 @@ async def main():
     print("=" * 60)
     print(f"WebSocket server: ws://0.0.0.0:{args.ws_port}")
     print("Clients will specify target TCP server on connection")
+    if allowed_targets is None:
+        print("WARNING: WS_PROXY_ALLOWED_TARGETS is unset; any host:port is relayed")
+    else:
+        for host, ranges in allowed_targets.items():
+            ports = ", ".join(str(lo) if lo == hi else f"{lo}-{hi}" for lo, hi in ranges)
+            print(f"Allowed target: {host} ports {ports}")
     print("=" * 60)
     print("Waiting for connections...")
 
