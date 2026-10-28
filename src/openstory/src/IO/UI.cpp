@@ -125,6 +125,7 @@ namespace ms
 		// Cleared before the new state is built so that a constructor which
 		// focuses a field of its own is not clobbered.
 		focusedtextfield = {};
+		state_id = id;
 
 		switch (id)
 		{
@@ -263,6 +264,27 @@ namespace ms
 	{
 		Point<int16_t> pos = cursor.get_position();
 		state->rightclick(pos);
+	}
+
+	bool UI::in_game() const
+	{
+		return state_id == State::GAME;
+	}
+
+	void UI::send_action(KeyType::Id type, int32_t action, bool pressed)
+	{
+		if (enabled)
+			state->send_key(type, action, pressed, false);
+	}
+
+	Icon* UI::get_dragged_icon()
+	{
+		return state->get_dragged_icon();
+	}
+
+	void UI::cancel_drag()
+	{
+		state->cancel_drag();
 	}
 
 	void UI::doubleclick()

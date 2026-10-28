@@ -47,6 +47,11 @@ namespace ms
 
 		void draw(const DrawArgument& args) const;
 		void draw(const DrawArgument& args, const Range<int16_t>& vertical) const;
+#if defined(MS_PLATFORM_SDL)
+		// Draws over a rectangle in window pixels, after the scene (see
+		// GraphicsGL::flush_screen).
+		void draw_screen(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color) const;
+#endif
 		void shift(Point<int16_t> amount);
 
 		bool is_valid() const;

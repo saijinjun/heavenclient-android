@@ -24,6 +24,8 @@ list(APPEND SOURCES
     platform/sdl/AudioSDL.cpp
     platform/sdl/ClipAudioSDL.cpp
     platform/sdl/StartSDL.cpp
+    platform/sdl/TouchControls.cpp
+    platform/sdl/TouchSprites.cpp
     ${NLNX_DIR}/audio.cpp
     ${NLNX_DIR}/bitmap.cpp
     ${NLNX_DIR}/file.cpp

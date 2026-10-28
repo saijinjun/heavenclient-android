@@ -32,6 +32,13 @@ namespace ms
 		settings.emplace<Width>();
 		settings.emplace<Height>();
 		settings.emplace<VSync>();
+		settings.emplace<TouchVibration>();
+		settings.emplace<TouchLayout>();
+		settings.emplace<RopeAssist>();
+		settings.emplace<HdUpscale>();
+		settings.emplace<HdGlow>();
+		settings.emplace<HdDepthBlur>();
+		settings.emplace<HdColorGrade>();
 		settings.emplace<FontPathNormal>();
 		settings.emplace<FontPathBold>();
 		settings.emplace<FontPathEmoji>();

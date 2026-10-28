@@ -1861,6 +1861,119 @@ namespace ms
 			quads.pop_back();
 	}
 
+#if defined(PLATFORM_SDL)
+	void GraphicsGL::set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height)
+	{
+		if (!overlay)
+			glGenTextures(1, &overlay);
+
+		glBindTexture(GL_TEXTURE_2D, overlay);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+		glBindTexture(GL_TEXTURE_2D, atlas);
+
+		overlay_w = width;
+		overlay_h = height;
+	}
+
+	bool GraphicsGL::has_overlay_texture() const
+	{
+		return overlay != 0;
+	}
+
+	void GraphicsGL::draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
+		int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color)
+	{
+		Offset source(src_left, src_top, src_right - src_left, src_bottom - src_top);
+		screen_quads.emplace_back(left, right, top, bottom, source, color, 0.0f);
+		screen_from_overlay.push_back(true);
+	}
+
+	void GraphicsGL::draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color)
+	{
+		Offset offset = getoffset(bmp);
+
+		if (offset.right > offset.left)
+		{
+			screen_quads.emplace_back(left, right, top, bottom, offset, color, 0.0f);
+			screen_from_overlay.push_back(false);
+		}
+	}
+
+	void GraphicsGL::flush_screen(int16_t width, int16_t height)
+	{
+		if (screen_quads.empty())
+			return;
+
+		// Window pixels with the origin at the top left.
+		glUseProgram(shaderProgram);
+		glUniform2f(uniform_screensize, width, height);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		quad_indices.clear();
+		for (size_t i = 0; i < screen_quads.size(); i++)
+		{
+			GLuint base = static_cast<GLuint>(i * Quad::LENGTH);
+			quad_indices.insert(quad_indices.end(), { base, base + 1, base + 2, base, base + 2, base + 3 });
+		}
+
+		glEnableVertexAttribArray(attribute_coord);
+		glEnableVertexAttribArray(attribute_color);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, screen_quads.size() * sizeof(Quad), screen_quads.data(), GL_STREAM_DRAW);
+		glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+		glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, quad_indices.size() * sizeof(GLuint), quad_indices.data(), GL_STREAM_DRAW);
+
+		// One draw call per run of pieces from the same texture.
+		size_t first = 0;
+		while (first < screen_quads.size())
+		{
+			bool from_overlay = screen_from_overlay[first];
+			size_t last = first;
+			while (last < screen_quads.size() && screen_from_overlay[last] == from_overlay)
+				last++;
+
+			if (from_overlay)
+			{
+				// The overlay texture has no font region: sample it as RGBA.
+				glBindTexture(GL_TEXTURE_2D, overlay);
+				glUniform2f(uniform_atlassize, overlay_w, overlay_h);
+				glUniform1i(uniform_fontregion, -1);
+			}
+			else
+			{
+				glBindTexture(GL_TEXTURE_2D, atlas);
+				glUniform2f(uniform_atlassize, ATLASW, ATLASH);
+				glUniform1i(uniform_fontregion, fontymax);
+			}
+
+			if (!from_overlay || overlay)
+				glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((last - first) * 6), GL_UNSIGNED_INT, (const void*)(first * 6 * sizeof(GLuint)));
+
+			first = last;
+		}
+
+		glDisableVertexAttribArray(attribute_coord);
+		glDisableVertexAttribArray(attribute_color);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glBindTexture(GL_TEXTURE_2D, atlas);
+		glUniform2f(uniform_atlassize, ATLASW, ATLASH);
+		glUniform1i(uniform_fontregion, fontymax);
+		glUniform2f(uniform_screensize, VWIDTH, VHEIGHT);
+
+		screen_quads.clear();
+		screen_from_overlay.clear();
+	}
+#endif
+
 	void GraphicsGL::clearscene()
 	{
 		if (!locked)

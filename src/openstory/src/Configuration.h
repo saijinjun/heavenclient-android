@@ -307,6 +307,48 @@ namespace ms
 		VSync() : BoolEntry("VSync", "true") {}
 	};
 
+	// Touch screens (SDL builds): a short vibration when a touch button is
+	// pressed, where the layout editor left the controls, and grabbing ropes
+	// and ladders from a little further to the side.
+	struct TouchVibration : public Configuration::BoolEntry
+	{
+		TouchVibration() : BoolEntry("TouchVibration", "true") {}
+	};
+
+	struct TouchLayout : public Configuration::StringEntry
+	{
+		TouchLayout() : StringEntry("TouchLayout", "") {}
+	};
+
+	struct RopeAssist : public Configuration::BoolEntry
+	{
+		RopeAssist() : BoolEntry("RopeAssist", "true") {}
+	};
+
+	// The HD-2D look for the game world (SDL builds): a pixel-art upscaler,
+	// glow around bright things, a blurred far background, and a color grade.
+	// The Graphics quality slider turns them down as a group: below a third
+	// none, below two thirds only the cheap upscale and color grade.
+	struct HdUpscale : public Configuration::BoolEntry
+	{
+		HdUpscale() : BoolEntry("HdUpscale", "true") {}
+	};
+
+	struct HdGlow : public Configuration::BoolEntry
+	{
+		HdGlow() : BoolEntry("HdGlow", "true") {}
+	};
+
+	struct HdDepthBlur : public Configuration::BoolEntry
+	{
+		HdDepthBlur() : BoolEntry("HdDepthBlur", "true") {}
+	};
+
+	struct HdColorGrade : public Configuration::BoolEntry
+	{
+		HdColorGrade() : BoolEntry("HdColorGrade", "true") {}
+	};
+
 	// The normal font which will be used.
 	// Names in EmbeddedFonts.h resolve to fonts compiled into the binary;
 	// anything else is treated as a file path.
@@ -790,7 +832,12 @@ namespace ms
 	// Frame-rate cap in FPS. 0 = uncapped.
 	struct FPSCap : public Configuration::ByteEntry
 	{
+#ifdef __ANDROID__
+		// Phones run hot and drain fast at 90-120 Hz.
+		FPSCap() : ByteEntry("FPSCap", "60") {}
+#else
 		FPSCap() : ByteEntry("FPSCap", "120") {}
+#endif
 	};
 
 	// Show the on-screen FPS counter (top-right, yellow).

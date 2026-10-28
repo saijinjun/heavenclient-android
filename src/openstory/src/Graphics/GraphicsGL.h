@@ -107,6 +107,18 @@ namespace ms
 		// Clear the buffer contents
 		void clearscene();
 
+#if defined(PLATFORM_SDL)
+		// Screen overlays drawn after the scene in window pixels, such as the
+		// touch controls. Pieces come from a separate RGBA overlay texture or
+		// from game bitmaps, and are drawn in the order they were added.
+		void set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height);
+		bool has_overlay_texture() const;
+		void draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
+			int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color);
+		void draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
+		void flush_screen(int16_t width, int16_t height);
+#endif
+
 	private:
 		void clearinternal();
 		bool addfont(const char* name, Text::Font id, FT_UInt width, FT_UInt height);
@@ -343,6 +355,14 @@ namespace ms
 		GLuint IBO;
 		// Scratch index storage, kept across frames so flush does not reallocate.
 		std::vector<GLuint> quad_indices;
+#if defined(PLATFORM_SDL)
+		// Screen overlay pieces and which texture each one samples.
+		std::vector<Quad> screen_quads;
+		std::vector<bool> screen_from_overlay;
+		GLuint overlay = 0;
+		GLshort overlay_w = 0;
+		GLshort overlay_h = 0;
+#endif
 		GLuint atlas;
 
 		GLint shaderProgram;

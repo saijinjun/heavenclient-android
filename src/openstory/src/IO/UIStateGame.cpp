@@ -176,6 +176,16 @@ namespace ms
 		return true;
 	}
 
+	Icon* UIStateGame::get_dragged_icon()
+	{
+		return draggedicon.get();
+	}
+
+	void UIStateGame::cancel_drag()
+	{
+		remove_icon();
+	}
+
 	void UIStateGame::remove_icon()
 	{
 		// The drop itself may have rebuilt the owner's icons (purge_icon then

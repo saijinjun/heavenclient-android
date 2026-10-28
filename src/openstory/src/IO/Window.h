@@ -25,6 +25,7 @@
 
 #if defined(PLATFORM_SDL)
 	#include "../Graphics/GraphicsGL.h"
+	#include "TouchControls.h"
 	#include <SDL.h>
 #elif defined(PLATFORM_IOS)
 	#include <OpenGLES/ES3/gl.h>
@@ -81,6 +82,8 @@ namespace ms
 	private:
 		void handle_event(const SDL_Event& event);
 		void handle_finger(const SDL_TouchFingerEvent& finger, uint32_t type);
+		void send_touch_actions(const std::vector<TouchControls::Action>& actions);
+		void draw_touch_controls() const;
 		void update_viewport();
 		void update_text_input();
 		Point<int16_t> to_view(int32_t x, int32_t y) const;
@@ -98,6 +101,11 @@ namespace ms
 		bool long_press_sent;
 		uint32_t last_tap_time;
 		Point<int16_t> last_tap_pos;
+		// On-screen controls, shown on the game screen once a touch is seen.
+		mutable TouchControls touch;
+		bool touch_seen;
+		bool touch_editing;
+		SDL_Haptic* haptic;
 #elif !defined(PLATFORM_IOS)
 		GLFWwindow* glwnd;
 		GLFWwindow* context;

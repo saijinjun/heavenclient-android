@@ -170,6 +170,14 @@ namespace ms
 		return texture;
 	}
 
+#if defined(MS_PLATFORM_SDL)
+	void Texture::draw_screen(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color) const
+	{
+		if (bitmap.id() != 0)
+			GraphicsGL::get().draw_screen_bitmap(bitmap, left, top, right, bottom, color);
+	}
+#endif
+
 	void Texture::draw(const DrawArgument& args, const Range<int16_t>& vertical) const
 	{
 		if (rawid > 0)

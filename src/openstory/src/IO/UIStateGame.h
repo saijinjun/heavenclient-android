@@ -48,6 +48,8 @@ namespace ms
 
 		void drag_icon(Icon* icon) override;
 		void purge_icon(const Icon* icon) override;
+		Icon* get_dragged_icon() override;
+		void cancel_drag() override;
 		void clear_tooltip(Tooltip::Parent parent) override;
 		void show_equip(Tooltip::Parent parent, int16_t slot) override;
 		void show_item(Tooltip::Parent parent, int32_t itemid) override;
