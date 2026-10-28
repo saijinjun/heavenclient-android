@@ -77,8 +77,14 @@ namespace jrc
         };
 
         void set_screen(int32_t width, int32_t height);
+        // The current time, for the ripple when a button is pressed.
+        void set_time(uint32_t milliseconds);
         // Empty slots are drawn faintly and ignore touches.
         void set_slot_filled(uint8_t slot, bool filled);
+        // What a filled slot shows besides its icon: how many of its item
+        // are left (negative for none, e.g. a skill), and whether its skill
+        // is cooling down.
+        void set_slot_info(uint8_t slot, int32_t count, bool cooling);
 
         // Each returns true when the finger belongs to a control, so the
         // caller must not also treat it as a tap on the game.
@@ -145,7 +151,11 @@ namespace jrc
         std::unordered_map<int64_t, Control> fingers;
         std::array<bool, NUM_DIRECTIONS> directions = {};
         std::array<bool, NUM_CONTROLS> buttons = {};
+        std::array<uint32_t, NUM_CONTROLS> pressed_at = {};
+        uint32_t now = 0;
         std::array<bool, NUM_SLOTS> slots_filled = {};
+        std::array<int32_t, NUM_SLOTS> slot_counts = { -1, -1, -1, -1, -1, -1 };
+        std::array<bool, NUM_SLOTS> slots_cooling = {};
         // Where the stick sits while a thumb holds it, and the thumb itself.
         float stick_x = 0.0f;
         float stick_y = 0.0f;

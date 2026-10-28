@@ -87,6 +87,7 @@ namespace jrc
         // FillScreen setting, and whether the view is widened right now.
         bool fill_screen;
         bool wide_view;
+        SDL_Haptic* haptic;
 #else
         GLFWwindow* glwnd;
         GLFWwindow* context;

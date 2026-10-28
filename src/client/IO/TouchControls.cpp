@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace jrc
 {
@@ -99,11 +100,25 @@ namespace jrc
         height = static_cast<float>(screen_height);
     }
 
+    void TouchControls::set_time(uint32_t milliseconds)
+    {
+        now = milliseconds;
+    }
+
     void TouchControls::set_slot_filled(uint8_t slot, bool filled)
     {
         if (slot < NUM_SLOTS)
         {
             slots_filled[slot] = filled;
+        }
+    }
+
+    void TouchControls::set_slot_info(uint8_t slot, int32_t count, bool cooling)
+    {
+        if (slot < NUM_SLOTS)
+        {
+            slot_counts[slot] = count;
+            slots_cooling[slot] = cooling;
         }
     }
 
@@ -350,6 +365,10 @@ namespace jrc
         }
 
         buttons[control] = pressed;
+        if (pressed)
+        {
+            pressed_at[control] = now == 0 ? 1 : now;
+        }
 
         Action action = output(control, pressed);
 
@@ -419,12 +438,53 @@ namespace jrc
                 std::min(1.0f, look.red + lift), std::min(1.0f, look.green + lift), std::min(1.0f, look.blue + lift), face);
             sprite(RING, circle.x, circle.y, half, 1.0f, 1.0f, 1.0f, empty ? 0.25f : 0.45f);
 
+            // A ring that grows and fades for a moment after each press.
+            constexpr uint32_t RIPPLE_MS = 280;
+            uint32_t age = now - pressed_at[control];
+            if (pressed_at[control] != 0 && age < RIPPLE_MS)
+            {
+                float t = static_cast<float>(age) / RIPPLE_MS;
+                sprite(RING, circle.x, circle.y, circle.radius * (1.0f + 0.35f * t),
+                    std::min(1.0f, look.red + 0.4f), std::min(1.0f, look.green + 0.4f), std::min(1.0f, look.blue + 0.4f),
+                    0.7f * (1.0f - t));
+            }
+
             if (slot)
             {
-                if (!empty)
+                uint8_t index = static_cast<uint8_t>(control - SLOT0);
+
+                if (empty)
                 {
-                    result.push_back({ Draw::SLOT_ICON, 0, static_cast<uint8_t>(control - SLOT0),
-                        circle.x, circle.y, half * 0.62f, 1.0f, 1.0f, 1.0f, pressed ? 1.0f : 0.92f });
+                    // An empty slot hints that something can go there.
+                    sprite(PLUS, circle.x, circle.y, half * 0.45f, 1.0f, 1.0f, 1.0f, 0.35f);
+                    continue;
+                }
+
+                result.push_back({ Draw::SLOT_ICON, 0, index,
+                    circle.x, circle.y, half * 0.62f, 1.0f, 1.0f, 1.0f, pressed ? 1.0f : 0.92f });
+
+                if (slots_cooling[index])
+                {
+                    sprite(DISC, circle.x, circle.y, half * 0.94f, 0.0f, 0.0f, 0.0f, 0.6f);
+                }
+
+                if (slot_counts[index] >= 0)
+                {
+                    // The count in the bottom right, digits with a shadow.
+                    std::string digits = std::to_string(std::min(slot_counts[index], 9999));
+                    float size = half * 0.26f;
+                    float advance = size * 0.95f;
+                    float x = circle.x + half * 0.72f - advance * (digits.size() - 1);
+                    float y = circle.y + half * 0.62f;
+                    float shadow = std::max(1.0f, size * 0.12f);
+
+                    for (char c : digits)
+                    {
+                        auto glyph = static_cast<Sprite>(DIGIT0 + (c - '0'));
+                        sprite(glyph, x + shadow, y + shadow, size, 0.0f, 0.0f, 0.0f, 0.8f);
+                        sprite(glyph, x, y, size, 1.0f, 1.0f, 1.0f, 1.0f);
+                        x += advance;
+                    }
                 }
             }
             else if (look.icon < NUM_SPRITES)

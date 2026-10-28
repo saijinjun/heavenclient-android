@@ -27,6 +27,7 @@
 #include "../Graphics/GraphicsGL.h"
 #include "../Data/ItemData.h"
 #include "../Data/SkillData.h"
+#include "../Gameplay/Stage.h"
 #include "Components/Icon.h"
 #include "TouchSprites.h"
 
@@ -242,6 +243,7 @@ namespace jrc
         last_tap_time = 0;
         fill_screen = false;
         wide_view = false;
+        haptic = nullptr;
         opacity = 1.0f;
         opcstep = 0.0f;
         fullscreen = false;
@@ -250,6 +252,11 @@ namespace jrc
 
     Window::~Window()
     {
+        if (haptic)
+        {
+            SDL_HapticClose(haptic);
+        }
+
         if (context)
         {
             SDL_GL_DeleteContext(context);
@@ -343,6 +350,18 @@ namespace jrc
     {
         bool vsync = Setting<VSync>::get().load();
         fill_screen = Setting<FillScreen>::get().load();
+
+        // The phone's vibrator, for a tap of feedback on touch buttons.
+        if (Setting<TouchVibration>::get().load() &&
+            SDL_InitSubSystem(SDL_INIT_HAPTIC) == 0 && SDL_NumHaptics() > 0)
+        {
+            haptic = SDL_HapticOpen(0);
+            if (haptic && SDL_HapticRumbleInit(haptic) != 0)
+            {
+                SDL_HapticClose(haptic);
+                haptic = nullptr;
+            }
+        }
 
         PostProcess::Options effects;
         effects.upscale = Setting<HdUpscale>::get().load();
@@ -453,6 +472,15 @@ namespace jrc
     {
         for (const TouchControls::Action& action : actions)
         {
+            // A short buzz for each button press; walking does not buzz.
+            bool walking = action.output == TouchControls::Output::ACTION &&
+                (action.id == KeyAction::LEFT || action.id == KeyAction::RIGHT ||
+                 action.id == KeyAction::UP || action.id == KeyAction::DOWN);
+            if (action.pressed && !walking && haptic)
+            {
+                SDL_HapticRumblePlay(haptic, 0.35f, 12);
+            }
+
             switch (action.output)
             {
             case TouchControls::Output::ACTION:
@@ -793,11 +821,20 @@ namespace jrc
                 graphics.set_overlay_texture(TouchSprites::render(), TouchSprites::WIDTH, TouchSprites::HEIGHT);
             }
 
+            touch.set_time(SDL_GetTicks());
+
             std::array<const Texture*, TouchControls::NUM_SLOTS> icons = {};
+            const Player& player = Stage::get().get_player();
             for (uint8_t slot = 0; slot < TouchControls::NUM_SLOTS; slot++)
             {
                 icons[slot] = slot_icon(slot);
                 touch.set_slot_filled(slot, icons[slot] && icons[slot]->is_valid());
+
+                // Potions show how many are left; skills dim while cooling down.
+                Keyboard::Mapping mapping = UI::get().get_keyboard().get_mapping(SLOT_KEYCODES[slot]);
+                int32_t count = mapping.type == KeyType::ITEM ? player.get_inventory().count_items(mapping.action) : -1;
+                bool cooling = mapping.type == KeyType::SKILL && player.has_cooldown(mapping.action);
+                touch.set_slot_info(slot, count, cooling);
             }
 
             for (const TouchControls::Draw& draw : touch.draws())

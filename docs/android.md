@@ -64,12 +64,34 @@ the black bars beside the game:
   Home, Page Up, Delete and End keys, and show the icon of the skill or item
   on that key. To set one, open the skill or item window and drag a skill,
   potion or chair onto a slot; it is saved to your key setup on the server.
-  Empty slots are faint and ignore touches.
+  Empty slots show a faint **+** and ignore touches. Potions show how many
+  are left, and a skill's slot darkens while it cools down.
 
 Several fingers work at once, so you can walk, jump, attack and use skills
 together. Anywhere else, a tap is a left click and a quick double tap is a
 double click (talk to an NPC, use an item). Tapping a text field opens the
 phone keyboard. The back button acts as Escape.
+
+Buttons give a short vibration and a ripple when pressed
+(`TouchVibration` turns the vibration off).
+
+## Screen and graphics
+
+While playing on a wide phone the game fills the screen (`FillScreen`): the
+view widens to the screen's shape and is sized so each game pixel is a whole
+number of screen pixels (1400x630 at exactly 2x on a 2800x1260 phone). The
+status bar is centered and windows open around the middle. Text is
+rasterized at the screen's resolution, so it stays sharp.
+
+The game world gets an "HD-2D" look (`src/client/Graphics/PostProcess.cpp`),
+each part with its own setting, all on by default:
+
+- `HdUpscale`: an xBR-style pixel-art upscaler that smooths diagonal edges.
+- `HdGlow`: soft glow around bright parts.
+- `HdDepthBlur`: the far background is blurred and slightly hazy.
+- `HdColorGrade`: a gentle color grade and vignette.
+
+The UI is drawn after these effects, so it stays crisp.
 
 The control artwork is drawn at startup from simple shapes
 (`src/client/IO/TouchSprites.cpp`), so it stays sharp on any screen.

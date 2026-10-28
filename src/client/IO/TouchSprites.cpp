@@ -123,8 +123,44 @@ namespace jrc
                 return polygon(p, points);
             }
 
+            // Rounded seven-segment digits, readable at small sizes.
+            float digit(int32_t value, Vec p)
+            {
+                // Segments a-g: top, top right, bottom right, bottom,
+                // bottom left, top left, middle.
+                static constexpr std::array<uint8_t, 10> SEGMENTS =
+                {
+                    0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F
+                };
+                const Vec tl = { -0.32f, -0.62f };
+                const Vec tr = { 0.32f, -0.62f };
+                const Vec ml = { -0.32f, 0.0f };
+                const Vec mr = { 0.32f, 0.0f };
+                const Vec bl = { -0.32f, 0.62f };
+                const Vec br = { 0.32f, 0.62f };
+                const std::array<std::array<Vec, 2>, 7> lines =
+                {{
+                    { tl, tr }, { tr, mr }, { mr, br }, { bl, br }, { ml, bl }, { tl, ml }, { ml, mr }
+                }};
+
+                float d = 1e9f;
+                for (size_t i = 0; i < lines.size(); i++)
+                {
+                    if (SEGMENTS[value] & (1 << i))
+                    {
+                        d = std::min(d, capsule(p, lines[i][0], lines[i][1], 0.12f));
+                    }
+                }
+                return d;
+            }
+
             float shape(Sprite sprite, Vec p)
             {
+                if (sprite >= DIGIT0 && sprite <= DIGIT9)
+                {
+                    return digit(sprite - DIGIT0, p);
+                }
+
                 switch (sprite)
                 {
                 case DISC:
@@ -195,6 +231,10 @@ namespace jrc
                     float equator = capsule(p, { -0.62f, 0.0f }, { 0.62f, 0.0f }, 0.055f);
                     return std::min({ outline, std::max(meridian, circle(p, { 0.0f, 0.0f }, 0.62f)), equator });
                 }
+                case PLUS:
+                    return std::min(
+                        capsule(p, { -0.42f, 0.0f }, { 0.42f, 0.0f }, 0.07f),
+                        capsule(p, { 0.0f, -0.42f }, { 0.0f, 0.42f }, 0.07f));
                 default:
                     return 1.0f;
                 }

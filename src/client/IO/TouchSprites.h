@@ -41,6 +41,9 @@ namespace jrc
             STAR,       // Skills
             QUEST,      // Quest log: an exclamation mark
             GLOBE,      // World map
+            PLUS,       // An empty quick slot
+            DIGIT0,     // Digits 0-9 for item counts, in order
+            DIGIT9 = DIGIT0 + 9,
             NUM_SPRITES
         };
 

@@ -28,6 +28,7 @@ namespace jrc
         settings.emplace<AssetsServerProtocol>();
         settings.emplace<Fullscreen>();
         settings.emplace<FillScreen>();
+        settings.emplace<TouchVibration>();
         settings.emplace<HdUpscale>();
         settings.emplace<HdGlow>();
         settings.emplace<HdDepthBlur>();

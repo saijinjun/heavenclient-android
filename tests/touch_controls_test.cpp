@@ -255,3 +255,29 @@ TEST_CASE("Every touch control sprite has artwork")
         CHECK(covered > 500);
     }
 }
+
+TEST_CASE("Slots show a plus when empty, and counts and cooldowns when filled")
+{
+    using Sprite = jrc::TouchSprites::Sprite;
+    auto count_sprite = [](const Controls& controls, Sprite sprite) {
+        auto draws = controls.draws();
+        return std::count_if(draws.begin(), draws.end(), [&](const auto& d) {
+            return d.kind == Controls::Draw::SPRITE && d.sprite == sprite;
+        });
+    };
+
+    auto controls = phone();
+    CHECK(count_sprite(controls, jrc::TouchSprites::PLUS) == Controls::NUM_SLOTS);
+
+    // A potion with 25 left: two digits, each drawn with a shadow.
+    controls.set_slot_filled(0, true);
+    controls.set_slot_info(0, 25, false);
+    CHECK(count_sprite(controls, jrc::TouchSprites::PLUS) == Controls::NUM_SLOTS - 1);
+    CHECK(count_sprite(controls, static_cast<Sprite>(jrc::TouchSprites::DIGIT0 + 2)) == 2);
+    CHECK(count_sprite(controls, static_cast<Sprite>(jrc::TouchSprites::DIGIT0 + 5)) == 2);
+
+    // A skill cooling down gets a dark cover over its icon.
+    size_t discs = count_sprite(controls, jrc::TouchSprites::DISC);
+    controls.set_slot_info(0, -1, true);
+    CHECK(count_sprite(controls, jrc::TouchSprites::DISC) == discs + 1);
+}

@@ -231,6 +231,12 @@ namespace jrc
         HdColorGrade() : BoolEntry("HdColorGrade", "true") {}
     };
 
+    // A short vibration when a touch button is pressed.
+    struct TouchVibration : public Configuration::BoolEntry
+    {
+        TouchVibration() : BoolEntry("TouchVibration", "true") {}
+    };
+
     // Wether to use vsync.
     struct VSync : public Configuration::BoolEntry
     {
