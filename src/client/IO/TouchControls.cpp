@@ -63,6 +63,9 @@ namespace jrc
 
         // One unit is a sixth of the screen height. On a 20:9 phone each
         // black bar is about 2.7 units wide, which everything below fits in.
+        // When the game fills the screen instead, the same strips are free
+        // at the bottom beside the centered status bar, and the menu sits
+        // below the minimap.
         // In the order of TouchControls::Control.
         constexpr std::array<Place, 16> PLACES =
         {{
@@ -76,18 +79,18 @@ namespace jrc
             { true,  true,  2.10f, 3.65f, 0.36f, NUM_SPRITES, DR, DG, DB },      // SLOT3
             { true,  true,  1.30f, 3.65f, 0.36f, NUM_SPRITES, DR, DG, DB },      // SLOT4
             { true,  true,  0.50f, 3.65f, 0.36f, NUM_SPRITES, DR, DG, DB },      // SLOT5
-            { false, false, 0.55f, 0.55f, 0.33f, BAG, DR, DG, DB },              // MENU_INVENTORY
-            { false, false, 1.35f, 0.55f, 0.33f, SHIRT, DR, DG, DB },            // MENU_EQUIPS
-            { false, false, 2.15f, 0.55f, 0.33f, BARS, DR, DG, DB },             // MENU_STATS
-            { false, false, 0.55f, 1.35f, 0.33f, STAR, DR, DG, DB },             // MENU_SKILLS
-            { false, false, 1.35f, 1.35f, 0.33f, QUEST, DR, DG, DB },            // MENU_QUESTS
-            { false, false, 2.15f, 1.35f, 0.33f, GLOBE, DR, DG, DB },            // MENU_MAP
+            { false, false, 0.50f, 1.85f, 0.30f, BAG, DR, DG, DB },              // MENU_INVENTORY
+            { false, false, 1.25f, 1.85f, 0.30f, SHIRT, DR, DG, DB },            // MENU_EQUIPS
+            { false, false, 2.00f, 1.85f, 0.30f, BARS, DR, DG, DB },             // MENU_STATS
+            { false, false, 0.50f, 2.60f, 0.30f, STAR, DR, DG, DB },             // MENU_SKILLS
+            { false, false, 1.25f, 2.60f, 0.30f, QUEST, DR, DG, DB },            // MENU_QUESTS
+            { false, false, 2.00f, 2.60f, 0.30f, GLOBE, DR, DG, DB },            // MENU_MAP
         }};
 
         // The stick appears wherever the left thumb lands in this part of
         // the screen: left of STICK_ZONE_RIGHT and below STICK_ZONE_TOP.
         constexpr float STICK_ZONE_RIGHT = 2.9f;
-        constexpr float STICK_ZONE_TOP = 1.8f;
+        constexpr float STICK_ZONE_TOP = 3.0f;
     }
 
     void TouchControls::set_screen(int32_t screen_width, int32_t screen_height)

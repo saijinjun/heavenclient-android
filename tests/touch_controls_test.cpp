@@ -29,8 +29,8 @@ namespace
     constexpr float JUMP_Y = HEIGHT - 0.55f * UNIT;
     constexpr float SLOT0_X = WIDTH - 2.25f * UNIT;
     constexpr float SLOT0_Y = HEIGHT - 1.85f * UNIT;
-    constexpr float INVENTORY_X = 0.55f * UNIT;
-    constexpr float INVENTORY_Y = 0.55f * UNIT;
+    constexpr float INVENTORY_X = 0.5f * UNIT;
+    constexpr float INVENTORY_Y = 1.85f * UNIT;
 
     Controls phone()
     {

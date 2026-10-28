@@ -239,6 +239,8 @@ namespace jrc
         cursor_finger_down = false;
         cursor_finger = 0;
         last_tap_time = 0;
+        fill_screen = false;
+        wide_view = false;
         opacity = 1.0f;
         opcstep = 0.0f;
         fullscreen = false;
@@ -330,6 +332,7 @@ namespace jrc
     Error Window::initwindow()
     {
         bool vsync = Setting<VSync>::get().load();
+        fill_screen = Setting<FillScreen>::get().load();
         SDL_GL_SetSwapInterval(vsync ? 1 : 0);
 
         // The game draws at its classic fixed size and is scaled to the screen.
@@ -355,7 +358,25 @@ namespace jrc
             return;
         }
 
-        // Largest view with the game's aspect ratio, centered with black bars.
+        // In game on a wide screen the view widens to the screen's shape and
+        // shows more of the map. The login screens' artwork is 800 wide, so
+        // they keep the classic size.
+        int32_t width = Constants::VIEWWIDTH;
+        if (wide_view)
+        {
+            constexpr int32_t MAX_VIEW_WIDTH = 1400;
+            float aspect = static_cast<float>(drawable_w) / drawable_h;
+            width = std::clamp(static_cast<int32_t>(Constants::VIEWHEIGHT * aspect), int32_t{ Constants::VIEWWIDTH }, MAX_VIEW_WIDTH) & ~1;
+        }
+
+        if (width != Constants::viewwidth())
+        {
+            Constants::set_viewsize(width, Constants::VIEWHEIGHT);
+            GraphicsGL::get().set_screensize(Constants::viewwidth(), Constants::viewheight());
+        }
+
+        // Largest view with the game's aspect ratio, centered, with black
+        // bars where the shapes differ.
         float scale = std::min(
             static_cast<float>(drawable_w) / Constants::viewwidth(),
             static_cast<float>(drawable_h) / Constants::viewheight()
@@ -687,6 +708,13 @@ namespace jrc
     void Window::check_events()
     {
         update_text_input();
+
+        bool want_wide = fill_screen && UI::get().in_game();
+        if (want_wide != wide_view)
+        {
+            wide_view = want_wide;
+            update_viewport();
+        }
 
         // Leaving the game screen lets go of any held d-pad or button.
         if (!UI::get().in_game())

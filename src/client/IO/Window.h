@@ -84,6 +84,9 @@ namespace jrc
         SDL_FingerID cursor_finger;
         Uint32 last_tap_time;
         Point<int16_t> last_tap_pos;
+        // FillScreen setting, and whether the view is widened right now.
+        bool fill_screen;
+        bool wide_view;
 #else
         GLFWwindow* glwnd;
         GLFWwindow* context;

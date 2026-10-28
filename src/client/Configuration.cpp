@@ -27,6 +27,7 @@ namespace jrc
         settings.emplace<AssetsUrl>();
         settings.emplace<AssetsServerProtocol>();
         settings.emplace<Fullscreen>();
+        settings.emplace<FillScreen>();
         settings.emplace<VSync>();
         settings.emplace<FontPathNormal>();
         settings.emplace<FontPathBold>();

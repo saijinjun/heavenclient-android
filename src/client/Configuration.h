@@ -202,6 +202,13 @@ namespace jrc
         Fullscreen() : BoolEntry("Fullscreen", "false") {}
     };
 
+    // Whether the game view widens to fill a wide screen while playing,
+    // instead of keeping 800x600 with black bars at the sides.
+    struct FillScreen : public Configuration::BoolEntry
+    {
+        FillScreen() : BoolEntry("FillScreen", "true") {}
+    };
+
     // Wether to use vsync.
     struct VSync : public Configuration::BoolEntry
     {
