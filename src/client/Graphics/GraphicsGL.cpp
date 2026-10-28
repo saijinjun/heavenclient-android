@@ -22,6 +22,7 @@
 #include "../Console.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace jrc
@@ -86,12 +87,22 @@ namespace jrc
             "uniform sampler2D texture;"
             "uniform vec2 atlassize;"
             "uniform int fontregion;"
+            // 1 while drawing into a target at game resolution with glyphs
+            // rasterized at twice that: average each 2x2 block of texels.
+            "uniform float fontbox;"
 
             "void main(void) {"
             "    if (texpos.y == 0.0) {"
             "        gl_FragColor = colormod;"
             "    } else if (texpos.y <= float(fontregion)) {"
-            "        gl_FragColor = vec4(1.0, 1.0, 1.0, texture2D(texture, texpos / atlassize).r) * colormod;"
+            "        float a = texture2D(texture, texpos / atlassize).r;"
+            "        if (fontbox > 0.5) {"
+            "            a = 0.25 * (texture2D(texture, (texpos + vec2(-0.5, -0.5)) / atlassize).r"
+            "                      + texture2D(texture, (texpos + vec2(0.5, -0.5)) / atlassize).r"
+            "                      + texture2D(texture, (texpos + vec2(-0.5, 0.5)) / atlassize).r"
+            "                      + texture2D(texture, (texpos + vec2(0.5, 0.5)) / atlassize).r);"
+            "        }"
+            "        gl_FragColor = vec4(1.0, 1.0, 1.0, a) * colormod;"
             "    } else {"
             "        gl_FragColor = texture2D(texture, texpos / atlassize) * colormod;"
             "    }"
@@ -124,6 +135,7 @@ namespace jrc
         uniform_screensize = glGetUniformLocation(program, "screensize");
         uniform_yoffset    = glGetUniformLocation(program, "yoffset");
         uniform_fontregion = glGetUniformLocation(program, "fontregion");
+        uniform_fontbox    = glGetUniformLocation(program, "fontbox");
         if (
             attribute_coord    == -1 ||
             attribute_color    == -1 ||
@@ -240,10 +252,19 @@ namespace jrc
             return false;
         }
 
-        if (FT_Set_Pixel_Sizes(face, pixelw, pixelh))
+        // Glyphs are rasterized text_scale times larger than their size in
+        // the game, so text drawn to a scaled-up screen stays sharp. Each
+        // glyph's cell in the atlas is padded to whole game pixels.
+        const GLshort scale = text_scale;
+
+        if (FT_Set_Pixel_Sizes(face, pixelw * scale, pixelh * scale))
         {
             return false;
         }
+
+        auto game_units = [scale](GLshort texels) {
+            return static_cast<GLshort>((texels + scale - 1) / scale);
+        };
 
         FT_GlyphSlot g = face->glyph;
 
@@ -254,10 +275,10 @@ namespace jrc
             if (FT_Load_Char(face, c, FT_LOAD_RENDER))
                 continue;
 
-            GLshort w = static_cast<GLshort>(g->bitmap.width);
-            GLshort h = static_cast<GLshort>(g->bitmap.rows);
+            GLshort w = game_units(static_cast<GLshort>(g->bitmap.width));
+            GLshort h = game_units(static_cast<GLshort>(g->bitmap.rows));
 
-            width += w;
+            width += w * scale;
             if (h > height)
             {
                 height = h;
@@ -266,8 +287,9 @@ namespace jrc
 
         if (fontborder.x() + width > ATLASW)
         {
+            // Next row of fonts, below the tallest font of this row.
             fontborder.set_x(0);
-            fontborder.set_y(fontymax);
+            fontborder.set_y(fontborder.y() + fontymax);
             fontymax = 0;
         }
 
@@ -275,9 +297,9 @@ namespace jrc
         GLshort y = fontborder.y();
 
         fontborder.shift_x(width);
-        if (height > fontymax)
+        if (height * scale > fontymax)
         {
-            fontymax = height;
+            fontymax = height * scale;
         }
 
         fonts[id] = Font(width, height);
@@ -291,45 +313,61 @@ namespace jrc
                 continue;
             }
 
-            GLshort ax = static_cast<GLshort>(g->advance.x >> 6);
-            GLshort ay = static_cast<GLshort>(g->advance.y >> 6);
-            GLshort l  = static_cast<GLshort>(g->bitmap_left);
-            GLshort t  = static_cast<GLshort>(g->bitmap_top);
-            GLshort w  = static_cast<GLshort>(g->bitmap.width);
-            GLshort h  = static_cast<GLshort>(g->bitmap.rows);
+            // Metrics in game pixels, rounded to the nearest.
+            GLshort ax = static_cast<GLshort>((g->advance.x + 32 * scale) / (64 * scale));
+            GLshort ay = static_cast<GLshort>((g->advance.y + 32 * scale) / (64 * scale));
+            GLshort l  = static_cast<GLshort>(std::lround(static_cast<float>(g->bitmap_left) / scale));
+            GLshort t  = static_cast<GLshort>(std::lround(static_cast<float>(g->bitmap_top) / scale));
+            GLshort bw = static_cast<GLshort>(g->bitmap.width);
+            GLshort bh = static_cast<GLshort>(g->bitmap.rows);
+            GLshort w  = game_units(bw);
+            GLshort h  = game_units(bh);
 
-            if (w > 0 && h > 0)
+            if (bw > 0 && bh > 0)
             {
 #if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
-                // WebGL path: expand single-channel glyph bitmap to RGBA.
-                std::vector<uint8_t> rgba_buffer(static_cast<size_t>(w) * h * 4);
-                for (int32_t i = 0; i < static_cast<int32_t>(w) * h; ++i)
+                // WebGL path: expand single-channel glyph bitmap to RGBA,
+                // into a cell padded with transparent texels.
+                GLshort cw = w * scale;
+                GLshort chh = h * scale;
+                std::vector<uint8_t> rgba_buffer(static_cast<size_t>(cw) * chh * 4, 0);
+                for (int32_t row = 0; row < bh; ++row)
                 {
-                    uint8_t val = g->bitmap.buffer[i];
-                    rgba_buffer[static_cast<size_t>(i) * 4 + 0] = val;
-                    rgba_buffer[static_cast<size_t>(i) * 4 + 1] = val;
-                    rgba_buffer[static_cast<size_t>(i) * 4 + 2] = val;
-                    rgba_buffer[static_cast<size_t>(i) * 4 + 3] = val;
+                    const uint8_t* src = g->bitmap.buffer + row * g->bitmap.pitch;
+                    for (int32_t col = 0; col < bw; ++col)
+                    {
+                        uint8_t val = src[col];
+                        size_t at = (static_cast<size_t>(row) * cw + col) * 4;
+                        rgba_buffer[at + 0] = val;
+                        rgba_buffer[at + 1] = val;
+                        rgba_buffer[at + 2] = val;
+                        rgba_buffer[at + 3] = val;
+                    }
                 }
                 glTexSubImage2D(
-                    GL_TEXTURE_2D, 0, ox, oy, w, h,
+                    GL_TEXTURE_2D, 0, ox, oy, cw, chh,
                     GL_RGBA, GL_UNSIGNED_BYTE, rgba_buffer.data()
                 );
 #else
                 glTexSubImage2D(
-                    GL_TEXTURE_2D, 0, ox, oy, w, h,
+                    GL_TEXTURE_2D, 0, ox, oy, bw, bh,
                     GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer
                 );
 #endif
             }
 
-            Offset offset = Offset(ox, oy, w, h);
+            Offset offset = Offset(ox, oy, w * scale, h * scale);
             fonts[id].chars[c] = { ax, ay, w, h, l, t, offset };
 
-            ox += w;
+            ox += w * scale;
         }
 
         return true;
+    }
+
+    void GraphicsGL::set_text_scale(int16_t scale)
+    {
+        text_scale = std::clamp<int16_t>(scale, 1, 2);
     }
 
     void GraphicsGL::reinit()
@@ -340,6 +378,7 @@ namespace jrc
         glUniform1i(uniform_fontregion, fontymax);
         glUniform2f(uniform_atlassize, ATLASW, ATLASH);
         glUniform2f(uniform_screensize, Constants::viewwidth(), Constants::viewheight());
+        glUniform1f(uniform_fontbox, 0.0f);
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
@@ -905,8 +944,8 @@ namespace jrc
                         bottom = std::min<GLshort>(bottom, vertical->second());
                         if (top >= bottom)
                             continue;
-                        glyph.t += top - chy;
-                        glyph.b -= chy + chh - bottom;
+                        glyph.t += (top - chy) * text_scale;
+                        glyph.b -= (chy + chh - bottom) * text_scale;
                         chy = top;
                     }
                     DrawBounds::check({chx, static_cast<int16_t>(chx + chw), chy, bottom}, DrawBounds::Kind::TEXT);

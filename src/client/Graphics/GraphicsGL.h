@@ -45,6 +45,10 @@ namespace jrc
 
         // Initialise all resources.
         Error init();
+        // How many times larger than their game size glyphs are rasterized
+        // (1 or 2), to match how much the screen scales the game up. Set
+        // before init().
+        void set_text_scale(int16_t scale);
         // Re-initialise after changing screen modes.
         void reinit();
         // Update runtime viewport-dependent uniforms and clipping.
@@ -296,6 +300,8 @@ namespace jrc
         GLint uniform_screensize;
         GLint uniform_yoffset;
         GLint uniform_fontregion;
+        GLint uniform_fontbox;
+        int16_t text_scale = 1;
 
         std::unordered_map<size_t, Offset> offsets;
         Offset nulloffset;

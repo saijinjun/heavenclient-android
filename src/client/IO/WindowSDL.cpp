@@ -31,6 +31,7 @@
 #include "TouchSprites.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <vector>
 
@@ -321,6 +322,15 @@ namespace jrc
         // Desktop SDL starts with text input on; only text fields need it.
         SDL_StopTextInput();
 
+        // Text is rasterized for the screen's real resolution: twice the
+        // game's size on phones, where the game is scaled up about 2x.
+        {
+            int32_t drawable_w = 0;
+            int32_t drawable_h = 0;
+            SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
+            GraphicsGL::get().set_text_scale(static_cast<int16_t>(std::lround(static_cast<float>(drawable_h) / Constants::VIEWHEIGHT)));
+        }
+
         if (Error error = GraphicsGL::get().init())
         {
             return error;
@@ -361,17 +371,26 @@ namespace jrc
         // In game on a wide screen the view widens to the screen's shape and
         // shows more of the map. The login screens' artwork is 800 wide, so
         // they keep the classic size.
+        //
+        // The view is sized so the screen is a whole number of game pixels
+        // (exactly 2x on a 1260-pixel-high phone). Every game pixel is then
+        // the same size, which keeps pixel art from looking uneven.
         int32_t width = Constants::VIEWWIDTH;
+        int32_t height = Constants::VIEWHEIGHT;
         if (wide_view)
         {
-            constexpr int32_t MAX_VIEW_WIDTH = 1400;
-            float aspect = static_cast<float>(drawable_w) / drawable_h;
-            width = std::clamp(static_cast<int32_t>(Constants::VIEWHEIGHT * aspect), int32_t{ Constants::VIEWWIDTH }, MAX_VIEW_WIDTH) & ~1;
+            constexpr int32_t MIN_VIEW_HEIGHT = 540;
+            constexpr int32_t MAX_VIEW_HEIGHT = 720;
+            constexpr int32_t MAX_VIEW_WIDTH = 1600;
+            int32_t scale = std::max(1, static_cast<int32_t>(std::lround(static_cast<float>(drawable_h) / Constants::VIEWHEIGHT)));
+            height = std::clamp(drawable_h / scale, MIN_VIEW_HEIGHT, MAX_VIEW_HEIGHT);
+            width = std::clamp(static_cast<int32_t>(static_cast<int64_t>(height) * drawable_w / drawable_h),
+                int32_t{ Constants::VIEWWIDTH }, MAX_VIEW_WIDTH) & ~1;
         }
 
-        if (width != Constants::viewwidth())
+        if (width != Constants::viewwidth() || height != Constants::viewheight())
         {
-            Constants::set_viewsize(width, Constants::VIEWHEIGHT);
+            Constants::set_viewsize(width, height);
             GraphicsGL::get().set_screensize(Constants::viewwidth(), Constants::viewheight());
         }
 
