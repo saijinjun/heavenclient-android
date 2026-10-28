@@ -11,7 +11,7 @@ option(ERROR_ON_UNUSED_VARIABLES "Fail the build on unused variable warnings" ON
 option(ENFORCE_UNUSED_INCLUDES "Run include-what-you-use to catch unused includes" ON)
 
 if(EMSCRIPTEN)
-    add_compile_definitions(MS_PLATFORM_WASM=1)
+    add_compile_definitions(MS_PLATFORM_WASM=1 NX_LAZY_FILES=1)
     add_compile_options("-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=/")
     add_compile_options(
         --use-port=freetype
@@ -85,9 +85,28 @@ list(APPEND SOURCES
 )
 
 if(NOT EMSCRIPTEN)
-    # Browser-only code: the LazyFS asset streamer and the WebSocket transport.
-    list(FILTER SOURCES EXCLUDE REGEX ".*/LazyFS/LazyFile(Backend|Loader)\\.cpp$")
+    # Browser-only code: the WebSocket transports for assets and the game.
+    list(FILTER SOURCES EXCLUDE REGEX ".*/LazyFS/LazyFileBackend\\.cpp$")
     list(FILTER SOURCES EXCLUDE REGEX ".*/Net/SockInternal\\.cpp$")
+
+    # Streaming: .nx files missing on the device are fetched in pieces over
+    # HTTP as the game reads them (LazyFS/LazyFileBackendNative.cpp) instead
+    # of being downloaded whole first. On by default for Android.
+    if(ANDROID)
+        set(STREAM_DEFAULT ON)
+    else()
+        set(STREAM_DEFAULT OFF)
+    endif()
+    option(JOURNEY_STREAM_ASSETS "Fetch missing .nx files on demand over HTTP" ${STREAM_DEFAULT})
+    set(JOURNEY_ASSETS_URL "" CACHE STRING "Default AssetsUrl: where streamed .nx files come from")
+    if(JOURNEY_STREAM_ASSETS)
+        add_compile_definitions(NX_LAZY_FILES=1)
+    else()
+        list(FILTER SOURCES EXCLUDE REGEX ".*/LazyFS/(LazyFileLoader|LazyFileBackendNative|HttpRange)\\.cpp$")
+    endif()
+    if(JOURNEY_ASSETS_URL)
+        add_compile_definitions(JOURNEY_ASSETS_URL="${JOURNEY_ASSETS_URL}")
+    endif()
 endif()
 
 if(ANDROID)

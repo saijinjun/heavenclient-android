@@ -32,7 +32,8 @@ android {
                           "-DFREETYPE_SOURCE_DIR=${new File(thirdParty, "freetype").absolutePath}",
                           "-DANDROID_STL=c++_static",
                           "-DWARNINGS_AS_ERRORS=OFF",
-                          "-DJOURNEY_DEFAULT_SERVER_IP=${serverIp}"
+                          "-DJOURNEY_DEFAULT_SERVER_IP=${serverIp}",
+                          "-DJOURNEY_ASSETS_URL=${assetsUrl}"
             }
         }
 

@@ -19,9 +19,11 @@
 #include "file_impl.hpp"
 #include "node_impl.hpp"
 
-// LazyFS integration for WASM
-#ifdef MS_PLATFORM_WASM
+// LazyFS: on-demand loading for the browser and for streaming native builds.
+#ifdef NX_LAZY_FILES
 #include <LazyFS/LazyFileLoader.h>
+#endif
+#ifdef MS_PLATFORM_WASM
 #include <LazyFS/LazyFS.h>
 #endif
 
@@ -44,6 +46,7 @@
 #  include <sys/mman.h>
 #  include <unistd.h>
 #endif
+#include <cstring>
 #include <stdexcept>
 #include <iostream>
 
@@ -89,11 +92,13 @@ namespace nl {
         if (!m_data->base)
             throw std::runtime_error("Failed to map view of file " + name);
 #else
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         // WASM: Use LazyFS instead of mmap
         
+#ifdef MS_PLATFORM_WASM
         // Ensure the file is registered with LazyFS before loading
         LazyFS::RegisterFile(name, "/assets/" + name);
+#endif
 
         size_t file_size = 0;
         m_data->base = LazyFS::LazyFileLoader::load_file(name, file_size);
@@ -116,7 +121,7 @@ namespace nl {
 #endif
 
         // Initialize tables
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         // WASM: Store offsets directly
         m_data->header = 0; // Header is at start of file
         
@@ -173,7 +178,7 @@ namespace nl {
         ::CloseHandle(m_data->map);
         ::CloseHandle(m_data->file_handle);
 #else
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         // WASM: Free LazyFS-loaded file
         if (m_data->base) {
             LazyFS::LazyFileLoader::free_file(const_cast<void *>(m_data->base));
@@ -187,7 +192,7 @@ namespace nl {
         m_data = nullptr;
     }
     node file::root() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         // Root node is at node_table offset
         return {reinterpret_cast<node::data const*>(static_cast<uintptr_t>(m_data->node_table)), m_data};
 #else
@@ -198,7 +203,7 @@ namespace nl {
         return root();
     }
     uint32_t file::string_count() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         auto loader = static_cast<LazyFS::LazyFileLoader*>(const_cast<void*>(m_data->base));
         auto h = loader->get_data_at<header>(m_data->header);
         return h ? h->string_count : 0;
@@ -207,7 +212,7 @@ namespace nl {
 #endif
     }
     uint32_t file::bitmap_count() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         auto loader = static_cast<LazyFS::LazyFileLoader*>(const_cast<void*>(m_data->base));
         auto h = loader->get_data_at<header>(m_data->header);
         return h ? h->bitmap_count : 0;
@@ -216,7 +221,7 @@ namespace nl {
 #endif
     }
     uint32_t file::audio_count() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         auto loader = static_cast<LazyFS::LazyFileLoader*>(const_cast<void*>(m_data->base));
         auto h = loader->get_data_at<header>(m_data->header);
         return h ? h->audio_count : 0;
@@ -225,7 +230,7 @@ namespace nl {
 #endif
     }
     uint32_t file::node_count() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         auto loader = static_cast<LazyFS::LazyFileLoader*>(const_cast<void*>(m_data->base));
         auto h = loader->get_data_at<header>(m_data->header);
         return h ? h->node_count : 0;
@@ -234,7 +239,7 @@ namespace nl {
 #endif
     }
     std::string file::get_string(uint32_t i) const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         auto loader = static_cast<LazyFS::LazyFileLoader*>(const_cast<void*>(m_data->base));
         
         // Resolve string table entry
@@ -261,7 +266,7 @@ namespace nl {
     bool io_read(const _file_data *fd, void *buf, size_t size, uint64_t offset) {
         if (!fd || !buf || size == 0)
             return false;
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         // Use LazyFS to fetch the data
         auto loader = static_cast<LazyFS::LazyFileLoader*>(const_cast<void*>(fd->base));
         if (!loader)

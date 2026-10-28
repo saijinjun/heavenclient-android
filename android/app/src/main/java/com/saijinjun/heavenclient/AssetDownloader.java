@@ -173,6 +173,10 @@ public final class AssetDownloader {
             throw new IOException("Could not save " + name);
         }
 
+        // Pieces the game streamed earlier are superseded by the whole file.
+        new File(directory, name + ".cache").delete();
+        new File(directory, name + ".lazy").delete();
+
         return done;
     }
 

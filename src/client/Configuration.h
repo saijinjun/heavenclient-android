@@ -161,6 +161,17 @@ namespace jrc
         MapleStoryServerIp() : StringEntry("MapleStoryServerIp", JOURNEY_DEFAULT_SERVER_IP) {}
     };
 
+#ifndef JOURNEY_ASSETS_URL
+#define JOURNEY_ASSETS_URL ""
+#endif
+
+    // Where a streaming native build fetches .nx files it does not have yet,
+    // e.g. http://100.91.238.34:8090/assets/. Empty turns streaming off.
+    struct AssetsUrl : public Configuration::StringEntry
+    {
+        AssetsUrl() : StringEntry("AssetsUrl", JOURNEY_ASSETS_URL) {}
+    };
+
     // Port which the client will connect to.
     struct MapleStoryServerPort : public Configuration::StringEntry
     {

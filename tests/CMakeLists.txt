@@ -94,6 +94,15 @@ client_test(job_requirements_test unit)
 client_test(npc_menu_test unit)
 client_test(touch_controls_test unit)
 
+# On-demand .nx streaming used by the Android build, against a local server.
+add_library(test_lazy_stream STATIC
+    "${CLIENT}/LazyFS/HttpRange.cpp"
+    "${CLIENT}/LazyFS/LazyFileBackendNative.cpp")
+target_include_directories(test_lazy_stream PUBLIC "${CLIENT}")
+target_link_libraries(test_lazy_stream PUBLIC test_options)
+find_package(Threads REQUIRED)
+client_test(lazy_stream_test unit test_lazy_stream Threads::Threads)
+
 if(TEST_ASSETS)
     foreach(asset Character Etc Item Npc Quest String UI UI_83)
         if(NOT EXISTS "${TEST_ASSET_DIR}/${asset}.nx")

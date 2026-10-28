@@ -2,6 +2,7 @@ package com.saijinjun.heavenclient;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -18,13 +19,16 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * First screen of the app. When all game files are in the data folder it
- * goes straight to the game; otherwise it offers to download them from the
- * server, shows progress, and starts the game when done.
+ * First screen of the app. When all game files are in the data folder, or
+ * the player chose to stream them, it goes straight to the game. Otherwise
+ * it offers to play right away, with the game fetching pieces of the files
+ * as it needs them, or to download everything first.
  */
 public class SetupActivity extends Activity {
     /** Refresh the progress text at most this often so the UI thread stays free. */
     private static final long PROGRESS_INTERVAL_MS = 250;
+    private static final String PREFS = "setup";
+    private static final String PREF_STREAM = "stream";
 
     private AssetDownloader downloader;
     private Map<String, Long> sizes;
@@ -33,6 +37,7 @@ public class SetupActivity extends Activity {
     private TextView status;
     private ProgressBar progress;
     private Button action;
+    private Button secondary;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +49,7 @@ public class SetupActivity extends Activity {
         if (directory != null) {
             downloader = new AssetDownloader(BuildConfig.ASSETS_URL, directory);
 
-            if (downloader.missingFiles().isEmpty()) {
+            if (downloader.missingFiles().isEmpty() || prefs().getBoolean(PREF_STREAM, false)) {
                 startGame();
                 return;
             }
@@ -91,6 +96,9 @@ public class SetupActivity extends Activity {
         action = new Button(this);
         action.setVisibility(View.GONE);
 
+        secondary = new Button(this);
+        secondary.setVisibility(View.GONE);
+
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
@@ -102,6 +110,8 @@ public class SetupActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         layout.addView(action, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        layout.addView(secondary, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         setContentView(layout);
     }
@@ -110,6 +120,7 @@ public class SetupActivity extends Activity {
         status.setText(R.string.setup_connecting);
         progress.setVisibility(View.GONE);
         action.setVisibility(View.GONE);
+        secondary.setVisibility(View.GONE);
 
         runInBackground(() -> {
             try {
@@ -127,21 +138,30 @@ public class SetupActivity extends Activity {
     private void offerDownload(Map<String, Long> found, long remaining, long free) {
         sizes = found;
 
-        // Leave some room so the phone is not filled to the last byte.
-        if (remaining + 200L * 1024 * 1024 > free) {
-            showError(getString(R.string.setup_no_space, gigabytes(remaining), gigabytes(free)),
-                    "Check again", v -> checkServer());
-            return;
-        }
-
         status.setText(getString(R.string.setup_offer, gigabytes(remaining)));
-        action.setText(R.string.setup_download);
-        action.setOnClickListener(v -> download());
+        action.setText(R.string.setup_play);
+        action.setOnClickListener(v -> {
+            prefs().edit().putBoolean(PREF_STREAM, true).apply();
+            startGame();
+        });
         action.setVisibility(View.VISIBLE);
+
+        secondary.setText(getString(R.string.setup_download, gigabytes(remaining)));
+        secondary.setOnClickListener(v -> {
+            // Leave some room so the phone is not filled to the last byte.
+            if (remaining + 200L * 1024 * 1024 > free) {
+                showError(getString(R.string.setup_no_space, gigabytes(remaining), gigabytes(free)),
+                        "Check again", w -> checkServer());
+            } else {
+                download();
+            }
+        });
+        secondary.setVisibility(View.VISIBLE);
     }
 
     private void download() {
         action.setVisibility(View.GONE);
+        secondary.setVisibility(View.GONE);
         progress.setVisibility(View.VISIBLE);
         progress.setProgress(0);
         status.setText(R.string.setup_starting);
@@ -194,6 +214,7 @@ public class SetupActivity extends Activity {
         }
         status.setText(message);
         progress.setVisibility(View.GONE);
+        secondary.setVisibility(View.GONE);
         action.setText(button);
         action.setOnClickListener(onClick);
         action.setVisibility(View.VISIBLE);
@@ -202,6 +223,10 @@ public class SetupActivity extends Activity {
     private void startGame() {
         startActivity(new Intent(this, GameActivity.class));
         finish();
+    }
+
+    private SharedPreferences prefs() {
+        return getSharedPreferences(PREFS, MODE_PRIVATE);
     }
 
     private void runInBackground(Runnable task) {
