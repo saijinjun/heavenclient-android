@@ -51,6 +51,11 @@ else()
     # Desktop and Android builds: SDL2 for the window, input and audio, and
     # OpenGL ES 3 for rendering (the same renderer path as WebGL 2).
     add_compile_definitions(MS_PLATFORM_SDL=1)
+    # Server address a fresh install starts with; Settings can still change it.
+    set(JOURNEY_DEFAULT_SERVER_IP "" CACHE STRING "Default MapleStoryServerIp for new Settings files")
+    if(JOURNEY_DEFAULT_SERVER_IP)
+        add_compile_definitions(JOURNEY_DEFAULT_SERVER_IP="${JOURNEY_DEFAULT_SERVER_IP}")
+    endif()
     add_compile_options(-Wno-c++11-narrowing -Wno-narrowing -Wno-deprecated-declarations -fexceptions)
 endif()
 

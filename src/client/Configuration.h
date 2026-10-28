@@ -149,10 +149,16 @@ namespace jrc
         TypeMap<Entry> settings;
     };
 
+    // Builds can bake in their server so a fresh install connects without
+    // editing Settings first (the Android build passes the n150's address).
+#ifndef JOURNEY_DEFAULT_SERVER_IP
+#define JOURNEY_DEFAULT_SERVER_IP "127.0.0.1"
+#endif
+
     // IP Adress which the client will connect to.
     struct MapleStoryServerIp : public Configuration::StringEntry
     {
-        MapleStoryServerIp() : StringEntry("MapleStoryServerIp", "127.0.0.1") {}
+        MapleStoryServerIp() : StringEntry("MapleStoryServerIp", JOURNEY_DEFAULT_SERVER_IP) {}
     };
 
     // Port which the client will connect to.

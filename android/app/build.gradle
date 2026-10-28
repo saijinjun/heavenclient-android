@@ -5,6 +5,9 @@ plugins {
 def thirdParty = file("../third_party")
 def clientSource = file("../../src/client")
 def generatedAssets = layout.buildDirectory.dir("generated/journeyAssets")
+// Game server a fresh install connects to: the n150 over Tailscale. Override
+// with ./gradlew assembleRelease -PserverIp=<address>.
+def serverIp = project.findProperty("serverIp") ?: "100.91.238.34"
 
 android {
     namespace "com.saijinjun.heavenclient"
@@ -23,7 +26,8 @@ android {
                 arguments "-DSDL2_SOURCE_DIR=${new File(thirdParty, "SDL2").absolutePath}",
                           "-DFREETYPE_SOURCE_DIR=${new File(thirdParty, "freetype").absolutePath}",
                           "-DANDROID_STL=c++_static",
-                          "-DWARNINGS_AS_ERRORS=OFF"
+                          "-DWARNINGS_AS_ERRORS=OFF",
+                          "-DJOURNEY_DEFAULT_SERVER_IP=${serverIp}"
             }
         }
 

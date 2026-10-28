@@ -21,6 +21,14 @@ cd android && ./gradlew assembleRelease
 The APK is written to `android/app/build/outputs/apk/release/`. It is signed
 with the debug key, which is fine for sideloading but not for a store.
 
+## Connecting to the server
+
+The APK is built to connect to the n150 game server at `100.91.238.34:8484`.
+That address is only reachable over Tailscale, so the phone must have the
+Tailscale app running and signed in to the same tailnet. To build for another
+server, pass `-PserverIp=<address>` to Gradle, or edit `MapleStoryServerIp` in
+the `Settings` file after the first start.
+
 ## Game files
 
 Start the app once. It creates its data folder and a `Settings` file in it:
@@ -29,13 +37,15 @@ Start the app once. It creates its data folder and a `Settings` file in it:
 Android/data/com.saijinjun.heavenclient/files/
 ```
 
-Connect the phone to a computer over USB to reach that folder, then:
+Connect the phone to a computer over USB to reach that folder and copy these
+17 `.nx` files into it (several GB, so leave room on the phone):
 
-1. Copy every `.nx` file into it (see the asset list in the main README).
-2. Open `Settings` and set `MapleStoryServerIp` to the server's address, for
-   example the server PC's LAN or Tailscale IP. The port is 8484.
+`Base`, `Character`, `Effect`, `Etc`, `Item`, `Map`, `Mob`, `Morph`, `Npc`,
+`Quest`, `Reactor`, `Skill`, `Sound`, `String`, `TamingMob`, `UI` (v153+), and
+`UI_83` (cash shop).
 
-If something is missing, the app shows a message with the folder path.
+The same set is in `assets/` on the n150. If a file is missing, the app shows
+a message naming it and the folder path.
 
 ## Controls
 
