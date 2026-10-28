@@ -39,7 +39,7 @@ namespace ms
 		iconpositions[EquipSlot::Id::BOOK]     = Point<int16_t>(10, 27);
 		iconpositions[EquipSlot::Id::HAT]      = Point<int16_t>(43, 27);
 		iconpositions[EquipSlot::Id::BADGE]    = Point<int16_t>(76, 27);
-		iconpositions[EquipSlot::Id::ANDROID]  = Point<int16_t>(109, 27);
+		iconpositions[EquipSlot::Id::ANDROID_SLOT]  = Point<int16_t>(109, 27);
 		iconpositions[EquipSlot::Id::HEART]    = Point<int16_t>(142, 27);
 
 		iconpositions[EquipSlot::Id::MEDAL]    = Point<int16_t>(10, 60);

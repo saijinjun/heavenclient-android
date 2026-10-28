@@ -51,7 +51,7 @@ namespace ms
 			BOOK,
 			PENDANT2,
 			SHOULDER,
-			ANDROID,
+			ANDROID_SLOT,
 			EMBLEM,
 			BADGE,
 			SUBWEAPON,
