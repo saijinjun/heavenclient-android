@@ -23,7 +23,7 @@ jobs:
           - os: ubuntu-latest
             mode: debug
             flags: ''
-          - os: macos-latest
+          - os: ubuntu-latest
             mode: release
             flags: --release
           - os: ubuntu-latest
