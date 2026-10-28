@@ -17,6 +17,7 @@
 #include "TouchControls.h"
 
 #include "KeyAction.h"
+#include "TouchSprites.h"
 
 #include <algorithm>
 #include <cmath>
@@ -27,32 +28,66 @@ namespace jrc
     {
         // Fingers rarely land dead on a control, so each one accepts touches a
         // little outside the shape it draws.
-        constexpr float HIT_SLACK = 1.25f;
-        // How far from the d-pad center, as a share of its radius, a thumb
+        constexpr float HIT_SLACK = 1.2f;
+        // How far from the stick center, as a share of its radius, a thumb
         // has to move before a direction counts.
         constexpr float DEAD_ZONE = 0.25f;
         // A direction only counts when it dominates the other axis by this
         // ratio, so a sideways drag does not also press up (portals) or down
         // (crouch), while a clear diagonal still presses both.
         constexpr float AXIS_RATIO = 0.5f;
+        // Size of the stick's knob relative to its base.
+        constexpr float KNOB = 0.42f;
 
-        TouchControls::Shape square(float x, float y, float half, float r, float g, float b, float a)
+        using namespace TouchSprites;
+
+        // Where each control sits and how it looks. Centers are in layout
+        // units from the left or right edge and from the top or bottom edge.
+        struct Place
         {
-            return {
-                static_cast<int16_t>(x - half), static_cast<int16_t>(y - half),
-                static_cast<int16_t>(x + half), static_cast<int16_t>(y + half),
-                r, g, b, a
-            };
-        }
-    }
+            bool from_right;
+            bool from_bottom;
+            float x;
+            float y;
+            float radius;
+            Sprite icon;
+            float red;
+            float green;
+            float blue;
+        };
 
-    bool TouchControls::Circle::contains(float px, float py) const
-    {
-        float dx = px - x;
-        float dy = py - y;
-        float reach = radius * HIT_SLACK;
+        // Glassy dark face for everything that is not a main action.
+        constexpr float DR = 0.12f;
+        constexpr float DG = 0.14f;
+        constexpr float DB = 0.20f;
 
-        return dx * dx + dy * dy <= reach * reach;
+        // One unit is a sixth of the screen height. On a 20:9 phone each
+        // black bar is about 2.7 units wide, which everything below fits in.
+        // In the order of TouchControls::Control.
+        constexpr std::array<Place, 16> PLACES =
+        {{
+            { false, true,  1.40f, 1.50f, 1.00f, NUM_SPRITES, DR, DG, DB },      // STICK, at rest
+            { true,  true,  1.15f, 1.20f, 0.72f, SWORD, 0.96f, 0.52f, 0.16f },   // ATTACK
+            { true,  true,  2.20f, 0.55f, 0.45f, JUMP, 0.26f, 0.60f, 0.96f },    // JUMP
+            { true,  true,  2.30f, 2.95f, 0.33f, PICKUP, 0.36f, 0.78f, 0.42f },  // PICKUP
+            { true,  true,  2.25f, 1.85f, 0.40f, NUM_SPRITES, DR, DG, DB },      // SLOT0
+            { true,  true,  1.62f, 2.55f, 0.40f, NUM_SPRITES, DR, DG, DB },      // SLOT1
+            { true,  true,  0.72f, 2.70f, 0.40f, NUM_SPRITES, DR, DG, DB },      // SLOT2
+            { true,  true,  2.10f, 3.65f, 0.36f, NUM_SPRITES, DR, DG, DB },      // SLOT3
+            { true,  true,  1.30f, 3.65f, 0.36f, NUM_SPRITES, DR, DG, DB },      // SLOT4
+            { true,  true,  0.50f, 3.65f, 0.36f, NUM_SPRITES, DR, DG, DB },      // SLOT5
+            { false, false, 0.55f, 0.55f, 0.33f, BAG, DR, DG, DB },              // MENU_INVENTORY
+            { false, false, 1.35f, 0.55f, 0.33f, SHIRT, DR, DG, DB },            // MENU_EQUIPS
+            { false, false, 2.15f, 0.55f, 0.33f, BARS, DR, DG, DB },             // MENU_STATS
+            { false, false, 0.55f, 1.35f, 0.33f, STAR, DR, DG, DB },             // MENU_SKILLS
+            { false, false, 1.35f, 1.35f, 0.33f, QUEST, DR, DG, DB },            // MENU_QUESTS
+            { false, false, 2.15f, 1.35f, 0.33f, GLOBE, DR, DG, DB },            // MENU_MAP
+        }};
+
+        // The stick appears wherever the left thumb lands in this part of
+        // the screen: left of STICK_ZONE_RIGHT and below STICK_ZONE_TOP.
+        constexpr float STICK_ZONE_RIGHT = 2.9f;
+        constexpr float STICK_ZONE_TOP = 1.8f;
     }
 
     void TouchControls::set_screen(int32_t screen_width, int32_t screen_height)
@@ -61,38 +96,71 @@ namespace jrc
         height = static_cast<float>(screen_height);
     }
 
+    void TouchControls::set_slot_filled(uint8_t slot, bool filled)
+    {
+        if (slot < NUM_SLOTS)
+        {
+            slots_filled[slot] = filled;
+        }
+    }
+
+    float TouchControls::unit() const
+    {
+        return height / 6.0f;
+    }
+
     TouchControls::Circle TouchControls::area(Control control) const
     {
-        // One unit is a sixth of the screen height: about a thumb's width on
-        // a phone held sideways.
-        float unit = height / 6.0f;
+        static_assert(PLACES.size() == NUM_CONTROLS, "one place per control");
 
-        switch (control)
-        {
-        case DPAD:
-            return { 1.6f * unit, height - 1.6f * unit, 1.35f * unit };
-        case ATTACK:
-            return { width - 1.5f * unit, height - 1.5f * unit, 0.8f * unit };
-        case JUMP:
-            return { width - 3.3f * unit, height - 1.0f * unit, 0.7f * unit };
-        case PICKUP:
-            return { width - 1.5f * unit, height - 3.3f * unit, 0.6f * unit };
-        default:
-            return { 0.0f, 0.0f, 0.0f };
-        }
+        const Place& place = PLACES[control];
+        float u = unit();
+
+        return {
+            place.from_right ? width - place.x * u : place.x * u,
+            place.from_bottom ? height - place.y * u : place.y * u,
+            place.radius * u
+        };
+    }
+
+    bool TouchControls::in_stick_zone(float x, float y) const
+    {
+        return x < STICK_ZONE_RIGHT * unit() && y > STICK_ZONE_TOP * unit();
     }
 
     bool TouchControls::control_at(float x, float y, Control& control) const
     {
-        for (uint8_t i = 0; i < NUM_CONTROLS; i++)
+        // The closest button wins when the slack around two of them overlaps.
+        float best = HIT_SLACK;
+
+        for (uint8_t i = ATTACK; i < NUM_CONTROLS; i++)
         {
             Control candidate = static_cast<Control>(i);
 
-            if (area(candidate).contains(x, y))
+            if (candidate >= SLOT0 && candidate <= SLOT_LAST && !slots_filled[candidate - SLOT0])
             {
-                control = candidate;
-                return true;
+                continue;
             }
+
+            Circle circle = area(candidate);
+            float distance = std::hypot(x - circle.x, y - circle.y) / circle.radius;
+
+            if (distance <= best)
+            {
+                best = distance;
+                control = candidate;
+            }
+        }
+
+        if (best < HIT_SLACK)
+        {
+            return true;
+        }
+
+        if (in_stick_zone(x, y))
+        {
+            control = STICK;
+            return true;
         }
 
         return false;
@@ -107,11 +175,20 @@ namespace jrc
             return false;
         }
 
+        if (control == STICK && fingers_on(STICK) > 0)
+        {
+            // A second thumb in the stick area does not move the stick, but
+            // it is still not a tap on the game.
+            fingers[finger] = NUM_CONTROLS;
+            return true;
+        }
+
         fingers[finger] = control;
 
-        if (control == DPAD)
+        if (control == STICK)
         {
-            aim_dpad(x, y, actions);
+            place_stick(x, y);
+            aim_stick(x, y, actions);
         }
         else
         {
@@ -130,11 +207,11 @@ namespace jrc
             return false;
         }
 
-        // The d-pad keeps following its thumb even past its edge. Buttons stay
+        // The stick keeps following its thumb even past its edge. Buttons stay
         // held until the finger lifts, wherever it slides.
-        if (iter->second == DPAD)
+        if (iter->second == STICK)
         {
-            aim_dpad(x, y, actions);
+            aim_stick(x, y, actions);
         }
 
         return true;
@@ -152,10 +229,15 @@ namespace jrc
         Control control = iter->second;
         fingers.erase(iter);
 
+        if (control == NUM_CONTROLS)
+        {
+            return true;
+        }
+
         // Another finger may still be holding the same control.
         if (fingers_on(control) == 0)
         {
-            if (control == DPAD)
+            if (control == STICK)
             {
                 for (uint8_t i = 0; i < NUM_DIRECTIONS; i++)
                 {
@@ -185,12 +267,24 @@ namespace jrc
             [control](const auto& entry) { return entry.second == control; }));
     }
 
-    void TouchControls::aim_dpad(float x, float y, std::vector<Action>& actions)
+    void TouchControls::place_stick(float x, float y)
     {
-        Circle dpad = area(DPAD);
-        float dx = x - dpad.x;
-        float dy = y - dpad.y;
-        float dead = dpad.radius * DEAD_ZONE;
+        // Centered under the thumb, so touching it presses nothing yet.
+        stick_x = x;
+        stick_y = y;
+        thumb_x = x;
+        thumb_y = y;
+    }
+
+    void TouchControls::aim_stick(float x, float y, std::vector<Action>& actions)
+    {
+        float radius = area(STICK).radius;
+        float dx = x - stick_x;
+        float dy = y - stick_y;
+        float dead = radius * DEAD_ZONE;
+
+        thumb_x = x;
+        thumb_y = y;
 
         bool horizontal = std::fabs(dx) > dead && std::fabs(dx) >= AXIS_RATIO * std::fabs(dy);
         bool vertical = std::fabs(dy) > dead && std::fabs(dy) >= AXIS_RATIO * std::fabs(dx);
@@ -215,7 +309,34 @@ namespace jrc
             KeyAction::LEFT, KeyAction::RIGHT, KeyAction::UP, KeyAction::DOWN
         };
 
-        actions.push_back({ ACTIONS[direction], pressed });
+        actions.push_back({ Output::ACTION, ACTIONS[direction], pressed });
+    }
+
+    TouchControls::Action TouchControls::output(Control control, bool pressed) const
+    {
+        switch (control)
+        {
+        case ATTACK:
+            return { Output::ACTION, KeyAction::ATTACK, pressed };
+        case JUMP:
+            return { Output::ACTION, KeyAction::JUMP, pressed };
+        case PICKUP:
+            return { Output::ACTION, KeyAction::PICKUP, pressed };
+        case MENU_INVENTORY:
+            return { Output::MENU, KeyAction::INVENTORY, pressed };
+        case MENU_EQUIPS:
+            return { Output::MENU, KeyAction::EQUIPS, pressed };
+        case MENU_STATS:
+            return { Output::MENU, KeyAction::CHARSTATS, pressed };
+        case MENU_SKILLS:
+            return { Output::MENU, KeyAction::SKILLBOOK, pressed };
+        case MENU_QUESTS:
+            return { Output::MENU, KeyAction::QUESTLOG, pressed };
+        case MENU_MAP:
+            return { Output::MENU, KeyAction::WORLDMAP, pressed };
+        default:
+            return { Output::SLOT, control - SLOT0, pressed };
+        }
     }
 
     void TouchControls::set_button(Control control, bool pressed, std::vector<Action>& actions)
@@ -227,85 +348,104 @@ namespace jrc
 
         buttons[control] = pressed;
 
-        switch (control)
+        Action action = output(control, pressed);
+
+        // Menus toggle a window once per tap, so only the press is sent.
+        if (action.output != Output::MENU || pressed)
         {
-        case JUMP:
-            actions.push_back({ KeyAction::JUMP, pressed });
-            break;
-        case ATTACK:
-            actions.push_back({ KeyAction::ATTACK, pressed });
-            break;
-        case PICKUP:
-            actions.push_back({ KeyAction::PICKUP, pressed });
-            break;
-        default:
-            break;
+            actions.push_back(action);
         }
     }
 
-    std::vector<TouchControls::Shape> TouchControls::shapes() const
+    std::vector<TouchControls::Draw> TouchControls::draws() const
     {
-        std::vector<Shape> result;
+        std::vector<Draw> result;
 
         if (width <= 0.0f || height <= 0.0f)
         {
             return result;
         }
 
-        // D-pad: a plus sign whose arms light up while pressed.
-        Circle dpad = area(DPAD);
-        float arm = dpad.radius / 3.0f;
-        float idle = 0.22f;
-        float lit = 0.55f;
-
-        result.push_back(square(dpad.x, dpad.y, arm, 1.0f, 1.0f, 1.0f, idle));
-        result.push_back({
-            static_cast<int16_t>(dpad.x - dpad.radius), static_cast<int16_t>(dpad.y - arm),
-            static_cast<int16_t>(dpad.x - arm), static_cast<int16_t>(dpad.y + arm),
-            1.0f, 1.0f, 1.0f, directions[LEFT] ? lit : idle
-        });
-        result.push_back({
-            static_cast<int16_t>(dpad.x + arm), static_cast<int16_t>(dpad.y - arm),
-            static_cast<int16_t>(dpad.x + dpad.radius), static_cast<int16_t>(dpad.y + arm),
-            1.0f, 1.0f, 1.0f, directions[RIGHT] ? lit : idle
-        });
-        result.push_back({
-            static_cast<int16_t>(dpad.x - arm), static_cast<int16_t>(dpad.y - dpad.radius),
-            static_cast<int16_t>(dpad.x + arm), static_cast<int16_t>(dpad.y - arm),
-            1.0f, 1.0f, 1.0f, directions[UP] ? lit : idle
-        });
-        result.push_back({
-            static_cast<int16_t>(dpad.x - arm), static_cast<int16_t>(dpad.y + arm),
-            static_cast<int16_t>(dpad.x + arm), static_cast<int16_t>(dpad.y + dpad.radius),
-            1.0f, 1.0f, 1.0f, directions[DOWN] ? lit : idle
-        });
-
-        // Buttons: a colored square with a lighter face, brighter while held.
-        // Attack is red, jump green, pick up yellow.
-        struct Style
-        {
-            Control control;
-            float r;
-            float g;
-            float b;
+        auto sprite = [&result](Sprite s, float x, float y, float half, float r, float g, float b, float a) {
+            result.push_back({ Draw::SPRITE, s, 0, x, y, half, r, g, b, a });
         };
 
-        static constexpr std::array<Style, 3> STYLES =
-        {{
-            { ATTACK, 0.90f, 0.25f, 0.25f },
-            { JUMP,   0.25f, 0.80f, 0.35f },
-            { PICKUP, 0.95f, 0.80f, 0.20f }
-        }};
+        // The stick: a faint base with arrows, and a knob under the thumb.
+        // At rest it waits at its home position, dimmer.
+        bool held = fingers_on(STICK) > 0;
+        Circle home = area(STICK);
+        // Near an edge the base is drawn moved in so all of it shows.
+        float base_x = held ? std::clamp(stick_x, home.radius, std::max(home.radius, width - home.radius)) : home.x;
+        float base_y = held ? std::clamp(stick_y, home.radius, std::max(home.radius, height - home.radius)) : home.y;
+        float knob_x = base_x;
+        float knob_y = base_y;
 
-        for (const Style& style : STYLES)
+        if (held)
         {
-            Circle button = area(style.control);
-            float alpha = buttons[style.control] ? 0.70f : 0.35f;
+            float dx = thumb_x - stick_x;
+            float dy = thumb_y - stick_y;
+            float reach = home.radius * (1.0f - KNOB);
+            float distance = std::hypot(dx, dy);
+            float scale = distance > reach ? reach / distance : 1.0f;
+            knob_x += dx * scale;
+            knob_y += dy * scale;
+        }
 
-            result.push_back(square(button.x, button.y, button.radius, style.r, style.g, style.b, alpha));
-            result.push_back(square(button.x, button.y, button.radius * 0.7f, 1.0f, 1.0f, 1.0f, alpha * 0.4f));
+        float stick_alpha = held ? 1.0f : 0.7f;
+        sprite(DISC, base_x, base_y, home.radius, 0.08f, 0.10f, 0.14f, 0.35f * stick_alpha);
+        sprite(RING, base_x, base_y, home.radius, 1.0f, 1.0f, 1.0f, 0.30f * stick_alpha);
+        sprite(ARROWS, base_x, base_y, home.radius, 1.0f, 1.0f, 1.0f, 0.55f * stick_alpha);
+        sprite(DISC, knob_x, knob_y, home.radius * KNOB, 0.86f, 0.90f, 1.0f, 0.65f * stick_alpha);
+
+        // Buttons: a tinted glassy face, a thin white rim and a white icon.
+        // A held button shrinks a little and lights up.
+        for (uint8_t i = ATTACK; i < NUM_CONTROLS; i++)
+        {
+            Control control = static_cast<Control>(i);
+            Circle circle = area(control);
+            bool pressed = buttons[control];
+            bool slot = control >= SLOT0 && control <= SLOT_LAST;
+            bool empty = slot && !slots_filled[control - SLOT0];
+            const Place& look = PLACES[control];
+
+            float half = circle.radius * (pressed ? 0.93f : 1.0f);
+            float face = empty ? 0.18f : (pressed ? 0.80f : 0.55f);
+            float lift = pressed ? 0.25f : 0.0f;
+
+            sprite(DISC, circle.x, circle.y, half,
+                std::min(1.0f, look.red + lift), std::min(1.0f, look.green + lift), std::min(1.0f, look.blue + lift), face);
+            sprite(RING, circle.x, circle.y, half, 1.0f, 1.0f, 1.0f, empty ? 0.25f : 0.45f);
+
+            if (slot)
+            {
+                if (!empty)
+                {
+                    result.push_back({ Draw::SLOT_ICON, 0, static_cast<uint8_t>(control - SLOT0),
+                        circle.x, circle.y, half * 0.62f, 1.0f, 1.0f, 1.0f, pressed ? 1.0f : 0.92f });
+                }
+            }
+            else if (look.icon < NUM_SPRITES)
+            {
+                sprite(look.icon, circle.x, circle.y, half * 0.6f, 1.0f, 1.0f, 1.0f, 0.95f);
+            }
         }
 
         return result;
+    }
+
+    bool TouchControls::slot_at(float x, float y, uint8_t& slot) const
+    {
+        for (uint8_t i = 0; i < NUM_SLOTS; i++)
+        {
+            Circle circle = area(static_cast<Control>(SLOT0 + i));
+
+            if (std::hypot(x - circle.x, y - circle.y) <= circle.radius * HIT_SLACK)
+            {
+                slot = i;
+                return true;
+            }
+        }
+
+        return false;
     }
 }

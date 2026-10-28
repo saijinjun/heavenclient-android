@@ -25,6 +25,10 @@
 #include "../Constants.h"
 #include "../Configuration.h"
 #include "../Graphics/GraphicsGL.h"
+#include "../Data/ItemData.h"
+#include "../Data/SkillData.h"
+#include "Components/Icon.h"
+#include "TouchSprites.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -34,6 +38,32 @@ namespace jrc
 {
     namespace
     {
+        // The keys behind the touch quick slots, as KeyConfig key numbers
+        // and as the matching key codes: Shift, Insert, Home, Page Up,
+        // Delete and End, the PC quickslot's first keys after Ctrl.
+        constexpr std::array<uint8_t, TouchControls::NUM_SLOTS> SLOT_KEYS = { 42, 82, 71, 73, 83, 79 };
+        constexpr std::array<int32_t, TouchControls::NUM_SLOTS> SLOT_KEYCODES =
+        {
+            GLFW_KEY_LEFT_SHIFT, GLFW_KEY_INSERT, GLFW_KEY_HOME,
+            GLFW_KEY_PAGE_UP, GLFW_KEY_DELETE, GLFW_KEY_END
+        };
+
+        // The icon of the skill or item on a quick slot's key, if any.
+        const Texture* slot_icon(uint8_t slot)
+        {
+            Keyboard::Mapping mapping = UI::get().get_keyboard().get_mapping(SLOT_KEYCODES[slot]);
+
+            switch (mapping.type)
+            {
+            case KeyType::SKILL:
+                return &SkillData::get(mapping.action).get_icon(SkillData::NORMAL);
+            case KeyType::ITEM:
+                return &ItemData::get(mapping.action).get_icon(false);
+            default:
+                return nullptr;
+            }
+        }
+
         // Translates an SDL key into the GLFW key code the game expects.
         int32_t to_glfw_key(SDL_Keycode key)
         {
@@ -376,7 +406,20 @@ namespace jrc
     {
         for (const TouchControls::Action& action : actions)
         {
-            UI::get().send_action(action.action, action.pressed);
+            switch (action.output)
+            {
+            case TouchControls::Output::ACTION:
+                UI::get().send_action(action.id, action.pressed);
+                break;
+            case TouchControls::Output::MENU:
+                UI::get().send_menu(static_cast<KeyAction::Id>(action.id));
+                break;
+            case TouchControls::Output::SLOT:
+                // As if the slot's key were pressed, so whatever the player
+                // put there (a skill, a potion) is used.
+                UI::get().send_key(SLOT_KEYCODES[action.id], action.pressed);
+                break;
+            }
         }
     }
 
@@ -452,6 +495,21 @@ namespace jrc
 
             if (cursor_finger_down && finger.fingerId == cursor_finger)
             {
+                // A skill or item dragged from its window onto a quick slot
+                // goes on that slot's key. The drag is cancelled first so the
+                // game does not also drop the item on the map.
+                uint8_t slot = 0;
+                uint8_t keytype = 0;
+                int32_t keyaction = 0;
+                const Icon* dragged = UI::get().get_dragged_icon();
+
+                if (controls && dragged && touch.slot_at(px, py, slot) &&
+                    dragged->get_binding(keytype, keyaction))
+                {
+                    UI::get().cancel_drag();
+                    UI::get().bind_key(SLOT_KEYS[slot], keytype, keyaction);
+                }
+
                 UI::get().send_cursor(finger_to_view(finger.x, finger.y));
                 UI::get().send_cursor(false);
                 cursor_finger_down = false;
@@ -674,10 +732,38 @@ namespace jrc
             glDisable(GL_SCISSOR_TEST);
             glViewport(0, 0, drawable_w, drawable_h);
 
-            for (const TouchControls::Shape& shape : touch.shapes())
+            GraphicsGL& graphics = GraphicsGL::get();
+
+            if (!graphics.has_overlay_texture())
             {
-                GraphicsGL::get().draw_screen_rectangle(shape.left, shape.top, shape.right, shape.bottom,
-                    Color{ shape.red, shape.green, shape.blue, shape.alpha });
+                graphics.set_overlay_texture(TouchSprites::render(), TouchSprites::WIDTH, TouchSprites::HEIGHT);
+            }
+
+            std::array<const Texture*, TouchControls::NUM_SLOTS> icons = {};
+            for (uint8_t slot = 0; slot < TouchControls::NUM_SLOTS; slot++)
+            {
+                icons[slot] = slot_icon(slot);
+                touch.set_slot_filled(slot, icons[slot] && icons[slot]->is_valid());
+            }
+
+            for (const TouchControls::Draw& draw : touch.draws())
+            {
+                auto left = static_cast<int16_t>(draw.x - draw.half);
+                auto top = static_cast<int16_t>(draw.y - draw.half);
+                auto right = static_cast<int16_t>(draw.x + draw.half);
+                auto bottom = static_cast<int16_t>(draw.y + draw.half);
+                Color color{ draw.red, draw.green, draw.blue, draw.alpha };
+
+                if (draw.kind == TouchControls::Draw::SPRITE)
+                {
+                    TouchSprites::Cell cell = TouchSprites::cell(static_cast<TouchSprites::Sprite>(draw.sprite));
+                    graphics.draw_screen_overlay(left, top, right, bottom,
+                        cell.left, cell.top, cell.right, cell.bottom, color);
+                }
+                else if (const Texture* icon = icons[draw.slot])
+                {
+                    icon->draw_screen(left, top, right, bottom, color);
+                }
             }
 
             GraphicsGL::get().flush_screen(static_cast<int16_t>(drawable_w), static_cast<int16_t>(drawable_h));

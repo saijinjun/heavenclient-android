@@ -75,7 +75,8 @@ namespace jrc
         int32_t view_y;
         int32_t view_w;
         int32_t view_h;
-        TouchControls touch;
+        // Mutable because the slot icons it shows are refreshed while drawing.
+        mutable TouchControls touch;
         // Touch input is handled from finger events so several fingers work at
         // once. The first finger that is not on a control acts as the mouse.
         bool touch_seen;

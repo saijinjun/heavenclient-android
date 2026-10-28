@@ -86,8 +86,18 @@ namespace jrc
         // Rectangles drawn over the whole window in its own pixels, outside
         // the game view, e.g. touch controls in the black bars.
         void draw_screen_rectangle(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
-        // Draws the queued screen rectangles into a width x height viewport,
-        // then restores the game view projection.
+        // A game image (e.g. a skill icon) stretched over a screen rectangle.
+        void draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
+        // A separate RGBA texture for screen overlays such as the touch
+        // controls' artwork, sampled smoothly so it scales well.
+        void set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height);
+        bool has_overlay_texture() const;
+        // Part of the overlay texture (source pixels) over a screen rectangle.
+        void draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
+            int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color);
+        // Draws the queued overlay pieces, then the queued screen rectangles
+        // and images, into a width x height viewport, then restores the game
+        // view projection.
         void flush_screen(int16_t width, int16_t height);
 #endif
         // Clear the buffer contents.
@@ -291,6 +301,12 @@ namespace jrc
         Offset nulloffset;
 #ifdef MS_PLATFORM_SDL
         std::vector<Quad> screen_quads;
+        std::vector<Quad> overlay_quads;
+        GLuint overlay = 0;
+        GLshort overlay_w = 0;
+        GLshort overlay_h = 0;
+
+        void draw_screen_quads(const std::vector<Quad>& batch);
 #endif
 
         QuadTree<size_t, Leftover> leftovers;

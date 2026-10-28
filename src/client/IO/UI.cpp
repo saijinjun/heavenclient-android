@@ -24,9 +24,11 @@
 #include "../Audio/Audio.h"
 #include "../Console.h"
 #include "../Configuration.h"
+#include "../Net/Packets/PlayerPackets.h"
 
 #include "KeyCodes.h"
 #include <list>
+#include <tuple>
 
 namespace jrc
 {
@@ -346,6 +348,17 @@ namespace jrc
     void UI::drag_icon(Icon* icon)
     {
         state->drag_icon(icon);
+    }
+
+    const Icon* UI::get_dragged_icon() const
+    {
+        return state->get_dragged_icon();
+    }
+
+    void UI::bind_key(uint8_t key, uint8_t type, int32_t action)
+    {
+        ChangeKeyMapPacket({ std::make_tuple(static_cast<int32_t>(key), type, action) }).dispatch();
+        keyboard.assign(key, type, action);
     }
 
     Keyboard& UI::get_keyboard()

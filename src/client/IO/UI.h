@@ -78,6 +78,10 @@ namespace jrc
         // Whether a text field currently has keyboard focus.
         bool has_focused_textfield() const;
         void drag_icon(Icon* icon);
+        const Icon* get_dragged_icon() const;
+        // Puts a skill or item on a key (a KeyConfig key number) and saves
+        // it to the server, like the key config window does.
+        void bind_key(uint8_t key, uint8_t type, int32_t action);
         Keyboard& get_keyboard();
         uint64_t get_cursor_press_id() const;
 

@@ -71,6 +71,7 @@ add_library(test_core STATIC
     "${CLIENT}/IO/UIWindow.cpp"
     "${CLIENT}/IO/Components/NpcMenu.cpp"
     "${CLIENT}/IO/TouchControls.cpp"
+    "${CLIENT}/IO/TouchSprites.cpp"
 )
 target_link_libraries(test_core PUBLIC test_options)
 

@@ -25,43 +25,54 @@ with the debug key, which is fine for sideloading but not for a store.
 
 1. Install the APK, turn on Tailscale on the phone, and make sure the game
    server and the web stack are running on the n150.
-2. Open the app. The setup screen shows how much it needs to download (the
-   17 `.nx` files, several GB) and checks there is room on the phone.
-3. Tap **Download**. Wi-Fi is recommended. The game starts by itself when the
-   download finishes, and later starts open the game directly.
-
-If the download stops (Wi-Fi drops, the app is closed), open the app again
-and tap **Resume**: finished files are kept, and a half-done file continues
-where it stopped. If the n150 can't be reached, the screen says so and offers
-**Try again**.
+2. Open the app. The setup screen checks it can reach the n150 and offers:
+   - **Play now:** the game starts right away and loads its `.nx` files from
+     the server in 512 KB pieces as it reads them. Each piece is kept on the
+     phone, so a new area takes a moment only the first time. Later starts
+     go straight to the game.
+   - **Download all:** fetches all 17 files (several GB) first, then plays
+     without waiting. Wi-Fi is recommended. If the download stops, open the
+     app again and tap **Resume**.
 
 The files come from the web stack's `assets/` folder at
 `http://100.91.238.34:8090/assets/`, and the game connects to
 `100.91.238.34:8484`. Both addresses are only reachable over Tailscale. To
 build for another server, pass `-PassetsUrl=<url>` and `-PserverIp=<address>`
-to Gradle.
+to Gradle. The game's own `AssetsUrl` setting can point it elsewhere later.
 
-The files land in `Android/data/com.saijinjun.heavenclient/files/`. Copying
-them there over USB also works: the app skips any file that is already
-present. To force a fresh download, clear the app's storage in Android
-settings.
+The files land in `Android/data/com.saijinjun.heavenclient/files/`. A
+streamed file is kept as `<name>.cache` plus a small `<name>.lazy` map of the
+pieces it has; once every piece is there it becomes a normal `<name>`.
+Copying whole files there over USB also works. To start over, clear the
+app's storage in Android settings.
+
+Streaming is on by default for Android builds (`JOURNEY_STREAM_ASSETS`). It
+reuses the browser build's lazy NX loading (`NX_LAZY_FILES`) with a native
+HTTP Range backend (`src/client/LazyFS/LazyFileBackendNative.cpp`).
 
 ## Controls
 
 On the game screen the app draws touch controls. On a wide phone they sit in
 the black bars beside the game:
 
-- **Bottom left:** a d-pad. Slide your thumb around it to walk, climb ropes
-  (up/down) and enter portals (up). Diagonals press both directions, e.g.
-  down and left.
-- **Bottom right:** attack (red, large), jump (green, left of attack) and
-  pick up (yellow, above attack).
+- **Left:** an analog stick. Put your thumb anywhere in the lower left and
+  the stick appears under it; push to walk, climb ropes (up/down) and enter
+  portals (up). Diagonals press both directions, e.g. down and left.
+- **Top left:** inventory, equipment, stats, skills, quests and world map.
+- **Bottom right:** attack (large, orange), jump (blue) and pick up (green).
+- **Right, around attack:** six quick slots. They are the Shift, Insert,
+  Home, Page Up, Delete and End keys, and show the icon of the skill or item
+  on that key. To set one, open the skill or item window and drag a skill,
+  potion or chair onto a slot; it is saved to your key setup on the server.
+  Empty slots are faint and ignore touches.
 
-Several fingers work at once, so you can walk, jump and attack together.
-Anywhere else, a tap is a left click and a quick double tap is a double click
-(talk to an NPC, use an item). Tapping a text field opens the phone keyboard.
-The back button acts as Escape. Skills and items are used from the quick
-slots for now; dedicated skill buttons are not added yet.
+Several fingers work at once, so you can walk, jump, attack and use skills
+together. Anywhere else, a tap is a left click and a quick double tap is a
+double click (talk to an NPC, use an item). Tapping a text field opens the
+phone keyboard. The back button acts as Escape.
+
+The control artwork is drawn at startup from simple shapes
+(`src/client/IO/TouchSprites.cpp`), so it stays sharp on any screen.
 
 ## Desktop SDL build
 

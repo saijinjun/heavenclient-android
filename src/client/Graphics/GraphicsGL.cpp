@@ -76,8 +76,11 @@ namespace jrc
         }
 
         GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+        // texpos is in atlas pixels (up to 8192). Phone GPUs implement
+        // mediump as 16-bit floats, which step by 4-8 pixels that far into
+        // the atlas and smear text and icons; desktop GPUs ignore mediump.
         const char *fs_source =
-            "precision mediump float;\n"
+            "precision highp float;\n"
             "varying vec2 texpos;"
             "varying vec4 colormod;"
             "uniform sampler2D texture;"
@@ -1002,21 +1005,57 @@ namespace jrc
         screen_quads.emplace_back(left, right, top, bottom, nulloffset, color, 0.0f);
     }
 
-    void GraphicsGL::flush_screen(int16_t width, int16_t height)
+    void GraphicsGL::draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color)
     {
-        if (screen_quads.empty())
+        const Offset& offset = getoffset(bmp);
+        if (offset.r > offset.l)
+        {
+            screen_quads.emplace_back(left, right, top, bottom, offset, color, 0.0f);
+        }
+    }
+
+    void GraphicsGL::set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height)
+    {
+        if (!overlay)
+        {
+            glGenTextures(1, &overlay);
+        }
+
+        glBindTexture(GL_TEXTURE_2D, overlay);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+        glBindTexture(GL_TEXTURE_2D, atlas);
+
+        overlay_w = width;
+        overlay_h = height;
+    }
+
+    bool GraphicsGL::has_overlay_texture() const
+    {
+        return overlay != 0;
+    }
+
+    void GraphicsGL::draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
+        int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color)
+    {
+        Offset source(src_left, src_top, src_right - src_left, src_bottom - src_top);
+        overlay_quads.emplace_back(left, right, top, bottom, source, color, 0.0f);
+    }
+
+    void GraphicsGL::draw_screen_quads(const std::vector<Quad>& batch)
+    {
+        if (batch.empty())
         {
             return;
         }
 
-        // Window pixels with the origin at the top left, no map scroll offset.
-        glUseProgram(program);
-        glUniform2f(uniform_screensize, width, height);
-        glUniform1i(uniform_yoffset, 0);
-
         std::vector<GLushort> indices;
-        indices.reserve(screen_quads.size() * 6);
-        for (size_t i = 0; i < screen_quads.size(); ++i)
+        indices.reserve(batch.size() * 6);
+        for (size_t i = 0; i < batch.size(); ++i)
         {
             GLushort base = static_cast<GLushort>(i * 4);
             indices.insert(indices.end(), { base, static_cast<GLushort>(base + 1), static_cast<GLushort>(base + 2),
@@ -1026,7 +1065,7 @@ namespace jrc
         glEnableVertexAttribArray(attribute_coord);
         glEnableVertexAttribArray(attribute_color);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(screen_quads.size() * sizeof(Quad)), screen_quads.data(), GL_STREAM_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(batch.size() * sizeof(Quad)), batch.data(), GL_STREAM_DRAW);
         glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
         glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
@@ -1036,7 +1075,34 @@ namespace jrc
         glDisableVertexAttribArray(attribute_coord);
         glDisableVertexAttribArray(attribute_color);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 
+    void GraphicsGL::flush_screen(int16_t width, int16_t height)
+    {
+        if (screen_quads.empty() && overlay_quads.empty())
+        {
+            return;
+        }
+
+        // Window pixels with the origin at the top left, no map scroll offset.
+        glUseProgram(program);
+        glUniform2f(uniform_screensize, width, height);
+        glUniform1i(uniform_yoffset, 0);
+
+        if (overlay && !overlay_quads.empty())
+        {
+            // The overlay texture has no font region: sample it as RGBA.
+            glBindTexture(GL_TEXTURE_2D, overlay);
+            glUniform2f(uniform_atlassize, overlay_w, overlay_h);
+            glUniform1i(uniform_fontregion, -1);
+            draw_screen_quads(overlay_quads);
+            glBindTexture(GL_TEXTURE_2D, atlas);
+            glUniform2f(uniform_atlassize, ATLASW, ATLASH);
+            glUniform1i(uniform_fontregion, fontymax);
+        }
+        overlay_quads.clear();
+
+        draw_screen_quads(screen_quads);
         screen_quads.clear();
 
         glUniform1i(uniform_yoffset, Constants::VIEWYOFFSET);
