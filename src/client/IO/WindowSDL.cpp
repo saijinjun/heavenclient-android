@@ -27,6 +27,8 @@
 #include "../Graphics/GraphicsGL.h"
 
 #include <algorithm>
+#include <cstdlib>
+#include <vector>
 
 namespace jrc
 {
@@ -199,6 +201,14 @@ namespace jrc
         view_y = 0;
         view_w = Constants::VIEWWIDTH;
         view_h = Constants::VIEWHEIGHT;
+#ifdef __ANDROID__
+        touch_seen = true;
+#else
+        touch_seen = false;
+#endif
+        cursor_finger_down = false;
+        cursor_finger = 0;
+        last_tap_time = 0;
         opacity = 1.0f;
         opcstep = 0.0f;
         fullscreen = false;
@@ -225,8 +235,10 @@ namespace jrc
         fullscreen = Setting<Fullscreen>::get().load();
 
         SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
-        // Taps arrive as left mouse clicks, which the game UI already handles.
-        SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+        // Touches are read as finger events so the on-screen controls and a
+        // tap on the game can happen at the same time; SDL's emulated mouse
+        // only follows one finger.
+        SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
 
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
         {
@@ -323,6 +335,8 @@ namespace jrc
         view_h = static_cast<int32_t>(Constants::viewheight() * scale);
         view_x = (drawable_w - view_w) / 2;
         view_y = (drawable_h - view_h) / 2;
+
+        touch.set_screen(drawable_w, drawable_h);
     }
 
     Point<int16_t> Window::to_view(int32_t x, int32_t y) const
@@ -346,6 +360,108 @@ namespace jrc
             static_cast<int16_t>(std::clamp(vx, 0.0f, static_cast<float>(Constants::viewwidth() - 1))),
             static_cast<int16_t>(std::clamp(vy, 0.0f, static_cast<float>(Constants::viewheight() - 1)))
         };
+    }
+
+    Point<int16_t> Window::finger_to_view(float x, float y) const
+    {
+        // Finger positions are 0..1 across the window.
+        int32_t window_w = 1;
+        int32_t window_h = 1;
+        SDL_GetWindowSize(glwnd, &window_w, &window_h);
+
+        return to_view(static_cast<int32_t>(x * window_w), static_cast<int32_t>(y * window_h));
+    }
+
+    void Window::send_touch_actions(const std::vector<TouchControls::Action>& actions)
+    {
+        for (const TouchControls::Action& action : actions)
+        {
+            UI::get().send_action(action.action, action.pressed);
+        }
+    }
+
+    void Window::handle_finger(const SDL_TouchFingerEvent& finger, Uint32 type)
+    {
+        touch_seen = true;
+
+        int32_t drawable_w = 0;
+        int32_t drawable_h = 0;
+        SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
+
+        float px = finger.x * drawable_w;
+        float py = finger.y * drawable_h;
+        std::vector<TouchControls::Action> actions;
+
+        // Controls only exist on the game screen; on login and menus every
+        // touch is a tap.
+        bool controls = UI::get().in_game();
+
+        switch (type)
+        {
+        case SDL_FINGERDOWN:
+            if (controls && touch.finger_down(finger.fingerId, px, py, actions))
+            {
+                break;
+            }
+
+            if (!cursor_finger_down)
+            {
+                Point<int16_t> pos = finger_to_view(finger.x, finger.y);
+                cursor_finger_down = true;
+                cursor_finger = finger.fingerId;
+
+                // A tap has no hover beforehand, so move the cursor first.
+                UI::get().send_cursor(pos);
+                UI::get().send_cursor(true);
+
+                // Two quick taps close together are a double click, e.g. to
+                // talk to an NPC or use an item.
+                Uint32 now = SDL_GetTicks();
+                Point<int16_t> moved = pos - last_tap_pos;
+                bool near = std::abs(moved.x()) < 24 && std::abs(moved.y()) < 24;
+
+                if (last_tap_time != 0 && now - last_tap_time < 400 && near)
+                {
+                    UI::get().cancel_drag();
+                    UI::get().doubleclick();
+                    last_tap_time = 0;
+                }
+                else
+                {
+                    last_tap_time = now;
+                    last_tap_pos = pos;
+                }
+            }
+            break;
+        case SDL_FINGERMOTION:
+            if (touch.finger_move(finger.fingerId, px, py, actions))
+            {
+                break;
+            }
+
+            if (cursor_finger_down && finger.fingerId == cursor_finger)
+            {
+                UI::get().send_cursor(finger_to_view(finger.x, finger.y));
+            }
+            break;
+        case SDL_FINGERUP:
+            if (touch.finger_up(finger.fingerId, actions))
+            {
+                break;
+            }
+
+            if (cursor_finger_down && finger.fingerId == cursor_finger)
+            {
+                UI::get().send_cursor(finger_to_view(finger.x, finger.y));
+                UI::get().send_cursor(false);
+                cursor_finger_down = false;
+            }
+            break;
+        default:
+            break;
+        }
+
+        send_touch_actions(actions);
     }
 
     bool Window::not_closed() const
@@ -445,12 +561,26 @@ namespace jrc
         case SDL_TEXTINPUT:
             type_text(event.text.text);
             break;
+        case SDL_FINGERDOWN:
+        case SDL_FINGERMOTION:
+        case SDL_FINGERUP:
+            handle_finger(event.tfinger, event.type);
+            break;
         case SDL_MOUSEMOTION:
-            UI::get().send_cursor(to_view(event.motion.x, event.motion.y));
+            if (event.motion.which != SDL_TOUCH_MOUSEID)
+            {
+                UI::get().send_cursor(to_view(event.motion.x, event.motion.y));
+            }
             break;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
         {
+            // Touch is handled from finger events; skip any emulated mouse.
+            if (event.button.which == SDL_TOUCH_MOUSEID)
+            {
+                break;
+            }
+
             bool pressed = event.type == SDL_MOUSEBUTTONDOWN;
 
             // A tap has no hover beforehand, so move the cursor first.
@@ -500,6 +630,14 @@ namespace jrc
     {
         update_text_input();
 
+        // Leaving the game screen lets go of any held d-pad or button.
+        if (!UI::get().in_game())
+        {
+            std::vector<TouchControls::Action> released;
+            touch.release_all(released);
+            send_touch_actions(released);
+        }
+
         SDL_Event event;
 
         while (SDL_PollEvent(&event))
@@ -530,6 +668,21 @@ namespace jrc
         glEnable(GL_SCISSOR_TEST);
 
         GraphicsGL::get().flush(opacity);
+
+        if (touch_seen && UI::get().in_game())
+        {
+            glDisable(GL_SCISSOR_TEST);
+            glViewport(0, 0, drawable_w, drawable_h);
+
+            for (const TouchControls::Shape& shape : touch.shapes())
+            {
+                GraphicsGL::get().draw_screen_rectangle(shape.left, shape.top, shape.right, shape.bottom,
+                    Color{ shape.red, shape.green, shape.blue, shape.alpha });
+            }
+
+            GraphicsGL::get().flush_screen(static_cast<int16_t>(drawable_w), static_cast<int16_t>(drawable_h));
+        }
+
         SDL_GL_SwapWindow(glwnd);
     }
 

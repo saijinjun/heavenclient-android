@@ -996,6 +996,54 @@ namespace jrc
 
     }
 
+#ifdef MS_PLATFORM_SDL
+    void GraphicsGL::draw_screen_rectangle(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color)
+    {
+        screen_quads.emplace_back(left, right, top, bottom, nulloffset, color, 0.0f);
+    }
+
+    void GraphicsGL::flush_screen(int16_t width, int16_t height)
+    {
+        if (screen_quads.empty())
+        {
+            return;
+        }
+
+        // Window pixels with the origin at the top left, no map scroll offset.
+        glUseProgram(program);
+        glUniform2f(uniform_screensize, width, height);
+        glUniform1i(uniform_yoffset, 0);
+
+        std::vector<GLushort> indices;
+        indices.reserve(screen_quads.size() * 6);
+        for (size_t i = 0; i < screen_quads.size(); ++i)
+        {
+            GLushort base = static_cast<GLushort>(i * 4);
+            indices.insert(indices.end(), { base, static_cast<GLushort>(base + 1), static_cast<GLushort>(base + 2),
+                                            base, static_cast<GLushort>(base + 2), static_cast<GLushort>(base + 3) });
+        }
+
+        glEnableVertexAttribArray(attribute_coord);
+        glEnableVertexAttribArray(attribute_color);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(screen_quads.size() * sizeof(Quad)), screen_quads.data(), GL_STREAM_DRAW);
+        glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+        glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(GLushort)), indices.data(), GL_STREAM_DRAW);
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glDisableVertexAttribArray(attribute_coord);
+        glDisableVertexAttribArray(attribute_color);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        screen_quads.clear();
+
+        glUniform1i(uniform_yoffset, Constants::VIEWYOFFSET);
+        glUniform2f(uniform_screensize, Constants::viewwidth(), Constants::viewheight());
+    }
+#endif
+
     void GraphicsGL::clearscene()
     {
         if (!locked)

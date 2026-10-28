@@ -70,6 +70,7 @@ add_library(test_core STATIC
     "${CLIENT}/Character/Job.cpp"
     "${CLIENT}/IO/UIWindow.cpp"
     "${CLIENT}/IO/Components/NpcMenu.cpp"
+    "${CLIENT}/IO/TouchControls.cpp"
 )
 target_link_libraries(test_core PUBLIC test_options)
 
@@ -91,6 +92,7 @@ client_test(cash_shop_test unit)
 client_test(ui_window_test unit)
 client_test(job_requirements_test unit)
 client_test(npc_menu_test unit)
+client_test(touch_controls_test unit)
 
 if(TEST_ASSETS)
     foreach(asset Character Etc Item Npc Quest String UI UI_83)

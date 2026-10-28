@@ -49,9 +49,20 @@ a message naming it and the folder path.
 
 ## Controls
 
-A tap is a left click and a double tap is a double click. Tapping a text
-field opens the phone keyboard. The back button acts as Escape. Movement and
-skill buttons for touch are not added yet.
+On the game screen the app draws touch controls. On a wide phone they sit in
+the black bars beside the game:
+
+- **Bottom left:** a d-pad. Slide your thumb around it to walk, climb ropes
+  (up/down) and enter portals (up). Diagonals press both directions, e.g.
+  down and left.
+- **Bottom right:** attack (red, large), jump (green, left of attack) and
+  pick up (yellow, above attack).
+
+Several fingers work at once, so you can walk, jump and attack together.
+Anywhere else, a tap is a left click and a quick double tap is a double click
+(talk to an NPC, use an item). Tapping a text field opens the phone keyboard.
+The back button acts as Escape. Skills and items are used from the quick
+slots for now; dedicated skill buttons are not added yet.
 
 ## Desktop SDL build
 

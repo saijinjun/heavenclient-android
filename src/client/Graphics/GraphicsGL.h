@@ -81,6 +81,15 @@ namespace jrc
 
         // Draw the buffer contents with the specified scene opacity.
         void flush(float opacity);
+
+#ifdef MS_PLATFORM_SDL
+        // Rectangles drawn over the whole window in its own pixels, outside
+        // the game view, e.g. touch controls in the black bars.
+        void draw_screen_rectangle(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
+        // Draws the queued screen rectangles into a width x height viewport,
+        // then restores the game view projection.
+        void flush_screen(int16_t width, int16_t height);
+#endif
         // Clear the buffer contents.
         void clearscene();
 
@@ -280,6 +289,9 @@ namespace jrc
 
         std::unordered_map<size_t, Offset> offsets;
         Offset nulloffset;
+#ifdef MS_PLATFORM_SDL
+        std::vector<Quad> screen_quads;
+#endif
 
         QuadTree<size_t, Leftover> leftovers;
         size_t rlid;

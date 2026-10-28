@@ -23,6 +23,8 @@
 #include "../Graphics/GLHeaders.h"
 
 #ifdef MS_PLATFORM_SDL
+#include "TouchControls.h"
+
 #include <SDL.h>
 #else
 #include <GLFW/glfw3.h>
@@ -60,6 +62,9 @@ namespace jrc
         void update_viewport();
         void update_text_input();
         Point<int16_t> to_view(int32_t x, int32_t y) const;
+        void handle_finger(const SDL_TouchFingerEvent& finger, Uint32 type);
+        void send_touch_actions(const std::vector<TouchControls::Action>& actions);
+        Point<int16_t> finger_to_view(float x, float y) const;
 
         SDL_Window* glwnd;
         SDL_GLContext context;
@@ -70,6 +75,14 @@ namespace jrc
         int32_t view_y;
         int32_t view_w;
         int32_t view_h;
+        TouchControls touch;
+        // Touch input is handled from finger events so several fingers work at
+        // once. The first finger that is not on a control acts as the mouse.
+        bool touch_seen;
+        bool cursor_finger_down;
+        SDL_FingerID cursor_finger;
+        Uint32 last_tap_time;
+        Point<int16_t> last_tap_pos;
 #else
         GLFWwindow* glwnd;
         GLFWwindow* context;

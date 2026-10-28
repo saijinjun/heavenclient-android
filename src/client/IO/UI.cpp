@@ -33,6 +33,7 @@ namespace jrc
     UI::UI()
     {
         state = std::make_unique<UIStateNull>();
+        state_id = LOGIN;
         cursor_press_id = 0;
         enabled = true;
         quitted = false;
@@ -74,6 +75,7 @@ namespace jrc
     {
         remove_textfield();
         is_key_down.clear();
+        state_id = id;
         switch (id)
         {
         case LOGIN:
@@ -86,6 +88,11 @@ namespace jrc
             state = std::make_unique<UIStateGame>();
             break;
         }
+    }
+
+    bool UI::in_game() const
+    {
+        return state_id == GAME;
     }
 
     void UI::quit()
@@ -283,6 +290,14 @@ namespace jrc
         }
 
         is_key_down[keycode] = pressed;
+    }
+
+    void UI::send_action(int32_t action, bool pressed)
+    {
+        if (!enabled && pressed)
+            return;
+
+        state->send_key(KeyType::ACTION, action, pressed, false);
     }
 
     void UI::send_menu(KeyAction::Id action)

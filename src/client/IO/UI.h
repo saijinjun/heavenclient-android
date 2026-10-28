@@ -51,6 +51,7 @@ namespace jrc
         void enable();
         void disable();
         void change_state(State state);
+        bool in_game() const;
 
         void quit();
         bool not_quitted() const;
@@ -65,6 +66,9 @@ namespace jrc
         void rightclick();
         void doubleclick();
         void send_key(int32_t keycode, bool pressed);
+        // Presses or releases a game action directly, whatever key it is
+        // bound to. On-screen touch controls use this.
+        void send_action(int32_t action, bool pressed);
         void send_menu(KeyAction::Id action);
 
         void set_scrollnotice(const std::string& notice);
@@ -96,6 +100,7 @@ namespace jrc
 
     private:
         std::unique_ptr<UIState> state;
+        State state_id;
         Keyboard keyboard;
         Cursor cursor;
         ScrollingNotice scrollingnotice;
