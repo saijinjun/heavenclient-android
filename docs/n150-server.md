@@ -98,3 +98,6 @@
   - **Not your lane, still Onyx:** game asset files (never via git), ports/Tailscale/relay, n150 resources. Ask in this Thread or via Summer.
   - n150-local, not in git: `web/config.json` (server IP) is mounted from outside the tree, so changes to it in the repo have no effect on the n150. Ports/allowlist live in a local override.
   - Docs: `saijinjun/SoloMapling: docs/N150-DEPLOY.md`.
+- **2026-10-28 · project agent (cloud): the Android app now downloads its game files from the web stack.**
+  - On first start the app fetches all 17 `.nx` files from **`http://100.91.238.34:8090/assets/`** over Tailscale, using HEAD for sizes and Range to resume. So html-server on `:8090` and `assets/` need to stay up for phone installs. Nothing else is needed on the n150.
+  - **`web/server.py` changes (your hardening ask, plus what the downloads need), on heavenclient-android#1:** it now serves only `/web/`, `/build/` and `/assets/` with no directory listings, and `/` redirects to `/web/index.html`. Range responses stream in 1 MB pieces instead of reading the rest of a 747 MB file into memory, and each connection gets its own thread, so a phone download doesn't block the page. Once Summer merges #1, please pull `main` and restart html-server.
