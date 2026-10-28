@@ -6,31 +6,38 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Runs the downloader against a small local HTTP server that serves fake .nx files. */
+/**
+ * Runs the downloader against a small local HTTP server that serves fake .nx
+ * files. The server is hand-rolled on ServerSocket because Android unit tests
+ * compile against android.jar, which has no com.sun.net.httpserver.
+ */
 public class AssetDownloaderTest {
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
-    private HttpServer server;
+    private ServerSocket server;
+    private Thread acceptor;
     private final Map<String, byte[]> served = new HashMap<>();
     private final List<String> ranges = new ArrayList<>();
     private boolean honorRange = true;
@@ -46,51 +53,76 @@ public class AssetDownloaderTest {
             served.put(AssetDownloader.FILES[i], data);
         }
 
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/assets/", this::serve);
-        server.start();
+        server = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
+        acceptor = new Thread(() -> {
+            while (!server.isClosed()) {
+                try (Socket client = server.accept()) {
+                    serve(client);
+                } catch (IOException closed) {
+                    // The test finished and closed the socket.
+                }
+            }
+        });
+        acceptor.start();
         phone = folder.newFolder("phone");
     }
 
     @After
-    public void tearDown() {
-        server.stop(0);
+    public void tearDown() throws Exception {
+        stopServer();
+    }
+
+    private void stopServer() throws Exception {
+        server.close();
+        acceptor.join(5000);
     }
 
     private String url() {
-        return "http://127.0.0.1:" + server.getAddress().getPort() + "/assets/";
+        return "http://127.0.0.1:" + server.getLocalPort() + "/assets/";
     }
 
-    private void serve(HttpExchange exchange) throws IOException {
-        String name = exchange.getRequestURI().getPath().substring("/assets/".length());
+    /** Answers one request per connection, enough for HttpURLConnection. */
+    private void serve(Socket client) throws IOException {
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(client.getInputStream(), StandardCharsets.ISO_8859_1));
+        String[] request = in.readLine().split(" ");
+        String method = request[0];
+        String name = request[1].substring("/assets/".length());
+
+        String range = null;
+        for (String line = in.readLine(); line != null && !line.isEmpty(); line = in.readLine()) {
+            if (line.toLowerCase(java.util.Locale.US).startsWith("range:")) {
+                range = line.substring("range:".length()).trim();
+            }
+        }
+
+        OutputStream out = client.getOutputStream();
         byte[] data = served.get(name);
         if (data == null) {
-            exchange.sendResponseHeaders(404, -1);
-            exchange.close();
+            out.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                    .getBytes(StandardCharsets.ISO_8859_1));
+            out.flush();
             return;
         }
 
-        String range = exchange.getRequestHeaders().getFirst("Range");
         int start = 0;
-        int code = 200;
+        String status = "200 OK";
         if (range != null) {
             ranges.add(name + " " + range);
             if (honorRange) {
                 start = Integer.parseInt(range.replace("bytes=", "").replace("-", ""));
-                code = 206;
+                status = "206 Partial Content";
             }
         }
 
         int length = data.length - start;
-        boolean head = exchange.getRequestMethod().equals("HEAD");
-        exchange.getResponseHeaders().set("Content-Length", Integer.toString(length));
-        exchange.sendResponseHeaders(code, head ? -1 : length);
-        if (!head) {
-            try (OutputStream out = exchange.getResponseBody()) {
-                out.write(data, start, length);
-            }
+        String head = "HTTP/1.1 " + status + "\r\nContent-Length: " + length
+                + "\r\nConnection: close\r\n\r\n";
+        out.write(head.getBytes(StandardCharsets.ISO_8859_1));
+        if (!method.equals("HEAD")) {
+            out.write(data, start, length);
         }
-        exchange.close();
+        out.flush();
     }
 
     @Test
@@ -172,9 +204,9 @@ public class AssetDownloaderTest {
     }
 
     @Test
-    public void reportsAnUnreachableServer() throws IOException {
-        int port = server.getAddress().getPort();
-        server.stop(0);
+    public void reportsAnUnreachableServer() throws Exception {
+        int port = server.getLocalPort();
+        stopServer();
 
         try {
             new AssetDownloader("http://127.0.0.1:" + port + "/assets/", phone).remoteSizes();
