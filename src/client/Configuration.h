@@ -231,6 +231,34 @@ namespace jrc
         HdColorGrade() : BoolEntry("HdColorGrade", "true") {}
     };
 
+    // How much of the HD-2D look to draw: 2 = all enabled effects, 1 = only
+    // the cheap ones (upscale and color grade), 0 = none. Lower saves battery
+    // and keeps phones cooler.
+    struct EffectsQuality : public Configuration::ByteEntry
+    {
+        EffectsQuality() : ByteEntry("EffectsQuality", "2") {}
+    };
+
+    // The most frames drawn per second, such as 30 or 60; 0 = no limit.
+    // The game itself still advances at the same speed.
+    struct MaxFps : public Configuration::ByteEntry
+    {
+        MaxFps() : ByteEntry("MaxFps", "60") {}
+    };
+
+    // Where the touch controls are, as the layout editor left them.
+    struct TouchLayout : public Configuration::StringEntry
+    {
+        TouchLayout() : StringEntry("TouchLayout", "") {}
+    };
+
+    // On touch screens, ropes and ladders can be grabbed from a little
+    // further to the side.
+    struct RopeAssist : public Configuration::BoolEntry
+    {
+        RopeAssist() : BoolEntry("RopeAssist", "true") {}
+    };
+
     // A short vibration when a touch button is pressed.
     struct TouchVibration : public Configuration::BoolEntry
     {

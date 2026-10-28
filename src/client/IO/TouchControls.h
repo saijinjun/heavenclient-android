@@ -18,6 +18,7 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -32,6 +33,10 @@ namespace jrc
     // phone, and on wide screens they sit in the black bars beside the game.
     // This class only tracks fingers and reports what to do and what to
     // draw; the window feeds it touch events and does the rest.
+    //
+    // The gear button opens a layout editor: drag any control to move it,
+    // and use the toolbar at the top to resize the selected one, change how
+    // see-through all of them are, or go back to the default layout.
     class TouchControls
     {
     public:
@@ -101,6 +106,15 @@ namespace jrc
         // and items dragged from their windows onto a slot.
         bool slot_at(float x, float y, uint8_t& slot) const;
 
+        bool is_editing() const;
+        // The layout as text for the settings file, and back. Unknown or
+        // broken parts of the text are ignored.
+        std::string get_layout() const;
+        void set_layout(const std::string& text);
+        // True once after the layout editor changed something, so the
+        // window knows to save it.
+        bool take_layout_changed();
+
     private:
         enum Control : uint8_t
         {
@@ -116,7 +130,29 @@ namespace jrc
             MENU_SKILLS,
             MENU_QUESTS,
             MENU_MAP,
+            JUMP_DOWN,
+            JUMP_ATTACK,
+            MENU_LAYOUT,
             NUM_CONTROLS
+        };
+
+        // The layout editor's toolbar.
+        enum Tool : uint8_t
+        {
+            TOOL_SMALLER,
+            TOOL_BIGGER,
+            TOOL_FADE,
+            TOOL_RESET,
+            TOOL_DONE,
+            NUM_TOOLS
+        };
+
+        // How the player changed a control from its default place.
+        struct Adjustment
+        {
+            float dx = 0.0f;
+            float dy = 0.0f;
+            float scale = 1.0f;
         };
 
         enum Direction : uint8_t
@@ -136,7 +172,9 @@ namespace jrc
         };
 
         float unit() const;
+        Circle home_area(Control control) const;
         Circle area(Control control) const;
+        Circle tool_area(Tool tool) const;
         bool in_stick_zone(float x, float y) const;
         bool control_at(float x, float y, Control& control) const;
         Action output(Control control, bool pressed) const;
@@ -144,7 +182,12 @@ namespace jrc
         void aim_stick(float x, float y, std::vector<Action>& actions);
         void set_direction(Direction direction, bool pressed, std::vector<Action>& actions);
         void set_button(Control control, bool pressed, std::vector<Action>& actions);
+        void send_held_keys(std::vector<Action>& actions);
         uint8_t fingers_on(Control control) const;
+        void start_editing(int64_t finger, std::vector<Action>& actions);
+        bool edit_down(int64_t finger, float x, float y);
+        void use_tool(Tool tool);
+        void move_control(Control control, float x, float y);
 
         float width = 0.0f;
         float height = 0.0f;
@@ -161,5 +204,19 @@ namespace jrc
         float stick_y = 0.0f;
         float thumb_x = 0.0f;
         float thumb_y = 0.0f;
+        // The keys sent as held for the stick and buttons together, in the
+        // order of KEYS in TouchControls.cpp.
+        std::array<bool, 6> keys_held = {};
+
+        std::array<Adjustment, NUM_CONTROLS> adjustments = {};
+        float opacity = 1.0f;
+        bool editing = false;
+        bool layout_changed = false;
+        // The control being edited, and the finger dragging it and where on
+        // the control it grabbed.
+        Control selected = NUM_CONTROLS;
+        int64_t edit_finger = -1;
+        float grab_x = 0.0f;
+        float grab_y = 0.0f;
     };
 }

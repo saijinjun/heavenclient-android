@@ -60,6 +60,8 @@ the black bars beside the game:
   portals (up). Diagonals press both directions, e.g. down and left.
 - **Top left:** inventory, equipment, stats, skills, quests and world map.
 - **Bottom right:** attack (large, orange), jump (blue) and pick up (green).
+  Two small buttons at the right edge combine keys: the lower one jumps down
+  through a platform (down + jump), the upper one is a jump attack.
 - **Right, around attack:** six quick slots. They are the Shift, Insert,
   Home, Page Up, Delete and End keys, and show the icon of the skill or item
   on that key. To set one, open the skill or item window and drag a skill,
@@ -74,6 +76,15 @@ phone keyboard. The back button acts as Escape.
 
 Buttons give a short vibration and a ripple when pressed
 (`TouchVibration` turns the vibration off).
+
+Ropes and ladders can be grabbed from about a character's width away
+(`RopeAssist`), since a thumb on a stick is less exact than arrow keys.
+
+The gear at the top right opens the layout editor. Drag any control to move
+it (the stick sets where it rests). The toolbar at the top makes the picked
+control smaller or bigger, steps all controls through solid, 75%, 50% and 30%
+opacity, resets the default layout, and the green check closes the editor.
+The layout is saved in the `TouchLayout` setting.
 
 ## Screen and graphics
 
@@ -92,6 +103,12 @@ each part with its own setting, all on by default:
 - `HdColorGrade`: a gentle color grade and vignette.
 
 The UI is drawn after these effects, so it stays crisp.
+
+To save battery and heat, `EffectsQuality` turns effects down as a group: 2
+(default) uses all of the above that are on, 1 only the cheap upscale and
+color grade, 0 none. `MaxFps` (default 60, 0 for no limit) caps how many
+frames are drawn per second, which matters on 90 and 120 Hz screens; the game
+runs at the same speed either way.
 
 The control artwork is drawn at startup from simple shapes
 (`src/client/IO/TouchSprites.cpp`), so it stays sharp on any screen.

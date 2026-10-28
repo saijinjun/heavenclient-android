@@ -21,6 +21,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <string>
 
 namespace jrc
@@ -68,7 +70,7 @@ namespace jrc
         // at the bottom beside the centered status bar, and the menu sits
         // below the minimap.
         // In the order of TouchControls::Control.
-        constexpr std::array<Place, 16> PLACES =
+        constexpr std::array<Place, 19> PLACES =
         {{
             { false, true,  1.40f, 1.50f, 1.00f, NUM_SPRITES, DR, DG, DB },      // STICK, at rest
             { true,  true,  1.15f, 1.20f, 0.72f, SWORD, 0.96f, 0.52f, 0.16f },   // ATTACK
@@ -86,7 +88,39 @@ namespace jrc
             { false, false, 0.50f, 2.60f, 0.30f, STAR, DR, DG, DB },             // MENU_SKILLS
             { false, false, 1.25f, 2.60f, 0.30f, QUEST, DR, DG, DB },            // MENU_QUESTS
             { false, false, 2.00f, 2.60f, 0.30f, GLOBE, DR, DG, DB },            // MENU_MAP
+            { true,  true,  0.36f, 0.40f, 0.30f, DROP_DOWN, 0.26f, 0.60f, 0.96f },  // JUMP_DOWN
+            { true,  true,  0.36f, 1.98f, 0.30f, JUMP_SLASH, 0.96f, 0.52f, 0.16f }, // JUMP_ATTACK
+            { true,  false, 0.45f, 0.45f, 0.26f, GEAR, DR, DG, DB },             // MENU_LAYOUT
         }};
+
+        // Names for the settings file, in the order of TouchControls::Control.
+        constexpr std::array<const char*, 19> NAMES =
+        {
+            "STICK", "ATTACK", "JUMP", "PICKUP",
+            "SLOT0", "SLOT1", "SLOT2", "SLOT3", "SLOT4", "SLOT5",
+            "INVENTORY", "EQUIPS", "STATS", "SKILLS", "QUESTS", "MAP",
+            "JUMP_DOWN", "JUMP_ATTACK", "LAYOUT"
+        };
+
+        // The keys the stick and the action buttons hold down, in the order
+        // they are pressed: down before jump makes a jump down, and jump
+        // before attack makes a jump attack.
+        constexpr std::array<int32_t, 6> KEYS =
+        {
+            KeyAction::LEFT, KeyAction::RIGHT, KeyAction::UP, KeyAction::DOWN,
+            KeyAction::JUMP, KeyAction::ATTACK
+        };
+
+        // The layout editor's toolbar, left to right along the top middle.
+        constexpr std::array<Sprite, 5> TOOL_ICONS = { MINUS, PLUS, FADE, RESET, CHECK };
+        constexpr float TOOL_RADIUS = 0.32f;
+        constexpr float TOOL_SPACING = 0.9f;
+
+        // Limits for what the editor can change.
+        constexpr float MIN_SCALE = 0.6f;
+        constexpr float MAX_SCALE = 1.6f;
+        constexpr float SCALE_STEP = 0.1f;
+        constexpr std::array<float, 4> OPACITIES = { 1.0f, 0.75f, 0.5f, 0.3f };
 
         // The stick appears wherever the left thumb lands in this part of
         // the screen: left of STICK_ZONE_RIGHT and below STICK_ZONE_TOP.
@@ -127,9 +161,10 @@ namespace jrc
         return height / 6.0f;
     }
 
-    TouchControls::Circle TouchControls::area(Control control) const
+    TouchControls::Circle TouchControls::home_area(Control control) const
     {
         static_assert(PLACES.size() == NUM_CONTROLS, "one place per control");
+        static_assert(NAMES.size() == NUM_CONTROLS, "one name per control");
 
         const Place& place = PLACES[control];
         float u = unit();
@@ -141,9 +176,35 @@ namespace jrc
         };
     }
 
+    TouchControls::Circle TouchControls::area(Control control) const
+    {
+        Circle home = home_area(control);
+        const Adjustment& adjustment = adjustments[control];
+        float u = unit();
+        float radius = home.radius * adjustment.scale;
+
+        // Moved controls stay whole on the screen, even on a smaller one
+        // than they were placed on.
+        return {
+            std::clamp(home.x + adjustment.dx * u, radius, std::max(radius, width - radius)),
+            std::clamp(home.y + adjustment.dy * u, radius, std::max(radius, height - radius)),
+            radius
+        };
+    }
+
+    TouchControls::Circle TouchControls::tool_area(Tool tool) const
+    {
+        float u = unit();
+        float offset = static_cast<float>(tool) - (NUM_TOOLS - 1) / 2.0f;
+        return { width / 2.0f + offset * TOOL_SPACING * u, 0.55f * u, TOOL_RADIUS * u };
+    }
+
     bool TouchControls::in_stick_zone(float x, float y) const
     {
-        return x < STICK_ZONE_RIGHT * unit() && y > STICK_ZONE_TOP * unit();
+        // Near wherever the stick was moved to also works.
+        Circle home = area(STICK);
+        bool near_home = std::hypot(x - home.x, y - home.y) < home.radius * 1.3f;
+        return near_home || (x < STICK_ZONE_RIGHT * unit() && y > STICK_ZONE_TOP * unit());
     }
 
     bool TouchControls::control_at(float x, float y, Control& control) const
@@ -186,11 +247,22 @@ namespace jrc
 
     bool TouchControls::finger_down(int64_t finger, float x, float y, std::vector<Action>& actions)
     {
+        if (editing)
+        {
+            return edit_down(finger, x, y);
+        }
+
         Control control;
 
         if (!control_at(x, y, control))
         {
             return false;
+        }
+
+        if (control == MENU_LAYOUT)
+        {
+            start_editing(finger, actions);
+            return true;
         }
 
         if (control == STICK && fingers_on(STICK) > 0)
@@ -225,6 +297,15 @@ namespace jrc
             return false;
         }
 
+        if (editing)
+        {
+            if (finger == edit_finger && selected < NUM_CONTROLS)
+            {
+                move_control(selected, x - grab_x, y - grab_y);
+            }
+            return true;
+        }
+
         // The stick keeps following its thumb even past its edge. Buttons stay
         // held until the finger lifts, wherever it slides.
         if (iter->second == STICK)
@@ -246,6 +327,11 @@ namespace jrc
 
         Control control = iter->second;
         fingers.erase(iter);
+
+        if (finger == edit_finger)
+        {
+            edit_finger = -1;
+        }
 
         if (control == NUM_CONTROLS)
         {
@@ -321,23 +407,39 @@ namespace jrc
         }
 
         directions[direction] = pressed;
+        send_held_keys(actions);
+    }
 
-        static constexpr std::array<int32_t, NUM_DIRECTIONS> ACTIONS =
+    void TouchControls::send_held_keys(std::vector<Action>& actions)
+    {
+        // Several controls can hold the same key: the jump down button holds
+        // down and jump, the jump attack button jump and attack.
+        bool jump_down = buttons[JUMP_DOWN];
+        bool jump_attack = buttons[JUMP_ATTACK];
+        std::array<bool, KEYS.size()> wanted =
         {
-            KeyAction::LEFT, KeyAction::RIGHT, KeyAction::UP, KeyAction::DOWN
+            directions[LEFT],
+            directions[RIGHT],
+            directions[UP],
+            directions[DOWN] || jump_down,
+            buttons[JUMP] || jump_down || jump_attack,
+            buttons[ATTACK] || jump_attack
         };
 
-        actions.push_back({ Output::ACTION, ACTIONS[direction], pressed });
+        for (size_t i = 0; i < KEYS.size(); i++)
+        {
+            if (keys_held[i] != wanted[i])
+            {
+                keys_held[i] = wanted[i];
+                actions.push_back({ Output::ACTION, KEYS[i], wanted[i] });
+            }
+        }
     }
 
     TouchControls::Action TouchControls::output(Control control, bool pressed) const
     {
         switch (control)
         {
-        case ATTACK:
-            return { Output::ACTION, KeyAction::ATTACK, pressed };
-        case JUMP:
-            return { Output::ACTION, KeyAction::JUMP, pressed };
         case PICKUP:
             return { Output::ACTION, KeyAction::PICKUP, pressed };
         case MENU_INVENTORY:
@@ -370,6 +472,12 @@ namespace jrc
             pressed_at[control] = now == 0 ? 1 : now;
         }
 
+        if (control == ATTACK || control == JUMP || control == JUMP_DOWN || control == JUMP_ATTACK)
+        {
+            send_held_keys(actions);
+            return;
+        }
+
         Action action = output(control, pressed);
 
         // Menus toggle a window once per tap, so only the press is sent.
@@ -388,8 +496,11 @@ namespace jrc
             return result;
         }
 
-        auto sprite = [&result](Sprite s, float x, float y, float half, float r, float g, float b, float a) {
-            result.push_back({ Draw::SPRITE, s, 0, x, y, half, r, g, b, a });
+        // Everything but the editor's toolbar is as see-through as the
+        // player chose.
+        float fade = opacity;
+        auto sprite = [&result, &fade](Sprite s, float x, float y, float half, float r, float g, float b, float a) {
+            result.push_back({ Draw::SPRITE, s, 0, x, y, half, r, g, b, a * fade });
         };
 
         // The stick: a faint base with arrows, and a knob under the thumb.
@@ -461,7 +572,7 @@ namespace jrc
                 }
 
                 result.push_back({ Draw::SLOT_ICON, 0, index,
-                    circle.x, circle.y, half * 0.62f, 1.0f, 1.0f, 1.0f, pressed ? 1.0f : 0.92f });
+                    circle.x, circle.y, half * 0.62f, 1.0f, 1.0f, 1.0f, (pressed ? 1.0f : 0.92f) * fade });
 
                 if (slots_cooling[index])
                 {
@@ -493,7 +604,246 @@ namespace jrc
             }
         }
 
+        if (editing)
+        {
+            fade = 1.0f;
+
+            // The control being edited gets a gold outline.
+            if (selected < NUM_CONTROLS)
+            {
+                Circle circle = area(selected);
+                sprite(RING, circle.x, circle.y, circle.radius * 1.15f, 1.0f, 0.82f, 0.25f, 1.0f);
+            }
+
+            for (uint8_t i = 0; i < NUM_TOOLS; i++)
+            {
+                Tool tool = static_cast<Tool>(i);
+                Circle circle = tool_area(tool);
+                bool done = tool == TOOL_DONE;
+                // Resizing needs a control picked first.
+                bool usable = selected < NUM_CONTROLS || (tool != TOOL_SMALLER && tool != TOOL_BIGGER);
+                float face = usable ? 0.8f : 0.35f;
+
+                sprite(DISC, circle.x, circle.y, circle.radius,
+                    done ? 0.30f : DR, done ? 0.72f : DG, done ? 0.40f : DB, face);
+                sprite(RING, circle.x, circle.y, circle.radius, 1.0f, 1.0f, 1.0f, 0.6f);
+                sprite(TOOL_ICONS[i], circle.x, circle.y, circle.radius * 0.6f, 1.0f, 1.0f, 1.0f, usable ? 1.0f : 0.4f);
+            }
+        }
+
         return result;
+    }
+
+    void TouchControls::start_editing(int64_t finger, std::vector<Action>& actions)
+    {
+        // Let go of everything held, so the character stops while the
+        // controls are rearranged. Fingers already down are ignored until
+        // they lift.
+        directions = {};
+        for (uint8_t i = ATTACK; i < NUM_CONTROLS; i++)
+        {
+            set_button(static_cast<Control>(i), false, actions);
+        }
+        send_held_keys(actions);
+
+        for (auto& entry : fingers)
+        {
+            entry.second = NUM_CONTROLS;
+        }
+        fingers[finger] = NUM_CONTROLS;
+
+        editing = true;
+        selected = NUM_CONTROLS;
+        edit_finger = -1;
+    }
+
+    bool TouchControls::edit_down(int64_t finger, float x, float y)
+    {
+        // While editing, every touch belongs to the editor.
+        fingers[finger] = NUM_CONTROLS;
+
+        for (uint8_t i = 0; i < NUM_TOOLS; i++)
+        {
+            Circle circle = tool_area(static_cast<Tool>(i));
+            if (std::hypot(x - circle.x, y - circle.y) <= circle.radius * HIT_SLACK)
+            {
+                use_tool(static_cast<Tool>(i));
+                return true;
+            }
+        }
+
+        // Any control can be picked up, empty slots and the stick included.
+        float best = HIT_SLACK;
+        Control found = NUM_CONTROLS;
+        for (uint8_t i = 0; i < NUM_CONTROLS; i++)
+        {
+            Circle circle = area(static_cast<Control>(i));
+            float distance = std::hypot(x - circle.x, y - circle.y) / circle.radius;
+            if (distance <= best)
+            {
+                best = distance;
+                found = static_cast<Control>(i);
+            }
+        }
+
+        if (found < NUM_CONTROLS && best < HIT_SLACK)
+        {
+            Circle circle = area(found);
+            selected = found;
+            edit_finger = finger;
+            grab_x = x - circle.x;
+            grab_y = y - circle.y;
+        }
+
+        return true;
+    }
+
+    void TouchControls::use_tool(Tool tool)
+    {
+        switch (tool)
+        {
+        case TOOL_SMALLER:
+        case TOOL_BIGGER:
+            if (selected < NUM_CONTROLS)
+            {
+                Adjustment& adjustment = adjustments[selected];
+                float step = tool == TOOL_BIGGER ? SCALE_STEP : -SCALE_STEP;
+                adjustment.scale = std::clamp(adjustment.scale + step, MIN_SCALE, MAX_SCALE);
+            }
+            break;
+        case TOOL_FADE:
+        {
+            // Steps from solid to faint, then back to solid.
+            size_t next = 0;
+            for (size_t i = 0; i < OPACITIES.size(); i++)
+            {
+                if (opacity >= OPACITIES[i] - 0.01f)
+                {
+                    next = (i + 1) % OPACITIES.size();
+                    break;
+                }
+            }
+            opacity = OPACITIES[next];
+            break;
+        }
+        case TOOL_RESET:
+            adjustments = {};
+            opacity = 1.0f;
+            break;
+        case TOOL_DONE:
+            editing = false;
+            selected = NUM_CONTROLS;
+            edit_finger = -1;
+            break;
+        default:
+            break;
+        }
+
+        layout_changed = true;
+    }
+
+    void TouchControls::move_control(Control control, float x, float y)
+    {
+        Circle home = home_area(control);
+        float u = unit();
+        float radius = home.radius * adjustments[control].scale;
+
+        x = std::clamp(x, radius, std::max(radius, width - radius));
+        y = std::clamp(y, radius, std::max(radius, height - radius));
+        adjustments[control].dx = (x - home.x) / u;
+        adjustments[control].dy = (y - home.y) / u;
+        layout_changed = true;
+    }
+
+    bool TouchControls::is_editing() const
+    {
+        return editing;
+    }
+
+    bool TouchControls::take_layout_changed()
+    {
+        bool changed = layout_changed;
+        layout_changed = false;
+        return changed;
+    }
+
+    std::string TouchControls::get_layout() const
+    {
+        // For example "opacity:0.75;ATTACK:-0.40,0.10,1.20", where the
+        // numbers are how far the control moved right and down, in sixths
+        // of the screen height, and its size. Only changes are written.
+        char buffer[64];
+        std::snprintf(buffer, sizeof(buffer), "opacity:%.2f", opacity);
+        std::string text = buffer;
+
+        for (uint8_t i = 0; i < NUM_CONTROLS; i++)
+        {
+            const Adjustment& adjustment = adjustments[i];
+            if (adjustment.dx == 0.0f && adjustment.dy == 0.0f && adjustment.scale == 1.0f)
+            {
+                continue;
+            }
+
+            std::snprintf(buffer, sizeof(buffer), ";%s:%.3f,%.3f,%.2f",
+                NAMES[i], adjustment.dx, adjustment.dy, adjustment.scale);
+            text += buffer;
+        }
+
+        return text;
+    }
+
+    void TouchControls::set_layout(const std::string& text)
+    {
+        adjustments = {};
+        opacity = 1.0f;
+
+        size_t start = 0;
+        while (start < text.size())
+        {
+            size_t end = text.find(';', start);
+            if (end == std::string::npos)
+            {
+                end = text.size();
+            }
+
+            std::string part = text.substr(start, end - start);
+            start = end + 1;
+
+            size_t colon = part.find(':');
+            if (colon == std::string::npos)
+            {
+                continue;
+            }
+
+            std::string name = part.substr(0, colon);
+            const char* values = part.c_str() + colon + 1;
+
+            if (name == "opacity")
+            {
+                char* end = nullptr;
+                float value = std::strtof(values, &end);
+                if (end != values)
+                {
+                    opacity = std::clamp(value, OPACITIES.back(), 1.0f);
+                }
+                continue;
+            }
+
+            auto found = std::find_if(NAMES.begin(), NAMES.end(),
+                [&name](const char* candidate) { return name == candidate; });
+            Adjustment adjustment;
+            if (found == NAMES.end() ||
+                std::sscanf(values, "%f,%f,%f", &adjustment.dx, &adjustment.dy, &adjustment.scale) != 3)
+            {
+                continue;
+            }
+
+            // Nothing is moved further than across the screen.
+            adjustment.dx = std::clamp(adjustment.dx, -20.0f, 20.0f);
+            adjustment.dy = std::clamp(adjustment.dy, -6.0f, 6.0f);
+            adjustment.scale = std::clamp(adjustment.scale, MIN_SCALE, MAX_SCALE);
+            adjustments[found - NAMES.begin()] = adjustment;
+        }
     }
 
     bool TouchControls::slot_at(float x, float y, uint8_t& slot) const

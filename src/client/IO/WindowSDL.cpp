@@ -28,6 +28,7 @@
 #include "../Data/ItemData.h"
 #include "../Data/SkillData.h"
 #include "../Gameplay/Stage.h"
+#include "../Gameplay/MapleMap/MapInfo.h"
 #include "Components/Icon.h"
 #include "TouchSprites.h"
 
@@ -352,6 +353,8 @@ namespace jrc
         fill_screen = Setting<FillScreen>::get().load();
 
         // The phone's vibrator, for a tap of feedback on touch buttons.
+        touch.set_layout(Setting<TouchLayout>::get().load());
+
         if (Setting<TouchVibration>::get().load() &&
             SDL_InitSubSystem(SDL_INIT_HAPTIC) == 0 && SDL_NumHaptics() > 0)
         {
@@ -364,10 +367,11 @@ namespace jrc
         }
 
         PostProcess::Options effects;
-        effects.upscale = Setting<HdUpscale>::get().load();
-        effects.glow = Setting<HdGlow>::get().load();
-        effects.depth = Setting<HdDepthBlur>::get().load();
-        effects.grade = Setting<HdColorGrade>::get().load();
+        uint8_t quality = Setting<EffectsQuality>::get().load();
+        effects.upscale = quality >= 1 && Setting<HdUpscale>::get().load();
+        effects.glow = quality >= 2 && Setting<HdGlow>::get().load();
+        effects.depth = quality >= 2 && Setting<HdDepthBlur>::get().load();
+        effects.grade = quality >= 1 && Setting<HdColorGrade>::get().load();
         GraphicsGL::get().set_effects(effects);
         SDL_GL_SetSwapInterval(vsync ? 1 : 0);
 
@@ -500,6 +504,11 @@ namespace jrc
 
     void Window::handle_finger(const SDL_TouchFingerEvent& finger, Uint32 type)
     {
+        if (!touch_seen && Setting<RopeAssist>::get().load())
+        {
+            // About a character's width instead of the classic 10 pixels.
+            Ladder::set_reach(24);
+        }
         touch_seen = true;
 
         int32_t drawable_w = 0;
@@ -595,6 +604,17 @@ namespace jrc
         }
 
         send_touch_actions(actions);
+
+        if (touch.take_layout_changed())
+        {
+            Setting<TouchLayout>::get().save(touch.get_layout());
+
+            // Written to disk when the editor closes, not on every drag.
+            if (!touch.is_editing())
+            {
+                Configuration::get().save();
+            }
+        }
     }
 
     bool Window::not_closed() const

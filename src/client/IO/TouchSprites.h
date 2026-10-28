@@ -44,6 +44,13 @@ namespace jrc
             PLUS,       // An empty quick slot
             DIGIT0,     // Digits 0-9 for item counts, in order
             DIGIT9 = DIGIT0 + 9,
+            DROP_DOWN,  // Jump down: an arrow through a platform
+            JUMP_SLASH, // Jump and attack: a chevron over a slash
+            GEAR,       // The layout editor
+            MINUS,      // Editor: smaller
+            FADE,       // Editor: more see-through, a half filled circle
+            RESET,      // Editor: back to the default layout
+            CHECK,      // Editor: done
             NUM_SPRITES
         };
 

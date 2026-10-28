@@ -35,7 +35,10 @@
 #include "Net/Session.h"
 #include "Util/NxFiles.h"
 
+#include <algorithm>
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 #ifdef MS_PLATFORM_SDL
 #include <SDL.h>
@@ -193,8 +196,22 @@ namespace jrc
         int64_t period  = 0;
         int32_t samples = 0;
 
+        // Frames are spaced out to at most MaxFps per second, which saves
+        // battery on phones whose screens refresh at 90 or 120 Hz.
+        using clock = std::chrono::steady_clock;
+        uint8_t max_fps = Setting<MaxFps>::get().load();
+        auto frame_time = max_fps > 0 ? std::chrono::microseconds(1000000 / max_fps) : std::chrono::microseconds(0);
+        auto next_frame = clock::now();
+
         while (running())
         {
+            if (max_fps > 0)
+            {
+                std::this_thread::sleep_until(next_frame);
+                // Skip frames that are already late rather than racing to catch up.
+                next_frame = std::max(next_frame + frame_time, clock::now());
+            }
+
             int64_t elapsed = Timer::get().stop();
 
             // Update game with constant timestep as many times as possible.

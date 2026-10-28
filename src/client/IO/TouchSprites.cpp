@@ -235,6 +235,48 @@ namespace jrc
                     return std::min(
                         capsule(p, { -0.42f, 0.0f }, { 0.42f, 0.0f }, 0.07f),
                         capsule(p, { 0.0f, -0.42f }, { 0.0f, 0.42f }, 0.07f));
+                case DROP_DOWN:
+                    return std::min({
+                        capsule(p, { 0.0f, -0.6f }, { 0.0f, 0.3f }, 0.09f),
+                        polyline(p, { { -0.3f, 0.06f }, { 0.0f, 0.36f }, { 0.3f, 0.06f } }, 0.09f),
+                        // The platform, with a gap where the arrow goes through.
+                        std::max(capsule(p, { -0.62f, -0.14f }, { 0.62f, -0.14f }, 0.07f),
+                            -rounded_box(p, { 0.0f, -0.14f }, { 0.2f, 0.2f }, 0.02f))
+                    });
+                case JUMP_SLASH:
+                {
+                    // A small sword under a jump chevron.
+                    constexpr float SCALE = 0.74f;
+                    Vec sword = (p - Vec{ 0.04f, 0.22f }) * (1.0f / SCALE);
+                    return std::min(
+                        polyline(p, { { -0.4f, -0.36f }, { 0.0f, -0.74f }, { 0.4f, -0.36f } }, 0.11f),
+                        shape(SWORD, sword) * SCALE);
+                }
+                case GEAR:
+                {
+                    // Eight teeth around a ring.
+                    float angle = std::atan2(p.y, p.x);
+                    float teeth = std::cos(angle * 8.0f) > 0.2f ? 0.66f : 0.5f;
+                    float body = length(p) - teeth;
+                    return std::max(body, -circle(p, { 0.0f, 0.0f }, 0.22f));
+                }
+                case MINUS:
+                    return capsule(p, { -0.42f, 0.0f }, { 0.42f, 0.0f }, 0.08f);
+                case FADE:
+                    return std::min(
+                        ring(p, { 0.0f, 0.0f }, 0.52f, 0.06f),
+                        std::max(circle(p, { 0.0f, 0.0f }, 0.52f), -p.x));
+                case RESET:
+                {
+                    // Three quarters of a circle with an arrow head.
+                    float arc = ring(p, { 0.0f, 0.0f }, 0.46f, 0.08f);
+                    // Cut out the top right quarter, leaving a square end.
+                    float open = std::max(arc, std::min(p.x, -p.y));
+                    return std::min(open,
+                        triangle(p, { 0.0f, -0.72f }, { 0.0f, -0.2f }, { 0.32f, -0.46f }));
+                }
+                case CHECK:
+                    return polyline(p, { { -0.46f, 0.02f }, { -0.14f, 0.34f }, { 0.48f, -0.32f } }, 0.1f);
                 default:
                     return 1.0f;
                 }

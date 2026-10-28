@@ -281,3 +281,87 @@ TEST_CASE("Slots show a plus when empty, and counts and cooldowns when filled")
     controls.set_slot_info(0, -1, true);
     CHECK(count_sprite(controls, jrc::TouchSprites::DISC) == discs + 1);
 }
+
+TEST_CASE("The jump down button holds down, then jump")
+{
+    auto controls = phone();
+    Actions actions;
+
+    float x = WIDTH - 0.36f * UNIT;
+    float y = HEIGHT - 0.40f * UNIT;
+    CHECK(controls.finger_down(1, x, y, actions));
+    REQUIRE(actions.size() == 2);
+    CHECK(actions[0].id == jrc::KeyAction::DOWN);
+    CHECK(actions[1].id == jrc::KeyAction::JUMP);
+
+    actions.clear();
+    controls.finger_up(1, actions);
+    CHECK(has(actions, jrc::KeyAction::DOWN, false));
+    CHECK(has(actions, jrc::KeyAction::JUMP, false));
+}
+
+TEST_CASE("The jump attack button jumps first, and shares keys with the other buttons")
+{
+    auto controls = phone();
+    Actions actions;
+
+    float x = WIDTH - 0.36f * UNIT;
+    float y = HEIGHT - 1.98f * UNIT;
+    controls.finger_down(1, x, y, actions);
+    REQUIRE(actions.size() == 2);
+    CHECK(actions[0].id == jrc::KeyAction::JUMP);
+    CHECK(actions[1].id == jrc::KeyAction::ATTACK);
+
+    // Attack is still held by its own button after the combo lifts.
+    actions.clear();
+    controls.finger_down(2, ATTACK_X, ATTACK_Y, actions);
+    CHECK(actions.empty());
+    controls.finger_up(1, actions);
+    REQUIRE(actions.size() == 1);
+    CHECK(has(actions, jrc::KeyAction::JUMP, false));
+}
+
+TEST_CASE("The layout editor moves and resizes controls and remembers it")
+{
+    auto controls = phone();
+    Actions actions;
+
+    // Holding attack, then opening the editor, lets go of attack.
+    controls.finger_down(1, ATTACK_X, ATTACK_Y, actions);
+    actions.clear();
+    CHECK(controls.finger_down(2, WIDTH - 0.45f * UNIT, 0.45f * UNIT, actions));
+    CHECK(controls.is_editing());
+    CHECK(has(actions, jrc::KeyAction::ATTACK, false));
+    controls.finger_up(1, actions);
+    controls.finger_up(2, actions);
+
+    // Drag attack one unit left, then make it bigger with the + tool.
+    actions.clear();
+    CHECK(controls.finger_down(3, ATTACK_X, ATTACK_Y, actions));
+    CHECK(controls.finger_move(3, ATTACK_X - UNIT, ATTACK_Y, actions));
+    controls.finger_up(3, actions);
+    float tool_y = 0.55f * UNIT;
+    controls.finger_down(4, WIDTH / 2 - 0.9f * UNIT, tool_y, actions);
+    controls.finger_up(4, actions);
+    CHECK(actions.empty());
+    CHECK(controls.take_layout_changed());
+    CHECK_FALSE(controls.take_layout_changed());
+
+    // Done: touches work again, at the new place.
+    controls.finger_down(5, WIDTH / 2 + 2.0f * 0.9f * UNIT, tool_y, actions);
+    controls.finger_up(5, actions);
+    CHECK_FALSE(controls.is_editing());
+    controls.finger_down(6, ATTACK_X - UNIT, ATTACK_Y, actions);
+    CHECK(has(actions, jrc::KeyAction::ATTACK, true));
+    controls.finger_up(6, actions);
+
+    // The saved text brings the same layout back.
+    std::string layout = controls.get_layout();
+    INFO(layout);
+    CHECK(layout.find("ATTACK:-1.000,0.000,1.10") != std::string::npos);
+    auto restored = phone();
+    restored.set_layout(layout);
+    CHECK(restored.get_layout() == layout);
+    restored.set_layout("nonsense;ATTACK:x;opacity:");
+    CHECK(restored.get_layout() == "opacity:1.00");
+}
