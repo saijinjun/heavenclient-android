@@ -69,6 +69,11 @@ namespace ms
 			return args;
 		}
 
+		constexpr bool is(Code c) const
+		{
+			return code == c;
+		}
+
 	private:
 		Code code;
 		const char* args;

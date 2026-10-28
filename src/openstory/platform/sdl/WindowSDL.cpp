@@ -389,6 +389,11 @@ namespace ms
 		case SDL_APP_DIDENTERFOREGROUND:
 			UI::get().send_focus(1);
 			break;
+		case SDL_APP_LOWMEMORY:
+			// Android is about to start killing apps; make sure a kill
+			// doesn't lose settings changed since the last save.
+			Configuration::get().save();
+			break;
 		default:
 			break;
 		}
@@ -419,6 +424,7 @@ namespace ms
 			break;
 		case SDL_APP_WILLENTERBACKGROUND:
 		case SDL_APP_DIDENTERFOREGROUND:
+		case SDL_APP_LOWMEMORY:
 			on_app_event(event.type);
 			break;
 		case SDL_KEYDOWN:

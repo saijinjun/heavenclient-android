@@ -319,8 +319,47 @@ namespace ms
 			&& Window::get().not_closed();
 	}
 
+#ifdef PLATFORM_SDL
+	// A phone drops the connection whenever it sleeps, switches networks or
+	// loses Tailscale. Instead of closing, offer to reconnect and go back to
+	// the login screen.
+	bool recover_connection()
+	{
+		if (Session::get().is_connected() || !UI::get().not_quitted() || !Window::get().not_closed())
+			return false;
+
+		std::string message = "Lost the connection to the game server.";
+
+		while (sdl::ask_reconnect(message))
+		{
+			Session::get().reconnect();
+
+			if (Session::get().is_connected())
+			{
+				Stage::get().clear();
+				GraphicsGL::get().clear();
+				GraphicsGL::get().unlock();
+
+				UI::get().change_state(UI::State::LOGIN);
+				UI::get().set_scrollnotice("");
+				UI::get().enable();
+
+				return true;
+			}
+
+			message = "Still can't reach the game server at "
+				+ Setting<ServerIP>::get().load() + ":" + Setting<ServerPort>::get().load()
+				+ ".\n\nMake sure Tailscale is on and connected, and that the server is running.";
+		}
+
+		return false;
+	}
+#endif
+
 	void loop()
 	{
+	  do
+	  {
 		Timer::get().start();
 
 		int64_t timestep = Constants::TIMESTEP * 1000;
@@ -381,6 +420,11 @@ namespace ms
 					std::this_thread::sleep_for(std::chrono::microseconds(FRAME_CAP_US - frame_us));
 			}
 		}
+#ifdef PLATFORM_SDL
+	  } while (recover_connection());
+#else
+	  } while (false);
+#endif
 
 		Sound::close();
 	}
@@ -393,7 +437,19 @@ namespace ms
 			std::cerr << "[Error] " << error.get_message() << error.get_args() << std::endl;
 
 #ifdef PLATFORM_SDL
-			// No console on a phone: show the error in a dialog and stop.
+			// No console on a phone: ask in a dialog.
+			if (error.is(Error::Code::CONNECTION))
+			{
+				std::string message = "Can't reach the game server at "
+					+ Setting<ServerIP>::get().load() + ":" + Setting<ServerPort>::get().load()
+					+ ".\n\nMake sure Tailscale is on and connected, and that the server is running.";
+
+				if (sdl::ask_reconnect(message))
+					start();
+
+				return;
+			}
+
 			sdl::show_error(std::string(error.get_message()) + error.get_args());
 			return;
 #endif

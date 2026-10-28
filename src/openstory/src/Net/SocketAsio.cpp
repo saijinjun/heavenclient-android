@@ -33,8 +33,14 @@ namespace ms
 
 	bool SocketAsio::open(const char* address, const char* port)
 	{
-		auto endpoints = resolver.resolve(address, port);
+		// Without the error_code overload a failed lookup (no network)
+		// throws and ends the game instead of reporting a failed connection.
 		error_code error;
+		auto endpoints = resolver.resolve(address, port, error);
+
+		if (error)
+			return false;
+
 		asio::connect(socket, endpoints, error);
 
 		if (!error)

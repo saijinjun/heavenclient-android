@@ -50,5 +50,29 @@ namespace ms
 
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "OpenStory", text.c_str(), nullptr);
 		}
+
+		bool ask_reconnect(const std::string& message)
+		{
+			enum { QUIT, RECONNECT };
+
+			const SDL_MessageBoxButtonData buttons[] = {
+				{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, QUIT, "Quit" },
+				{ SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, RECONNECT, "Reconnect" }
+			};
+
+			SDL_MessageBoxData data = {};
+			data.flags = SDL_MESSAGEBOX_WARNING;
+			data.title = "OpenStory";
+			data.message = message.c_str();
+			data.numbuttons = SDL_arraysize(buttons);
+			data.buttons = buttons;
+
+			int choice = QUIT;
+
+			if (SDL_ShowMessageBox(&data, &choice) != 0)
+				return false;
+
+			return choice == RECONNECT;
+		}
 	}
 }
