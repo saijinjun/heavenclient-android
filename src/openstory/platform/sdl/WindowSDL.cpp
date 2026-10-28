@@ -359,23 +359,46 @@ namespace ms
 		if (drawable_w <= 0 || drawable_h <= 0)
 			return;
 
-		glViewport(0, 0, drawable_w, drawable_h);
+		int32_t phys_w = Constants::Constants::get().get_physicalwidth();
+		int32_t phys_h = Constants::Constants::get().get_physicalheight();
+
+		view_x = 0;
+		view_y = 0;
+		view_w = drawable_w;
+		view_h = drawable_h;
+
+		if (phys_w > 0 && phys_h > 0 && phys_w * drawable_h != phys_h * drawable_w)
+		{
+			float scale = std::min(static_cast<float>(drawable_w) / phys_w, static_cast<float>(drawable_h) / phys_h);
+			view_w = static_cast<int32_t>(phys_w * scale);
+			view_h = static_cast<int32_t>(phys_h * scale);
+			view_x = (drawable_w - view_w) / 2;
+			view_y = (drawable_h - view_h) / 2;
+		}
+
+		glViewport(view_x, view_y, view_w, view_h);
 		touch.set_screen(drawable_w, drawable_h);
 	}
 
 	Point<int16_t> Window::to_view(int32_t x, int32_t y) const
 	{
 		// Mouse and touch positions are in window units, which differ from
-		// drawable pixels on high-density screens. The view fills the screen.
+		// drawable pixels on high-density screens.
 		int32_t window_w = 1;
 		int32_t window_h = 1;
+		int32_t drawable_w = 1;
+		int32_t drawable_h = 1;
 		SDL_GetWindowSize(glwnd, &window_w, &window_h);
+		SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
+
+		float px = static_cast<float>(x) * drawable_w / std::max(window_w, 1);
+		float py = static_cast<float>(y) * drawable_h / std::max(window_h, 1);
 
 		int32_t vw = Constants::Constants::get().get_viewwidth();
 		int32_t vh = Constants::Constants::get().get_viewheight();
 
-		float vx = static_cast<float>(x) * vw / std::max(window_w, 1);
-		float vy = static_cast<float>(y) * vh / std::max(window_h, 1);
+		float vx = (px - view_x) * vw / std::max(view_w, 1);
+		float vy = (py - view_y) * vh / std::max(view_h, 1);
 
 		return {
 			static_cast<int16_t>(std::clamp(vx, 0.0f, static_cast<float>(vw - 1))),
@@ -586,7 +609,9 @@ namespace ms
 			}
 		}
 
+		glViewport(0, 0, drawable_w, drawable_h);
 		graphics.flush_screen(static_cast<int16_t>(drawable_w), static_cast<int16_t>(drawable_h));
+		glViewport(view_x, view_y, view_w, view_h);
 	}
 
 	void Window::on_app_event(uint32_t type)

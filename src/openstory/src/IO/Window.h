@@ -103,6 +103,13 @@ namespace ms
 		Point<int16_t> last_tap_pos;
 		// On-screen controls, shown on the game screen once a touch is seen.
 		mutable TouchControls touch;
+		// Where the game is drawn in the window: all of it, unless the view
+		// has another shape (the cash shop's fixed 1024x768), which is then
+		// centered with black bars.
+		int32_t view_x = 0;
+		int32_t view_y = 0;
+		int32_t view_w = 1;
+		int32_t view_h = 1;
 		bool touch_seen;
 		bool touch_editing;
 		SDL_Haptic* haptic;
