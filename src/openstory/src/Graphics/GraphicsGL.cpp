@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "GraphicsGL.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 
@@ -395,6 +397,9 @@ namespace ms
 		const char* FONT_BOLD_STR = FONT_BOLD.c_str();
 #endif
 
+		float ui_scale = Constants::Constants::get().get_ui_scale();
+		text_scale = static_cast<GLshort>(std::clamp(std::ceil(ui_scale - 0.05f), 1.0f, 3.0f));
+
 		addfont(FONT_NORMAL_STR, Text::Font::A11M, 0, 11);
 		addfont(FONT_BOLD_STR, Text::Font::A11B, 0, 11);
 		addfont(FONT_NORMAL_STR, Text::Font::A12M, 0, 12);
@@ -442,7 +447,7 @@ namespace ms
 					// are COLR/COLRv1 vector fonts with no bitmap strikes.
 					// Use FT_Set_Pixel_Sizes so FT_LOAD_COLOR can rasterize
 					// the colored layers into a BGRA bitmap.
-					emoji_strike_size = 16;
+					emoji_strike_size = 16 * text_scale;
 					if (FT_Set_Pixel_Sizes(emojiface, 0, emoji_strike_size) != 0)
 					{
 						FT_Done_Face(emojiface);
@@ -495,7 +500,7 @@ namespace ms
 		if (open_face(name, &face))
 			return false;
 
-		if (FT_Set_Pixel_Sizes(face, pixelw, pixelh))
+		if (FT_Set_Pixel_Sizes(face, pixelw * text_scale, pixelh * text_scale))
 			return false;
 
 		FT_GlyphSlot g = face->glyph;
@@ -508,62 +513,84 @@ namespace ms
 			if (FT_Load_Char(face, c, FT_LOAD_RENDER))
 				continue;
 
-			GLshort w = static_cast<GLshort>(g->bitmap.width);
-			GLshort h = static_cast<GLshort>(g->bitmap.rows);
-
-			width += w;
-
-			if (h > height)
-				height = h;
+			width += static_cast<GLshort>(g->bitmap.width);
+			height = std::max(height, static_cast<GLshort>(g->bitmap.rows));
 		}
 
-		if (fontborder.x() + width > ATLASW)
-		{
-			fontborder.set_x(0);
-			fontborder.set_y(fontymax);
-		}
-
-		GLshort x = fontborder.x();
-		GLshort y = fontborder.y();
-
-		fontborder.shift_x(width);
-
-		// fontymax is the absolute bottom of the font region, not the current row
-		// height: the shader treats every texel above it as a monochrome glyph.
-		if (fontborder.y() + height > fontymax)
-			fontymax = fontborder.y() + height;
-
-		fonts[id] = Font(width, height);
+		fonts[id] = Font((width + text_scale - 1) / text_scale, (height + text_scale - 1) / text_scale);
 		fonts[id].path = name;
 		fonts[id].pixelw = pixelw;
 		fonts[id].pixelh = pixelh;
-
-		GLshort ox = x;
-		GLshort oy = y;
 
 		for (uint8_t c = 32; c < 128; c++)
 		{
 			if (FT_Load_Char(face, c, FT_LOAD_RENDER))
 				continue;
 
-			GLshort ax = static_cast<GLshort>(g->advance.x >> 6);
-			GLshort ay = static_cast<GLshort>(g->advance.y >> 6);
-			GLshort l = static_cast<GLshort>(g->bitmap_left);
-			GLshort t = static_cast<GLshort>(g->bitmap_top);
-			GLshort w = static_cast<GLshort>(g->bitmap.width);
-			GLshort h = static_cast<GLshort>(g->bitmap.rows);
-
-			glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, w, h, GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
-
-			Offset offset = Offset(ox, oy, w, h);
-			Font::Char ch = { ax, ay, w, h, l, t, offset, false };
-			fonts[id].chars.emplace(static_cast<uint32_t>(c), ch);
-
-			ox += w;
+			store_mono_glyph(fonts[id], g, c);
 		}
 
 		FT_Done_Face(face);
 		return true;
+	}
+
+	void GraphicsGL::store_mono_glyph(Font& font, FT_GlyphSlot g, uint32_t codepoint)
+	{
+		const int s = text_scale;
+		const int w = static_cast<int>(g->bitmap.width);
+		const int h = static_cast<int>(g->bitmap.rows);
+		const int l = g->bitmap_left;
+		const int t = g->bitmap_top;
+
+		// Snap the bitmap's corner to a whole logical pixel and pad its size
+		// to a multiple of the scale, so the quad maps texels 1:1 onto it.
+		auto floordiv = [](int a, int b) { return a >= 0 ? a / b : -((-a + b - 1) / b); };
+		int bl = floordiv(l, s);
+		int bt = -floordiv(-t, s);
+		int pad_left = l - bl * s;
+		int pad_top = bt * s - t;
+		int pw = (w > 0 && h > 0) ? ((w + pad_left + s - 1) / s) * s : 0;
+		int ph = (w > 0 && h > 0) ? ((h + pad_top + s - 1) / s) * s : 0;
+
+		if (fontborder.x() + pw > ATLASW)
+		{
+			fontborder.set_x(0);
+			fontborder.set_y(fontymax);
+		}
+
+		GLshort ox = fontborder.x();
+		GLshort oy = fontborder.y();
+
+		fontborder.shift_x(static_cast<GLshort>(pw > 0 ? pw : 1));
+
+		// fontymax is the absolute bottom of the font region, not the current row
+		// height: the shader treats every texel above it as a monochrome glyph.
+		if (fontborder.y() + ph > fontymax)
+			fontymax = static_cast<GLshort>(fontborder.y() + ph);
+
+		if (pw > 0 && ph > 0)
+		{
+			std::vector<uint8_t> padded(static_cast<size_t>(pw) * ph, 0);
+
+			for (int row = 0; row < h; row++)
+			{
+				const uint8_t* src = g->bitmap.buffer + row * g->bitmap.pitch;
+				std::copy(src, src + w, padded.begin() + (row + pad_top) * pw + pad_left);
+			}
+
+			glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, pw, ph, GL_RED, GL_UNSIGNED_BYTE, padded.data());
+		}
+
+		Font::Char ch;
+		ch.ax = static_cast<GLshort>(std::lround(g->advance.x / (64.0 * s)));
+		ch.ay = static_cast<GLshort>(std::lround(g->advance.y / (64.0 * s)));
+		ch.bw = static_cast<GLshort>(pw / s);
+		ch.bh = static_cast<GLshort>(ph / s);
+		ch.bl = static_cast<GLshort>(bl);
+		ch.bt = static_cast<GLshort>(bt);
+		ch.offset = Offset(ox, oy, static_cast<GLshort>(pw), static_cast<GLshort>(ph));
+		ch.color = false;
+		font.chars.emplace(codepoint, ch);
 	}
 
 	bool GraphicsGL::load_mono_glyph(Font& font, uint32_t codepoint)
@@ -601,7 +628,7 @@ namespace ms
 			}
 		}
 
-		if (FT_Set_Pixel_Sizes(face, font.pixelw, font.pixelh))
+		if (FT_Set_Pixel_Sizes(face, font.pixelw * text_scale, font.pixelh * text_scale))
 		{
 			FT_Done_Face(face);
 			return false;
@@ -614,36 +641,7 @@ namespace ms
 		}
 		(void)loaded_path;
 
-		FT_GlyphSlot g = face->glyph;
-		GLshort w = static_cast<GLshort>(g->bitmap.width);
-		GLshort h = static_cast<GLshort>(g->bitmap.rows);
-
-		if (fontborder.x() + w > ATLASW)
-		{
-			fontborder.set_x(0);
-			fontborder.set_y(fontymax);
-		}
-
-		GLshort ox = fontborder.x();
-		GLshort oy = fontborder.y();
-
-		fontborder.shift_x(w > 0 ? w : 1);
-
-		if (fontborder.y() + h > fontymax) fontymax = fontborder.y() + h;
-
-		if (w > 0 && h > 0)
-			glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, w, h, GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
-
-		Font::Char ch;
-		ch.ax = static_cast<GLshort>(g->advance.x >> 6);
-		ch.ay = static_cast<GLshort>(g->advance.y >> 6);
-		ch.bw = w;
-		ch.bh = h;
-		ch.bl = static_cast<GLshort>(g->bitmap_left);
-		ch.bt = static_cast<GLshort>(g->bitmap_top);
-		ch.offset = Offset(ox, oy, w, h);
-		ch.color = false;
-		font.chars.emplace(codepoint, ch);
+		store_mono_glyph(font, face->glyph, codepoint);
 
 		FT_Done_Face(face);
 		return true;
@@ -1615,7 +1613,8 @@ namespace ms
 
 						if (bottom_adjust < 10)
 						{
-							offset.bottom -= bottom_adjust;
+							// The offset is in texels; mono glyphs have text_scale per pixel.
+							offset.bottom -= ch.color ? bottom_adjust : bottom_adjust * text_scale;
 							char_bottom -= bottom_adjust;
 						}
 						else

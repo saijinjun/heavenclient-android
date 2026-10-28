@@ -277,6 +277,17 @@ namespace ms
 				}
 				case CHECK:
 					return polyline(p, { { -0.46f, 0.02f }, { -0.14f, 0.34f }, { 0.48f, -0.32f } }, 0.1f);
+				case CHAT:
+				{
+					float bubble = std::min(
+						rounded_box(p, { 0.0f, -0.1f }, { 0.62f, 0.4f }, 0.2f),
+						triangle(p, { -0.36f, 0.2f }, { -0.04f, 0.2f }, { -0.44f, 0.58f }));
+					float dots = std::min({
+						circle(p, { -0.3f, -0.1f }, 0.09f),
+						circle(p, { 0.0f, -0.1f }, 0.09f),
+						circle(p, { 0.3f, -0.1f }, 0.09f) });
+					return std::max(bubble, -dots);
+				}
 				default:
 					return 1.0f;
 				}

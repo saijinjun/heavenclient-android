@@ -49,7 +49,9 @@ namespace ms
 		{
 			ACTION,
 			MENU,
-			SLOT
+			SLOT,
+			// Opens the chat field, or sends it away when it is open.
+			CHAT
 		};
 
 		struct Action
@@ -133,6 +135,7 @@ namespace ms
 			JUMP_DOWN,
 			JUMP_ATTACK,
 			MENU_LAYOUT,
+			MENU_CHAT,
 			NUM_CONTROLS
 		};
 

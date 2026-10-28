@@ -70,7 +70,7 @@ namespace ms
 		// at the bottom beside the centered status bar, and the menu sits
 		// below the minimap.
 		// In the order of TouchControls::Control.
-		constexpr std::array<Place, 19> PLACES =
+		constexpr std::array<Place, 20> PLACES =
 		{{
 			{ false, true,  1.40f, 1.50f, 1.00f, NUM_SPRITES, DR, DG, DB },      // STICK, at rest
 			{ true,  true,  1.15f, 1.20f, 0.72f, SWORD, 0.96f, 0.52f, 0.16f },   // ATTACK
@@ -91,15 +91,16 @@ namespace ms
 			{ true,  true,  0.36f, 0.40f, 0.30f, DROP_DOWN, 0.26f, 0.60f, 0.96f },  // JUMP_DOWN
 			{ true,  true,  0.36f, 1.98f, 0.30f, JUMP_SLASH, 0.96f, 0.52f, 0.16f }, // JUMP_ATTACK
 			{ true,  false, 0.45f, 0.45f, 0.26f, GEAR, DR, DG, DB },             // MENU_LAYOUT
+			{ true,  false, 1.15f, 0.45f, 0.26f, CHAT, DR, DG, DB },             // MENU_CHAT
 		}};
 
 		// Names for the settings file, in the order of TouchControls::Control.
-		constexpr std::array<const char*, 19> NAMES =
+		constexpr std::array<const char*, 20> NAMES =
 		{
 			"STICK", "ATTACK", "JUMP", "PICKUP",
 			"SLOT0", "SLOT1", "SLOT2", "SLOT3", "SLOT4", "SLOT5",
 			"INVENTORY", "EQUIPS", "STATS", "SKILLS", "QUESTS", "MAP",
-			"JUMP_DOWN", "JUMP_ATTACK", "LAYOUT"
+			"JUMP_DOWN", "JUMP_ATTACK", "LAYOUT", "CHAT"
 		};
 
 		// The keys the stick and the action buttons hold down, in the order
@@ -454,6 +455,8 @@ namespace ms
 			return { Output::MENU, KeyAction::QUESTLOG, pressed };
 		case MENU_MAP:
 			return { Output::MENU, KeyAction::WORLDMAP, pressed };
+		case MENU_CHAT:
+			return { Output::CHAT, 0, pressed };
 		default:
 			return { Output::SLOT, control - SLOT0, pressed };
 		}

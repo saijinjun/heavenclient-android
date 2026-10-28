@@ -45,6 +45,10 @@ namespace ms
 		void change_state(State state);
 		// Whether the game screen is showing (not login or the cash shop).
 		bool in_game() const;
+		// Whether a soft keyboard covers the bottom of the screen, so text
+		// being typed has to be shown at the top instead.
+		void set_typing_on_top(bool on_top);
+		bool is_typing_on_top() const;
 
 		void quit();
 		bool not_quitted() const;
@@ -131,6 +135,7 @@ namespace ms
 
 		bool enabled;
 		State state_id = State::LOGIN;
+		bool typing_on_top = false;
 		bool quitted;
 		bool caps_lock_enabled = false;
 		bool mouse_held = false;

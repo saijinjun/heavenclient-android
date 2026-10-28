@@ -434,11 +434,18 @@ namespace ms
 		bool load_mono_glyph(Font& font, uint32_t codepoint);
 		// Loads a single color emoji glyph into the general (RGBA) atlas area.
 		bool load_emoji_glyph(Font& font, uint32_t codepoint);
+		// Copies the glyph in `g` into the font region and records it. The
+		// bitmap is rasterized at text_scale times the font size and padded
+		// to whole logical pixels, so metrics stay in logical units.
+		void store_mono_glyph(Font& font, FT_GlyphSlot g, uint32_t codepoint);
 
 		FT_Library ftlibrary;
 		Font fonts[Text::Font::NUM_FONTS];
 		Point<GLshort> fontborder;
 		GLshort fontymax;
+		// Glyphs are rasterized this many times larger than their logical
+		// size so text stays sharp when the UI is scaled up (phones).
+		GLshort text_scale = 1;
 
 		// Opens a face from either a baked-in font (when `spec` names one, see
 		// EmbeddedFonts.h) or a file path. Baked-in fonts mean the client needs

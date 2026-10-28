@@ -51,6 +51,7 @@ namespace ms
 			FADE,       // Editor: more see-through, a half filled circle
 			RESET,      // Editor: back to the default layout
 			CHECK,      // Editor: done
+			CHAT,       // Chat: a speech bubble with three dots
 			NUM_SPRITES
 		};
 

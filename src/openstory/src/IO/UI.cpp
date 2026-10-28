@@ -278,6 +278,16 @@ namespace ms
 		return state_id == State::GAME;
 	}
 
+	void UI::set_typing_on_top(bool on_top)
+	{
+		typing_on_top = on_top;
+	}
+
+	bool UI::is_typing_on_top() const
+	{
+		return typing_on_top;
+	}
+
 	void UI::send_action(KeyType::Id type, int32_t action, bool pressed)
 	{
 		if (enabled)

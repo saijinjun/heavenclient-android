@@ -31,6 +31,7 @@
 #include "Gameplay/MapleMap/MapInfo.h"
 #include "Gameplay/Stage.h"
 #include "IO/Components/Icon.h"
+#include "IO/UITypes/UIChatBar.h"
 #include "Net/Packets/PlayerPackets.h"
 
 #include "Configuration.h"
@@ -548,6 +549,19 @@ namespace ms
 			case TouchControls::Output::MENU:
 				UI::get().send_action(KeyType::Id::MENU, action.id, action.pressed);
 				break;
+			case TouchControls::Output::CHAT:
+				if (action.pressed)
+				{
+					if (auto chatbar = UI::get().get_element<UIChatBar>())
+					{
+						if (UI::get().has_focused_textfield())
+							UI::get().remove_textfield();
+						else
+							chatbar->focus_chatfield();
+					}
+				}
+
+				break;
 			case TouchControls::Output::SLOT:
 			{
 				// Whatever the player put on the slot: a skill, a potion.
@@ -642,6 +656,10 @@ namespace ms
 	{
 		// Show the soft keyboard exactly while a text field has focus.
 		bool wanted = UI::get().has_focused_textfield();
+
+		// The keyboard covers the bottom of the screen, where the chat field
+		// is, so the chat bar mirrors what is typed at the top.
+		UI::get().set_typing_on_top(wanted && touch_seen);
 
 		if (wanted == text_input)
 			return;

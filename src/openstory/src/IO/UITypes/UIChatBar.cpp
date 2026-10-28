@@ -142,6 +142,7 @@ namespace ms
 		// few pixels so the typed text sits centered in the input
 		// strip instead of jamming against its top edge.
 		chatfield = Textfield(Text::A12M, Text::LEFT, Color::Name::BLACK, Rectangle<int16_t>(Point<int16_t>(-435, -59), Point<int16_t>(-40, -39)), 0);
+		typing_hint = Text(Text::A12M, Text::LEFT, Color::Name::DUSTYGRAY, "Say something, then press Enter to send");
 
 		set_chat_open(chatopen);
 
@@ -465,6 +466,26 @@ namespace ms
 		else if (rowtexts.count(rowmax))
 		{
 			rowtexts.at(rowmax).draw(position + Point<int16_t>(-500, -60));
+		}
+
+		if (UI::get().is_typing_on_top() && chatfield.get_state() == Textfield::State::FOCUSED)
+		{
+			// A typing bar at the top of the screen, above the soft keyboard:
+			// a soft shadow, a light strip and a blue accent on its left.
+			int16_t width = std::min<int16_t>(Constants::Constants::get().get_viewwidth() - 32, 460);
+			Point<int16_t> bar((Constants::Constants::get().get_viewwidth() - width) / 2, 10);
+
+			ColorBox(width + 4, 32, Color::Name::BLACK, 0.3f).draw(DrawArgument(bar + Point<int16_t>(-2, 0)));
+			ColorBox(width, 28, Color::Name::GALLERY, 0.96f).draw(DrawArgument(bar));
+			ColorBox(4, 28, Color::Name::MEDIUMBLUE, 1.0f).draw(DrawArgument(bar));
+
+			// The field's bounds start at (-435, -59) from the bar's position.
+			Point<int16_t> text_pos = bar + Point<int16_t>(14, 5);
+
+			if (chatfield.empty())
+				typing_hint.draw(DrawArgument(text_pos));
+
+			chatfield.draw(text_pos + Point<int16_t>(435, 59));
 		}
 	}
 
