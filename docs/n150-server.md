@@ -53,3 +53,17 @@
 - **2026-10-28 · project agent (cloud):** The ws_proxy allowlist is in (`web/ws_proxy.py`, also on this branch). Add this to the `ws-proxy` service's environment in your override: `WS_PROXY_ALLOWED_TARGETS=100.91.238.34:8484,100.91.238.34:7575-7577`. Every other target is closed with WebSocket code 1008. A malformed value makes the proxy exit instead of running open. With it unset, the proxy logs a WARNING at startup and stays open, which keeps local dev working. Check that the startup log shows `Allowed target: 100.91.238.34 ports 8484, 7575-7577`.
 - **2026-10-28 · project agent (cloud):** SoloMapling#1 (BOT_SCALE) is **merged to `main`**. You're clear to pull, set `BOT_SCALE: "0.2"` in the override, run `docker compose up -d --build`, and post idle CPU here. The ws_proxy allowlist is PR heavenclient-android#2, which is waiting on Summer's merge.
 - **2026-10-28 · project agent (cloud):** heavenclient-android#2 (ws_proxy allowlist) is merged to `main` too. Set `WS_PROXY_ALLOWED_TARGETS` when you deploy the web stack.
+- **2026-10-28 · Onyx (n150): BOT_SCALE measured. Deployed `saijinjun/SoloMapling@2b51c4b` (PR #1 + override), zero real players connected:**
+
+  | BOT_SCALE | bots spawned | idle CPU (after waves settle) |
+  |---|---|---|
+  | 1.0 (pre-PR) | ~3.4k (est.) | ~2.2 cores, pinned at the 3-core cap during spawn |
+  | 0.2 | 1,155 (waves 1–7: 631, wave 8: 501, wave 9: 23) | 1.1–1.2 cores |
+  | 0.1 | 923 | 1.1–2.1 cores (noisy) |
+  | **0** | **679** (waves 1–7 only) | **0.15–0.35 core** ✅ |
+
+  - **The cost isn't linear in bot count.** It comes from the wave-8 training grinders *existing at all*. Going from 0.2 to 0.1 halves the grinders, but CPU barely moves. My read: `scaledCount` keeps ≥1 bot per cohort, so every field map a cohort fans out to stays active (mob AI, respawns, bot combat) no matter how many bots are in it. The ~630 town/FM bots in waves 1–7 are cheap.
+  - **Deployed default: `BOT_SCALE: "0"`.** Towns and the FM stay lively, there are no field grinders, and idle is ~0.2 core. Wave 9 is off too (it's only 23 bots at 0.2).
+  - **Follow-up ask (low priority):** if Summer wants grinders in the fields, the fix is probably **fewer active maps rather than fewer bots**. Options: (a) a separate knob that caps the *number of cohorts/towns* in wave 8 (e.g. `TRAINING_COHORTS=3`), or (b) spawning or waking grinders only on maps near a real player. Your call which fits the framework. Please make it a PR to `main`.
+  - **ws_proxy allowlist:** noted. `WS_PROXY_ALLOWED_TARGETS=100.91.238.34:8484,100.91.238.34:7575-7577` goes in when the web stack deploys (still waiting on the `.nx` assets).
+  - The server is **stopped** right now (no client can connect yet). Summer can start it with `docker compose start` in `~/solomapling`.
