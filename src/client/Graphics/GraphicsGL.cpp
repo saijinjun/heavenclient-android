@@ -150,6 +150,10 @@ namespace jrc
         glGenBuffers(1, &vbo);
         glGenBuffers(1, &ibo);
 
+#ifdef MS_PLATFORM_SDL
+        post.init();
+#endif
+
         glGenTextures(1, &atlas);
         glBindTexture(GL_TEXTURE_2D, atlas);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -982,6 +986,47 @@ namespace jrc
         locked = false;
     }
 
+    void GraphicsGL::mark_world()
+    {
+        world_mark = quads.size();
+    }
+
+    void GraphicsGL::mark_ui()
+    {
+        ui_mark = quads.size();
+    }
+
+#ifdef MS_PLATFORM_SDL
+    void GraphicsGL::set_effects(const PostProcess::Options& options)
+    {
+        post.set_options(options);
+    }
+
+    void GraphicsGL::bind_quad_state()
+    {
+        glUseProgram(program);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, atlas);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnableVertexAttribArray(attribute_coord);
+        glEnableVertexAttribArray(attribute_color);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+        glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    }
+
+    void GraphicsGL::draw_quad_range(size_t first, size_t last)
+    {
+        if (last > first)
+        {
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((last - first) * 6), GL_UNSIGNED_SHORT,
+                reinterpret_cast<const void*>(first * 6 * sizeof(GLushort)));
+        }
+    }
+#endif
+
     void GraphicsGL::flush(float opacity)
     {
         bool coverscene = opacity != 1.0f;
@@ -993,18 +1038,8 @@ namespace jrc
             quads.emplace_back(screen_rect.l(), screen_rect.r(), screen_rect.t(), screen_rect.b(), nulloffset, color, 0.0f);
         }
 
-        glClearColor(1.0, 1.0, 1.0, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        GLsizei csize = static_cast<GLsizei>(quads.size() * sizeof(Quad));
-        glEnableVertexAttribArray(attribute_coord);
-        glEnableVertexAttribArray(attribute_color);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, csize, quads.data(), GL_STREAM_DRAW);
-        glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
-        glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
 #if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
-        // Initialize indices for GL_TRIANGLES (2 triangles per quad, 6 indices per quad)
+        // Indices for GL_TRIANGLES (2 triangles per quad, 6 indices per quad)
         std::vector<GLushort> indices;
         indices.reserve(quads.size() * 6);
         for (size_t i = 0; i < quads.size(); ++i)
@@ -1017,12 +1052,82 @@ namespace jrc
             indices.push_back(base + 2);
             indices.push_back(base + 3);
         }
+#endif
 
+        GLsizei csize = static_cast<GLsizei>(quads.size() * sizeof(Quad));
+        glEnableVertexAttribArray(attribute_coord);
+        glEnableVertexAttribArray(attribute_color);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, csize, quads.data(), GL_STREAM_DRAW);
+        glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+        glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+
+#ifdef MS_PLATFORM_SDL
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), indices.data(), GL_STREAM_DRAW);
+
+        // The world (everything before the UI) goes through the HD effects
+        // when they are on and this frame has a world at all.
+        bool has_world = ui_mark != NO_MARK && ui_mark > 0 && ui_mark <= quads.size();
+        if (has_world && post.ready() && post.get_options().any())
+        {
+            GLint view[4];
+            glGetIntegerv(GL_VIEWPORT, view);
+            GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
+            glDisable(GL_SCISSOR_TEST);
+
+            post.resize(Constants::viewwidth(), Constants::viewheight());
+
+            size_t background_end = world_mark != NO_MARK && world_mark <= ui_mark ? world_mark : 0;
+            // Text in the world is drawn at game resolution: average the
+            // larger glyphs down instead of skipping texels.
+            glUniform1f(uniform_fontbox, text_scale > 1 ? 1.0f : 0.0f);
+
+            if (post.get_options().depth && background_end > 0)
+            {
+                post.begin_background();
+                bind_quad_state();
+                draw_quad_range(0, background_end);
+                post.begin_world(true);
+                bind_quad_state();
+            }
+            else
+            {
+                post.begin_world(false);
+                bind_quad_state();
+                background_end = 0;
+            }
+
+            draw_quad_range(background_end, ui_mark);
+            post.present(0, view[0], view[1], view[2], view[3]);
+
+            glViewport(view[0], view[1], view[2], view[3]);
+            if (scissor)
+            {
+                glEnable(GL_SCISSOR_TEST);
+            }
+
+            bind_quad_state();
+            glUniform1f(uniform_fontbox, 0.0f);
+            draw_quad_range(ui_mark, quads.size());
+        }
+        else
+        {
+            glClearColor(1.0, 1.0, 1.0, 1.0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            draw_quad_range(0, quads.size());
+        }
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+#elif defined(MS_PLATFORM_WASM)
+        glClearColor(1.0, 1.0, 1.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), indices.data(), GL_STREAM_DRAW);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 #else
+        glClearColor(1.0, 1.0, 1.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
         GLsizei fsize = static_cast<GLsizei>(quads.size() * Quad::LENGTH);
         glDrawArrays(GL_QUADS, 0, fsize);
 #endif
@@ -1035,7 +1140,6 @@ namespace jrc
         {
             quads.pop_back();
         }
-
     }
 
 #ifdef MS_PLATFORM_SDL
@@ -1154,6 +1258,8 @@ namespace jrc
         if (!locked)
         {
             quads.clear();
+            world_mark = NO_MARK;
+            ui_mark = NO_MARK;
         }
     }
 }

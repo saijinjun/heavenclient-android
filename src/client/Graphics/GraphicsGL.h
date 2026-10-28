@@ -28,6 +28,9 @@
 #include "nlnx/bitmap.hpp"
 
 #include "GLHeaders.h"
+#ifdef MS_PLATFORM_SDL
+#include "PostProcess.h"
+#endif
 
 #include "ft2build.h"
 #include FT_FREETYPE_H
@@ -85,6 +88,15 @@ namespace jrc
 
         // Draw the buffer contents with the specified scene opacity.
         void flush(float opacity);
+
+        // Mark where the far background ends and where the UI starts in
+        // this frame's drawing, so the world can get the HD effects and
+        // the UI stays sharp.
+        void mark_world();
+        void mark_ui();
+#ifdef MS_PLATFORM_SDL
+        void set_effects(const PostProcess::Options& options);
+#endif
 
 #ifdef MS_PLATFORM_SDL
         // Rectangles drawn over the whole window in its own pixels, outside
@@ -313,7 +325,14 @@ namespace jrc
         GLshort overlay_h = 0;
 
         void draw_screen_quads(const std::vector<Quad>& batch);
+        void bind_quad_state();
+        void draw_quad_range(size_t first, size_t last);
+
+        PostProcess post;
 #endif
+        static constexpr size_t NO_MARK = static_cast<size_t>(-1);
+        size_t world_mark = NO_MARK;
+        size_t ui_mark = NO_MARK;
 
         QuadTree<size_t, Leftover> leftovers;
         size_t rlid;

@@ -343,6 +343,13 @@ namespace jrc
     {
         bool vsync = Setting<VSync>::get().load();
         fill_screen = Setting<FillScreen>::get().load();
+
+        PostProcess::Options effects;
+        effects.upscale = Setting<HdUpscale>::get().load();
+        effects.glow = Setting<HdGlow>::get().load();
+        effects.depth = Setting<HdDepthBlur>::get().load();
+        effects.grade = Setting<HdColorGrade>::get().load();
+        GraphicsGL::get().set_effects(effects);
         SDL_GL_SetSwapInterval(vsync ? 1 : 0);
 
         // The game draws at its classic fixed size and is scaled to the screen.

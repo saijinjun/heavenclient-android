@@ -28,6 +28,10 @@ namespace jrc
         settings.emplace<AssetsServerProtocol>();
         settings.emplace<Fullscreen>();
         settings.emplace<FillScreen>();
+        settings.emplace<HdUpscale>();
+        settings.emplace<HdGlow>();
+        settings.emplace<HdDepthBlur>();
+        settings.emplace<HdColorGrade>();
         settings.emplace<VSync>();
         settings.emplace<FontPathNormal>();
         settings.emplace<FontPathBold>();

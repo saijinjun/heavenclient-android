@@ -209,6 +209,28 @@ namespace jrc
         FillScreen() : BoolEntry("FillScreen", "true") {}
     };
 
+    // The HD-2D look for the game world (SDL builds): a pixel-art upscaler,
+    // glow around bright things, a blurred far background, and a color grade.
+    struct HdUpscale : public Configuration::BoolEntry
+    {
+        HdUpscale() : BoolEntry("HdUpscale", "true") {}
+    };
+
+    struct HdGlow : public Configuration::BoolEntry
+    {
+        HdGlow() : BoolEntry("HdGlow", "true") {}
+    };
+
+    struct HdDepthBlur : public Configuration::BoolEntry
+    {
+        HdDepthBlur() : BoolEntry("HdDepthBlur", "true") {}
+    };
+
+    struct HdColorGrade : public Configuration::BoolEntry
+    {
+        HdColorGrade() : BoolEntry("HdColorGrade", "true") {}
+    };
+
     // Wether to use vsync.
     struct VSync : public Configuration::BoolEntry
     {

@@ -29,6 +29,7 @@
 #include "Gameplay/Combat/DamageNumber.h"
 #include "Gameplay/Stage.h"
 #include "Gameplay/CashShop.h"
+#include "Graphics/GraphicsGL.h"
 #include "IO/UI.h"
 #include "IO/Window.h"
 #include "Net/Session.h"
@@ -126,6 +127,7 @@ namespace jrc
         Window::get().begin();
         if (CashShop::get().state != CashShop::State::OPEN && CashShop::get().state != CashShop::State::EXITING)
             Stage::get().draw(alpha);
+        GraphicsGL::get().mark_ui();
         UI::get().draw(alpha);
         Window::get().end();
     }
