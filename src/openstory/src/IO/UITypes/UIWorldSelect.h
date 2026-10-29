@@ -135,5 +135,17 @@ namespace ms
 
 		// Version text
 		Text version;
+
+		// Newer UI.nx files ship channel buttons the v83 grid can't use, so
+		// the channels and Enter are drawn and hit-tested here instead.
+		bool drawn_channels = false;
+		bool drawn_pressed = false;
+		std::vector<Text> drawn_labels;
+		Text drawn_enter;
+
+		uint8_t selected_channel_count() const;
+		Rectangle<int16_t> drawn_channel_rect(uint8_t index) const;
+		Rectangle<int16_t> drawn_enter_rect() const;
+		void draw_drawn_channels() const;
 	};
 }
