@@ -776,6 +776,18 @@ namespace ms
 		case SDL_CONTROLLERDEVICEREMOVED:
 			Gamepad::get().poll();
 			break;
+		case SDL_CONTROLLERBUTTONDOWN:
+			// Playing with the buttons: the touch controls get out of the
+			// way until the screen is touched again.
+			if (touch_seen && !touch_editing)
+			{
+				std::vector<TouchControls::Action> released;
+				touch.release_all(released);
+				send_touch_actions(released);
+				touch_seen = false;
+			}
+
+			break;
 		case SDL_WINDOWEVENT:
 			switch (event.window.event)
 			{
@@ -884,6 +896,89 @@ namespace ms
 		}
 
 		Gamepad::get().poll();
+		poll_pad();
+	}
+
+	void Window::poll_pad()
+	{
+		if (pad && !SDL_GameControllerGetAttached(pad))
+		{
+			SDL_GameControllerClose(pad);
+			pad = nullptr;
+		}
+
+		for (int i = 0; i < SDL_NumJoysticks() && !pad; i++)
+			if (SDL_IsGameController(i))
+				pad = SDL_GameControllerOpen(i);
+
+		uint32_t now = SDL_GetTicks();
+		float seconds = pad_tick ? std::min((now - pad_tick) / 1000.0f, 0.1f) : 0.0f;
+		pad_tick = now;
+
+		bool in_game = UI::get().in_game();
+		bool slots[4] = {};
+		float stick_x = 0.0f;
+		float stick_y = 0.0f;
+		bool click = false;
+
+		if (pad)
+		{
+			constexpr Sint16 TRIGGER_DOWN = 12000;
+			slots[0] = SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+			slots[1] = SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+			slots[2] = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > TRIGGER_DOWN;
+			slots[3] = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > TRIGGER_DOWN;
+			stick_x = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_RIGHTX) / 32767.0f;
+			stick_y = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_RIGHTY) / 32767.0f;
+			click = SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+		}
+
+		// Bumpers and triggers use quick slots 1 to 4, like the touch slots.
+		std::vector<TouchControls::Action> actions;
+
+		for (uint8_t slot = 0; slot < 4; slot++)
+		{
+			bool held = slots[slot] && in_game && !UI::get().has_focused_textfield();
+
+			if (held != pad_slots[slot])
+			{
+				pad_slots[slot] = held;
+				actions.push_back({ TouchControls::Output::SLOT, slot, held });
+			}
+		}
+
+		send_touch_actions(actions);
+
+		// The right stick moves the cursor, faster the further it is pushed,
+		// so windows, shops and NPCs work without touching the screen.
+		constexpr float DEAD_ZONE = 0.2f;
+		float length = std::sqrt(stick_x * stick_x + stick_y * stick_y);
+
+		if (length > DEAD_ZONE)
+		{
+			float push = (length - DEAD_ZONE) / (1.0f - DEAD_ZONE);
+			float speed = 120.0f + 900.0f * push * push;
+			Point<int16_t> at = UI::get().get_cursor_position();
+
+			// Sub-pixel motion adds up across frames.
+			pad_cursor_x += stick_x / length * speed * seconds;
+			pad_cursor_y += stick_y / length * speed * seconds;
+			int16_t dx = static_cast<int16_t>(pad_cursor_x);
+			int16_t dy = static_cast<int16_t>(pad_cursor_y);
+			pad_cursor_x -= dx;
+			pad_cursor_y -= dy;
+
+			int16_t x = std::clamp<int16_t>(at.x() + dx, 0, Constants::Constants::get().get_viewwidth() - 1);
+			int16_t y = std::clamp<int16_t>(at.y() + dy, 0, Constants::Constants::get().get_viewheight() - 1);
+			UI::get().send_cursor(Point<int16_t>(x, y));
+		}
+
+		// Pressing the right stick clicks where the cursor is.
+		if (click != pad_click)
+		{
+			pad_click = click;
+			UI::get().send_cursor(click);
+		}
 	}
 
 	void Window::begin() const

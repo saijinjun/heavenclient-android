@@ -84,6 +84,9 @@ namespace ms
 		void handle_finger(const SDL_TouchFingerEvent& finger, uint32_t type);
 		void send_touch_actions(const std::vector<TouchControls::Action>& actions);
 		void draw_touch_controls() const;
+		// The controller's extras on top of Gamepad's button mapping:
+		// quick slots on the bumpers and triggers, a cursor on the right stick.
+		void poll_pad();
 		void update_viewport();
 		void update_text_input();
 		Point<int16_t> to_view(int32_t x, int32_t y) const;
@@ -113,6 +116,12 @@ namespace ms
 		bool touch_seen;
 		bool touch_editing;
 		SDL_Haptic* haptic;
+		SDL_GameController* pad = nullptr;
+		bool pad_slots[4] = {};
+		bool pad_click = false;
+		uint32_t pad_tick = 0;
+		float pad_cursor_x = 0.0f;
+		float pad_cursor_y = 0.0f;
 #elif !defined(PLATFORM_IOS)
 		GLFWwindow* glwnd;
 		GLFWwindow* context;

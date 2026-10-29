@@ -58,9 +58,8 @@ namespace ms
 		button_map[GP_X]             = KeyAction::Id::PICKUP;
 		button_map[GP_Y]             = KeyAction::Id::ITEMS;
 
-		// Bumpers/triggers as hotkeys (mapped to skills/items slots)
-		button_map[GP_LEFT_BUMPER]   = KeyAction::Id::SKILLS;
-		button_map[GP_RIGHT_BUMPER]  = KeyAction::Id::STATS;
+		// The bumpers fire quick slots and the right stick clicks: the SDL
+		// window handles those (Window::poll_pad).
 
 		// System
 		button_map[GP_START]         = KeyAction::Id::MAINMENU;
@@ -68,7 +67,6 @@ namespace ms
 
 		// Thumbsticks
 		button_map[GP_LEFT_THUMB]    = KeyAction::Id::MINIMAP;
-		button_map[GP_RIGHT_THUMB]   = KeyAction::Id::SIT;
 	}
 
 	void Gamepad::poll()
