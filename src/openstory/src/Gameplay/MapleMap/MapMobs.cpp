@@ -161,6 +161,12 @@ namespace ms
 		}
 	}
 
+	void MapMobs::add_pending_hit(int32_t oid)
+	{
+		if (Optional<Mob> mob = mobs.get(oid))
+			mob->add_pending_hit();
+	}
+
 	void MapMobs::apply_status(int32_t oid, int32_t status_mask, int32_t first_mask, const std::vector<std::pair<int32_t, MobStatusEntry>>& statuses)
 	{
 		if (Optional<Mob> mob = mobs.get(oid))

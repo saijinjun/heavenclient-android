@@ -512,6 +512,7 @@ namespace ms
 						};
 
 						bulleteffects.emplace(user.get_attackdelay(i), std::move(effect), bullet, head);
+						mobs.add_pending_hit(oid);
 						i++;
 					}
 				}
@@ -553,6 +554,7 @@ namespace ms
 							move.get_id()
 							);
 
+						mobs.add_pending_hit(oid);
 						i++;
 					}
 				}
