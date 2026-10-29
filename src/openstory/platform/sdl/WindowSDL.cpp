@@ -474,6 +474,7 @@ namespace ms
 
 			cursor_finger_down = true;
 			cursor_finger = finger.fingerId;
+			scroll_anchor_y = pos.y();
 			finger_down_time = SDL_GetTicks();
 			finger_down_pos = pos;
 			long_press_sent = false;
@@ -504,7 +505,22 @@ namespace ms
 				break;
 
 			if (cursor_finger_down && finger.fingerId == cursor_finger)
+			{
 				UI::get().send_cursor(pos);
+
+				// Dragging a finger scrolls lists that only take the wheel
+				if (UI::get().in_cashshop())
+				{
+					constexpr int16_t SCROLL_STEP = 60;
+					int16_t dy = pos.y() - scroll_anchor_y;
+
+					if (std::abs(dy) >= SCROLL_STEP)
+					{
+						UI::get().send_scroll(dy > 0 ? 1.0 : -1.0);
+						scroll_anchor_y = pos.y();
+					}
+				}
+			}
 
 			break;
 		case SDL_FINGERUP:

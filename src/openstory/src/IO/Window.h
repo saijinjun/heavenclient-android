@@ -101,6 +101,8 @@ namespace ms
 		SDL_FingerID cursor_finger;
 		uint32_t finger_down_time;
 		Point<int16_t> finger_down_pos;
+		// Where the cursor finger last scrolled a list from
+		int16_t scroll_anchor_y = 0;
 		bool long_press_sent;
 		uint32_t last_tap_time;
 		Point<int16_t> last_tap_pos;

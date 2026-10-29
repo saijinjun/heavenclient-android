@@ -18,9 +18,11 @@
 #include "CashShopHandlers.h"
 
 #include "Helpers/CashShopParser.h"
+#include "../OutPacket.h"
 
 #include "../../Gameplay/Stage.h"
 #include "../../IO/UI.h"
+#include "../../IO/UITypes/UICashShop.h"
 #include "../../IO/UITypes/UIChatBar.h"
 #include "../../IO/UITypes/UIStatusMessenger.h"
 #include "../../IO/UITypes/UIMTS.h"
@@ -68,57 +70,53 @@ namespace ms
 		transition();
 	}
 
+	namespace
+	{
+		// Cosmic's cash shop result codes (operation 0x5C)
+		std::string cash_error(uint8_t code)
+		{
+			switch (code)
+			{
+			case 0xA3: return "The request timed out. Check your Cash Inventory.";
+			case 0xA5: return "You don't have enough NX.";
+			case 0xA8: return "You can't send a gift to your own account.";
+			case 0xA9: case 0xBD: case 0xBE: return "Please check the recipient's name.";
+			case 0xAA: case 0xB8: return "This item is for the other gender.";
+			case 0xAB: case 0xAC: case 0xBB: return "Not enough inventory space.";
+			case 0xB0: return "That coupon code is invalid.";
+			case 0xB2: return "That coupon has expired.";
+			case 0xB3: return "That coupon was already used.";
+			case 0xBF: case 0xC0: return "This item isn't available right now.";
+			case 0xC2: return "You don't have enough mesos.";
+			case 0xCD: return "You've reached the daily purchase limit.";
+			default: return "The Cash Shop couldn't do that (code " + std::to_string(code) + ").";
+			}
+		}
+	}
+
 	void CashShopOperationHandler::handle(InPacket& recv) const
 	{
-		int8_t operation = recv.read_byte();
+		uint8_t operation = static_cast<uint8_t>(recv.read_byte());
 
 		switch (operation)
 		{
-		case 0x4A:
-		{
-			// Buy item success
-			chat::log("[Cash Shop] Item purchased successfully!", chat::LineType::YELLOW);
+		case 0x57:
+		case 0x89:
+			UICashShop::show_status("Purchased! It's in your Cash Inventory.", false);
+			// Refresh the NX balances
+			OutPacket(0xE4).dispatch();
 			break;
-		}
-		case 0x4C:
-		{
-			int8_t reason = recv.read_byte();
-			std::string msg;
-			switch (reason)
-			{
-			case 0: msg = "Unknown error."; break;
-			case 1: msg = "You don't have enough NX."; break;
-			case 2: msg = "Item is out of stock."; break;
-			case 3: msg = "Your cash inventory is full."; break;
-			case 4: msg = "This item is not available for purchase."; break;
-			case 5: msg = "You have exceeded the purchase limit."; break;
-			case 6: msg = "You are under the required level."; break;
-			case 7: msg = "You already have this item."; break;
-			default: msg = "Purchase failed (code: " + std::to_string(reason) + ")"; break;
-			}
-			chat::log("[Cash Shop] " + msg, chat::LineType::RED);
-			break;
-		}
-		case 0x59:
-		{
-			chat::log("[Cash Shop] Coupon redeemed successfully!", chat::LineType::YELLOW);
-			break;
-		}
 		case 0x5C:
-		{
-			int8_t reason = recv.read_byte();
-			std::string msg;
-			switch (reason)
-			{
-			case 0: msg = "Invalid coupon code."; break;
-			case 1: msg = "This coupon has expired."; break;
-			case 2: msg = "This coupon has already been used."; break;
-			case 3: msg = "This coupon is for a different server."; break;
-			default: msg = "Coupon error (code: " + std::to_string(reason) + ")"; break;
-			}
-			chat::log("[Cash Shop] " + msg, chat::LineType::RED);
+			UICashShop::show_status(cash_error(static_cast<uint8_t>(recv.read_byte())), true);
 			break;
-		}
+		case 0x59:
+			UICashShop::show_status("Coupon redeemed!", false);
+			OutPacket(0xE4).dispatch();
+			break;
+		case 0x5E:
+			UICashShop::show_status("Gift sent!", false);
+			OutPacket(0xE4).dispatch();
+			break;
 		default:
 			break;
 		}

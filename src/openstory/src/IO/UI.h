@@ -46,6 +46,7 @@ namespace ms
 		// Whether the game screen is showing (not login or the cash shop).
 		bool in_game() const;
 		bool in_login() const;
+		bool in_cashshop() const;
 		// Sets the view for the login screens on a screen of this size.
 		void fit_login_view(int16_t screen_width, int16_t screen_height);
 		// Whether a soft keyboard covers the bottom of the screen, so text

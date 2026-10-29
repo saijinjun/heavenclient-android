@@ -286,6 +286,11 @@ namespace ms
 		return state_id == State::LOGIN;
 	}
 
+	bool UI::in_cashshop() const
+	{
+		return state_id == State::CASHSHOP;
+	}
+
 	void UI::fit_login_view(int16_t screen_width, int16_t screen_height)
 	{
 #ifdef __ANDROID__
