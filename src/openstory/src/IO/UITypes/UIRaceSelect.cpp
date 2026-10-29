@@ -30,6 +30,7 @@
 #include "../../Constants.h"
 
 #include "../../Audio/Audio.h"
+#include "../../Graphics/ClassicStyle.h"
 #include "../../Graphics/Geometry.h"
 
 #ifdef USE_NX
@@ -67,17 +68,6 @@ namespace ms
 			"Knights of Empress Cygnus. Train on Ereve and master one of five elemental paths.",
 			"A legendary hero waking from a long sleep, fighting with a polearm and combos."
 		};
-
-		// A filled box with a thin border, in view coordinates.
-		void draw_card(Point<int16_t> pos, int16_t width, int16_t height, Color::Name fill, float fill_alpha, Color::Name edge, float edge_alpha)
-		{
-			ColorBox(width + 6, height + 6, Color::Name::BLACK, 0.25f).draw(DrawArgument(pos + Point<int16_t>(-1, 2)));
-			ColorBox(width, height, fill, fill_alpha).draw(DrawArgument(pos));
-			ColorBox(width, 2, edge, edge_alpha).draw(DrawArgument(pos));
-			ColorBox(width, 2, edge, edge_alpha).draw(DrawArgument(pos + Point<int16_t>(0, height - 2)));
-			ColorBox(2, height, edge, edge_alpha).draw(DrawArgument(pos));
-			ColorBox(2, height, edge, edge_alpha).draw(DrawArgument(pos + Point<int16_t>(width - 2, 0)));
-		}
 	}
 
 	UIRaceSelect::UIRaceSelect() : UIElement(Point<int16_t>(0, 0), Point<int16_t>(800, 600), ScaleMode::CENTER_OFFSET)
@@ -123,8 +113,8 @@ namespace ms
 			for (uint16_t i = 0; i < CLASS_COUNT; i++)
 			{
 				classes[i].dim = Point<int16_t>(CARD_W, CARD_H);
-				card_name[i] = Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::WHITE, CLASS_NAMES[i]);
-				card_blurb[i] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::GALLERY, CLASS_BLURBS[i], CARD_W - 36);
+				card_name[i] = Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::MAPLE_TEXT, CLASS_NAMES[i]);
+				card_blurb[i] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::MAPLE_TEXT, CLASS_BLURBS[i], CARD_W - 36);
 			}
 
 			title_text = Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::WHITE, "Choose your path");
@@ -197,12 +187,17 @@ namespace ms
 				int16_t lift = lit ? -8 : 0;
 				Point<int16_t> card = p + Point<int16_t>(0, lift);
 
-				draw_card(card, CARD_W, CARD_H,
-					lit ? Color::Name::ENDEAVOUR : Color::Name::BLACK, lit ? 0.85f : 0.55f,
-					lit ? Color::Name::YELLOW : Color::Name::LIGHTGREY, lit ? 1.0f : (hovered[i] ? 0.8f : 0.4f));
+				classic::panel(card, CARD_W, CARD_H);
+
+				if (lit || hovered[i])
+				{
+					float a = lit ? 1.0f : 0.6f;
+					classic::frame(card.x() - 2, card.y() - 2, CARD_W + 4, CARD_H + 4, Color::Name::MAPLE_ORANGE, a);
+					classic::frame(card.x() - 3, card.y() - 3, CARD_W + 6, CARD_H + 6, Color::Name::MAPLE_ORANGE_LIGHT, a * 0.7f);
+				}
 
 				card_name[i].draw(card + Point<int16_t>(CARD_W / 2, 34));
-				ColorBox(CARD_W - 60, 1, Color::Name::WHITE, 0.4f).draw(DrawArgument(card + Point<int16_t>(30, 70)));
+				ColorBox(CARD_W - 60, 1, Color::Name::MAPLE_BORDER, 0.45f).draw(DrawArgument(card + Point<int16_t>(30, 70)));
 				card_blurb[i].draw(card + Point<int16_t>(CARD_W / 2, 92));
 			}
 		}
@@ -230,7 +225,7 @@ namespace ms
 		if (drawn_select)
 		{
 			Point<int16_t> p = lay((800 - DRAWN_SELECT_W) / 2, DRAWN_SELECT_Y);
-			draw_card(p, DRAWN_SELECT_W, DRAWN_SELECT_H, Color::Name::ORANGE, 0.95f, Color::Name::YELLOW, 1.0f);
+			classic::button(p, DRAWN_SELECT_W, DRAWN_SELECT_H);
 			select_label.draw(p + Point<int16_t>(DRAWN_SELECT_W / 2, 9));
 		}
 

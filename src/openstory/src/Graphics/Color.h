@@ -104,6 +104,12 @@ namespace ms
 			HUD_HP,
 			HUD_MP,
 			HUD_EXP,
+			PARCHMENT,
+			PARCHMENT_DARK,
+			MAPLE_BORDER,
+			MAPLE_ORANGE,
+			MAPLE_ORANGE_LIGHT,
+			MAPLE_TEXT,
 			NUM_COLORS
 		};
 
@@ -157,7 +163,13 @@ namespace ms
 			{ 0.16f, 0.17f, 0.23f }, // HUD gauge track
 			{ 0.94f, 0.27f, 0.36f }, // HUD HP
 			{ 0.27f, 0.58f, 1.00f }, // HUD MP
-			{ 1.00f, 0.78f, 0.25f }  // HUD EXP
+			{ 1.00f, 0.78f, 0.25f }, // HUD EXP
+			{ 0.97f, 0.94f, 0.85f }, // Parchment (classic window fill)
+			{ 0.89f, 0.83f, 0.70f }, // Parchment, shaded
+			{ 0.48f, 0.31f, 0.15f }, // Classic window border brown
+			{ 0.96f, 0.55f, 0.10f }, // Classic button orange
+			{ 1.00f, 0.75f, 0.30f }, // Classic button highlight
+			{ 0.36f, 0.23f, 0.11f }  // Classic dark brown text
 		};
 
 		// Create a color by an array of real numbers [0.0f, 1.0f]

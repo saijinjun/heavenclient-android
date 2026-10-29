@@ -26,6 +26,7 @@
 
 #include "../UIScale.h"
 
+#include "../../Graphics/ClassicStyle.h"
 #include "../../Graphics/Geometry.h"
 
 #include "../../Audio/Audio.h"
@@ -235,7 +236,7 @@ namespace ms
 		if (drawn_channels)
 		{
 			for (uint8_t i = 0; i < 20; ++i)
-				drawn_labels.emplace_back(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Ch. " + std::to_string(i + 1));
+				drawn_labels.emplace_back(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::MAPLE_TEXT, "Ch. " + std::to_string(i + 1));
 
 			drawn_enter = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Enter");
 		}
@@ -319,9 +320,7 @@ namespace ms
 				int16_t w = static_cast<int16_t>(PANEL_W * ui_scale);
 				int16_t h = static_cast<int16_t>(PANEL_H * ui_scale);
 
-				ColorBox(w + 4, h + 4, Color::Name::BLACK, 0.3f).draw(DrawArgument(p + Point<int16_t>(-2, 2)));
-				ColorBox(w, h, Color::Name::HUD_PANEL, 0.85f).draw(DrawArgument(p));
-				ColorBox(w, 2, Color::Name::HUD_EXP, 1.0f).draw(DrawArgument(p));
+				classic::panel(p, w, h);
 			}
 
 			if (!drawn_channels)
@@ -940,19 +939,6 @@ namespace ms
 
 	void UIWorldSelect::draw_drawn_channels() const
 	{
-		auto box_at = [](const Rectangle<int16_t>& r, Color::Name fill, float fill_alpha, Color::Name edge, float edge_alpha)
-		{
-			int16_t w = r.width();
-			int16_t h = r.height();
-			Point<int16_t> p = r.get_left_top();
-
-			ColorBox(w, h, fill, fill_alpha).draw(DrawArgument(p));
-			ColorBox(w, 1, edge, edge_alpha).draw(DrawArgument(p));
-			ColorBox(w, 1, edge, edge_alpha).draw(DrawArgument(p + Point<int16_t>(0, h - 1)));
-			ColorBox(1, h, edge, edge_alpha).draw(DrawArgument(p));
-			ColorBox(1, h, edge, edge_alpha).draw(DrawArgument(p + Point<int16_t>(w - 1, 0)));
-		};
-
 		uint8_t count = selected_channel_count();
 
 		for (uint8_t i = 0; i < count; ++i)
@@ -960,13 +946,12 @@ namespace ms
 			Rectangle<int16_t> r = drawn_channel_rect(i);
 			bool lit = i == channelid;
 
-			box_at(r, lit ? Color::Name::ENDEAVOUR : Color::Name::TOBACCOBROWN, lit ? 0.9f : 0.75f,
-				lit ? Color::Name::YELLOW : Color::Name::IRISHCOFFEE, 1.0f);
+			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
 			drawn_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, r.top() + (r.height() - drawn_labels[i].height()) / 2));
 		}
 
 		Rectangle<int16_t> e = drawn_enter_rect();
-		box_at(e, Color::Name::ORANGE, 0.95f, Color::Name::YELLOW, 1.0f);
+		classic::button(e.get_left_top(), e.width(), e.height());
 		drawn_enter.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (e.height() - drawn_enter.height()) / 2));
 	}
 

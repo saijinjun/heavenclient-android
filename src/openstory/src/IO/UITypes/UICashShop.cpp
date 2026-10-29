@@ -24,6 +24,7 @@
 #include "../Components/MapleButton.h"
 
 #include "../../Constants.h"
+#include "../../Graphics/ClassicStyle.h"
 #include "../../Graphics/Geometry.h"
 #include "../../Gameplay/Stage.h"
 
@@ -230,17 +231,6 @@ namespace ms
 		std::string status_message;
 		bool status_error = false;
 		int32_t status_ticks = 0;
-
-		void touch_box(Rectangle<int16_t> r, Color::Name fill, float alpha)
-		{
-			Point<int16_t> p = r.get_left_top();
-			int16_t w = r.width();
-			int16_t h = r.height();
-
-			ColorBox(w + 2, h + 2, Color::Name::BLACK, 0.35f).draw(DrawArgument(p + Point<int16_t>(-1, 1)));
-			ColorBox(w, h, fill, alpha).draw(DrawArgument(p));
-			ColorBox(w, 1, Color::Name::WHITE, 0.3f).draw(DrawArgument(p));
-		}
 	}
 
 	void UICashShop::show_status(const std::string& text, bool error)
@@ -267,7 +257,7 @@ namespace ms
 	void UICashShop::draw_touch_buttons() const
 	{
 		Rectangle<int16_t> e = exit_rect();
-		touch_box(e, Color::Name::HUD_PANEL, 0.9f);
+		classic::button(e.get_left_top(), e.width(), e.height());
 		exit_label.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (e.height() - exit_label.height()) / 2));
 
 		if (selected_item >= 0 && selected_item < static_cast<int16_t>(items.size()))
@@ -281,7 +271,7 @@ namespace ms
 				buy_label.change_text(label);
 
 			Rectangle<int16_t> b = buy_rect();
-			touch_box(b, buy_armed ? Color::Name::TORCHRED : Color::Name::ORANGE, 0.95f);
+			classic::button(b.get_left_top(), b.width(), b.height(), buy_armed);
 			buy_label.draw(Point<int16_t>(b.left() + b.width() / 2, b.top() + (b.height() - buy_label.height()) / 2));
 		}
 
@@ -294,7 +284,8 @@ namespace ms
 			Point<int16_t> p = get_draw_position() + Point<int16_t>((1024 - w) / 2, 330);
 			Rectangle<int16_t> r(p, p + Point<int16_t>(w, 40));
 
-			touch_box(r, status_error ? Color::Name::DARKRED : Color::Name::HUD_PANEL, 0.95f);
+			status_text.change_color(status_error ? Color::Name::DARKRED : Color::Name::MAPLE_TEXT);
+			classic::panel(p, w, 40);
 			status_text.draw(Point<int16_t>(r.left() + w / 2, r.top() + (40 - status_text.height()) / 2));
 		}
 	}

@@ -30,6 +30,7 @@
 #include "../../Net/Packets/InventoryPackets.h"
 #include "../../Net/Packets/MessagingPackets.h"
 #include "../../Audio/Audio.h"
+#include "../../Graphics/ClassicStyle.h"
 #include "../../Constants.h"
 #include "../../Gameplay/Stage.h"
 #include "../../Character/Party.h"
@@ -274,7 +275,7 @@ namespace ms
 		int16_t w = EMOTE_COLS * EMOTE_CELL + EMOTE_PAD * 2;
 		int16_t h = rows * EMOTE_CELL + EMOTE_PAD * 2;
 
-		ColorBox(w, h, Color::Name::BLACK, 0.82f).draw(DrawArgument(pos));
+		classic::panel(pos, w, h);
 
 		Point<int16_t> grid = pos + Point<int16_t>(EMOTE_PAD, EMOTE_PAD);
 
@@ -285,7 +286,7 @@ namespace ms
 			Point<int16_t> cell = grid + Point<int16_t>(col * EMOTE_CELL, row * EMOTE_CELL);
 
 			if (i == emoticon_hover)
-				ColorBox(EMOTE_CELL - 2, EMOTE_CELL - 2, Color::Name::WHITE, 0.25f)
+				ColorBox(EMOTE_CELL - 2, EMOTE_CELL - 2, Color::Name::HUD_EXP, 0.5f)
 					.draw(DrawArgument(cell));
 
 			if (i < static_cast<int32_t>(emoticon_icons.size()) && emoticon_icons[i].is_valid())
@@ -471,13 +472,12 @@ namespace ms
 		if (UI::get().is_typing_on_top() && chatfield.get_state() == Textfield::State::FOCUSED)
 		{
 			// A typing bar at the top of the screen, above the soft keyboard:
-			// a soft shadow, a light strip and a blue accent on its left.
+			// a parchment strip with an orange accent on its left.
 			int16_t width = std::min<int16_t>(Constants::Constants::get().get_viewwidth() - 32, 460);
 			Point<int16_t> bar((Constants::Constants::get().get_viewwidth() - width) / 2, 10);
 
-			ColorBox(width + 4, 32, Color::Name::BLACK, 0.3f).draw(DrawArgument(bar + Point<int16_t>(-2, 0)));
-			ColorBox(width, 28, Color::Name::GALLERY, 0.96f).draw(DrawArgument(bar));
-			ColorBox(4, 28, Color::Name::MEDIUMBLUE, 1.0f).draw(DrawArgument(bar));
+			classic::panel(bar, width, 28);
+			classic::box(bar.x() + 1, bar.y() + 1, 4, 26, Color::Name::MAPLE_ORANGE);
 
 			// The field's bounds start at (-435, -59) from the bar's position.
 			Point<int16_t> text_pos = bar + Point<int16_t>(14, 5);
