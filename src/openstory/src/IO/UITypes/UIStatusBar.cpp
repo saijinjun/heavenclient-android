@@ -302,6 +302,9 @@ namespace ms
 		hud_exp = Text(Text::Font::A11B, Text::Alignment::RIGHT, Color::Name::HUD_EXP);
 		hud_hp = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE);
 		hud_mp = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE);
+		hud_dock[0] = Texture::from_file("hud/dock_l.png", Point<int16_t>(0, 0));
+		hud_dock[1] = Texture::from_file("hud/dock_m.png", Point<int16_t>(0, 0));
+		hud_dock[2] = Texture::from_file("hud/dock_r.png", Point<int16_t>(0, 0));
 
 		// The quickslot key caps live in StatusBar.img in every build.
 		nl::node keynames = nl::nx::ui["StatusBar.img"]["key"];
@@ -2205,11 +2208,23 @@ namespace ms
 		int16_t w = dock.width();
 
 		soft_box(x0 - 1, y0 + 2, w + 2, HUD_DOCK_H, Color::Name::BLACK, 0.3f, 3);
-		soft_box(x0, y0, w, HUD_DOCK_H, Color::Name::HUD_PANEL, 0.84f, 3);
-		ColorBox(w - 6, 1, Color::Name::WHITE, 0.14f).draw(DrawArgument(Point<int16_t>(x0 + 3, y0)));
+
+		if (hud_dock[0].is_valid() && hud_dock[1].is_valid() && hud_dock[2].is_valid())
+		{
+			// The art is drawn at 3x; scale the caps down to the dock height.
+			int16_t cap = hud_dock[0].width() * HUD_DOCK_H / hud_dock[0].height();
+			hud_dock[0].draw(DrawArgument(Point<int16_t>(x0, y0), Point<int16_t>(cap, HUD_DOCK_H)));
+			hud_dock[1].draw(DrawArgument(Point<int16_t>(x0 + cap, y0), Point<int16_t>(w - cap * 2, HUD_DOCK_H)));
+			hud_dock[2].draw(DrawArgument(Point<int16_t>(x0 + w - cap, y0), Point<int16_t>(cap, HUD_DOCK_H)));
+		}
+		else
+		{
+			soft_box(x0, y0, w, HUD_DOCK_H, Color::Name::HUD_PANEL, 0.84f, 3);
+			ColorBox(w - 6, 1, Color::Name::WHITE, 0.14f).draw(DrawArgument(Point<int16_t>(x0 + 3, y0)));
+		}
 
 		// Level badge, with a dot while AP or SP is waiting to be spent.
-		int16_t bx = x0 + 5;
+		int16_t bx = x0 + 8;
 		int16_t by = y0 + 5;
 		soft_box(bx, by, HUD_BADGE, HUD_BADGE, Color::Name::HUD_EXP, 0.95f);
 		soft_box(bx + 2, by + 2, HUD_BADGE - 4, HUD_BADGE - 4, Color::Name::HUD_PANEL, 1.0f);
@@ -2221,7 +2236,7 @@ namespace ms
 
 		// Name, job and EXP on the first row.
 		int16_t cx = bx + HUD_BADGE + 8;
-		int16_t cw = x0 + w - 16 - cx;
+		int16_t cw = x0 + w - 20 - cx;
 		hud_name.draw(Point<int16_t>(cx, y0 + 4));
 		hud_job.draw(Point<int16_t>(cx + hud_name.width() + 6, y0 + 5));
 		hud_exp.draw(Point<int16_t>(cx + cw, y0 + 5));
@@ -2264,7 +2279,7 @@ namespace ms
 
 		// Three dots on the right hint that the dock opens the full bar;
 		// the top one turns red for an unread notice.
-		int16_t dx = x0 + w - 10;
+		int16_t dx = x0 + w - 13;
 		int16_t dy = y0 + HUD_DOCK_H / 2 - 7;
 		for (int16_t i = 0; i < 3; i++)
 		{

@@ -23,6 +23,10 @@
 
 #include <stb_image.h>
 
+#ifdef __ANDROID__
+#include <SDL.h>
+#endif
+
 #ifdef USE_NX
 #include <nlnx/nx.hpp>
 #endif
@@ -64,6 +68,27 @@ namespace ms
 			int height = 0;
 			int channels = 0;
 			stbi_uc* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
+
+#ifdef __ANDROID__
+			// Not in the data folder: try the images bundled in the APK.
+			if (!data)
+			{
+				if (SDL_RWops* file = SDL_RWFromFile(path.c_str(), "rb"))
+				{
+					Sint64 size = SDL_RWsize(file);
+
+					if (size > 0)
+					{
+						std::vector<uint8_t> bytes(static_cast<size_t>(size));
+
+						if (SDL_RWread(file, bytes.data(), 1, bytes.size()) == bytes.size())
+							data = stbi_load_from_memory(bytes.data(), static_cast<int>(bytes.size()), &width, &height, &channels, 4);
+					}
+
+					SDL_RWclose(file);
+				}
+			}
+#endif
 
 			if (!data)
 				return nullptr;
