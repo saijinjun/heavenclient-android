@@ -852,6 +852,7 @@ namespace ms
 			width = new_width;
 			height = new_height;
 			update_viewport();
+			GraphicsGL::get().reinit();
 		}
 
 		SDL_Event event;

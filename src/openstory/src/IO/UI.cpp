@@ -19,6 +19,7 @@
 
 #include <vector>
 
+#include "../Configuration.h"
 #include "../Graphics/GraphicsGL.h"
 
 #include "UIStateCashShop.h"
@@ -137,6 +138,20 @@ namespace ms
 		switch (id)
 		{
 			case State::LOGIN:
+#ifdef __ANDROID__
+			{
+				// The login screens are scenes drawn for 800x600, and a phone
+				// is much wider than that: show them whole at 4:3, with bars
+				// at the sides, like the original game. Entering the game
+				// switches back to the full screen (SetFieldHandler).
+				int16_t height = Setting<Height>::get().load();
+				int16_t width = static_cast<int16_t>(height * 4 / 3);
+				Constants::Constants::get().set_ui_scale(Constants::ui_scale_for(width, height));
+				Constants::Constants::get().set_viewwidth(width);
+				Constants::Constants::get().set_viewheight(height);
+				GraphicsGL::get().reinit();
+			}
+#endif
 				state = std::make_unique<UIStateLogin>();
 				break;
 			case State::GAME:
