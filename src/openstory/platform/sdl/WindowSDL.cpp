@@ -204,6 +204,11 @@ namespace ms
 			// SetFieldHandler reads these on every map load.
 			Setting<Width>::get().save(static_cast<int16_t>(drawable_w));
 			Setting<Height>::get().save(static_cast<int16_t>(drawable_h));
+
+			// Android resizes the window once it is shown; the login screens
+			// keep their own view through that.
+			if (UI::get().in_login())
+				UI::get().fit_login_view(static_cast<int16_t>(drawable_w), static_cast<int16_t>(drawable_h));
 		}
 	}
 

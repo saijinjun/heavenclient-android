@@ -88,6 +88,14 @@ namespace ms
 		};
 
 		Text version;
+		// Newer UI.nx files have no v83 RaceSelect art. Then the classes are
+		// drawn as cards from text, and the select button too.
+		bool drawn_cards = false;
+		bool drawn_select = false;
+		Text title_text;
+		Text card_name[CLASS_COUNT];
+		Text card_blurb[CLASS_COUNT];
+		Text select_label;
 		Texture backdrop;
 		Texture header;             // "Choose Character Type"
 		ClassPanel classes[CLASS_COUNT];

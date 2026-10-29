@@ -138,20 +138,8 @@ namespace ms
 		switch (id)
 		{
 			case State::LOGIN:
-#ifdef __ANDROID__
-			{
-				// The login screens are scenes drawn for 800x600, and a phone
-				// is much wider than that: show them whole at 4:3, with bars
-				// at the sides, like the original game. Entering the game
-				// switches back to the full screen (SetFieldHandler).
-				int16_t height = Setting<Height>::get().load();
-				int16_t width = static_cast<int16_t>(height * 4 / 3);
-				Constants::Constants::get().set_ui_scale(Constants::ui_scale_for(width, height));
-				Constants::Constants::get().set_viewwidth(width);
-				Constants::Constants::get().set_viewheight(height);
+				fit_login_view(Setting<Width>::get().load(), Setting<Height>::get().load());
 				GraphicsGL::get().reinit();
-			}
-#endif
 				state = std::make_unique<UIStateLogin>();
 				break;
 			case State::GAME:
@@ -291,6 +279,28 @@ namespace ms
 	bool UI::in_game() const
 	{
 		return state_id == State::GAME;
+	}
+
+	bool UI::in_login() const
+	{
+		return state_id == State::LOGIN;
+	}
+
+	void UI::fit_login_view(int16_t screen_width, int16_t screen_height)
+	{
+#ifdef __ANDROID__
+		// The login screens are scenes drawn for 800x600, and a phone is much
+		// wider than that: show them whole at 4:3, with bars at the sides,
+		// like the original game. Entering the game switches back to the full
+		// screen (SetFieldHandler).
+		int16_t width = std::min<int16_t>(screen_width, static_cast<int16_t>(screen_height * 4 / 3));
+		Constants::Constants::get().set_ui_scale(Constants::ui_scale_for(width, screen_height));
+		Constants::Constants::get().set_viewwidth(width);
+		Constants::Constants::get().set_viewheight(screen_height);
+#else
+		(void)screen_width;
+		(void)screen_height;
+#endif
 	}
 
 	void UI::set_typing_on_top(bool on_top)
