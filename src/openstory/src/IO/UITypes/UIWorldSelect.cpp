@@ -294,8 +294,12 @@ namespace ms
 		// with the world title, channel grid and highlight / closing animation
 		DrawArgument scroll_args(lay(SCROLL_POS), ui_scale, ui_scale);
 
-		switch (scroll_state)
+		// Newer scroll art doesn't fit the v83 layout: only the drawn panel
+		// shows, once the world's scroll is open
+		switch (drawn_channels && scroll_state != SCROLL_OPEN ? -1 : scroll_state)
 		{
+		case -1:
+			break;
 		case SCROLL_OPENING:
 			scroll_opening.draw(scroll_args, alpha);
 			break;
@@ -304,7 +308,8 @@ namespace ms
 			break;
 		case SCROLL_OPEN:
 		{
-			scroll_open_tex.draw(scroll_args);
+			if (!drawn_channels)
+				scroll_open_tex.draw(scroll_args);
 
 			// divider sheet, world title above the line, EVENT balloon for
 			// event-flagged worlds
@@ -326,7 +331,8 @@ namespace ms
 			Point<int16_t> title_off(
 				static_cast<int16_t>(CHBACK_OFF.x() + (449 - world_title.width()) / 2),
 				TITLE_OFF.y());
-			world_title.draw(DrawArgument(lay(SCROLL_POS + title_off), ui_scale, ui_scale));
+			if (!drawn_channels)
+				world_title.draw(DrawArgument(lay(SCROLL_POS + title_off), ui_scale, ui_scale));
 
 			for (auto& w : worlds)
 				if (w.wid == worldid && w.flag == 1)
