@@ -82,6 +82,58 @@ extern const char* ios_font_path_bold();
 
 namespace ms
 {
+	namespace
+	{
+		// OpenGL ES only accepts uploads in the texture's own format, and the
+		// atlas is RGBA: a BGRA or single-channel upload into it fails with
+		// GL_INVALID_OPERATION and leaves the atlas empty, which on a phone
+		// is a black screen. So pixels are converted to RGBA first there.
+		void upload_bgra(GLint x, GLint y, GLsizei width, GLsizei height, const void* pixels)
+		{
+#if defined(PLATFORM_SDL)
+			static std::vector<uint8_t> rgba;
+			size_t count = static_cast<size_t>(width) * height;
+			rgba.resize(count * 4);
+			const uint8_t* src = static_cast<const uint8_t*>(pixels);
+
+			for (size_t i = 0; i < count; i++)
+			{
+				rgba[i * 4 + 0] = src[i * 4 + 2];
+				rgba[i * 4 + 1] = src[i * 4 + 1];
+				rgba[i * 4 + 2] = src[i * 4 + 0];
+				rgba[i * 4 + 3] = src[i * 4 + 3];
+			}
+
+			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+#else
+			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+#endif
+		}
+
+		// Glyph coverage; the shader reads it from the red channel.
+		void upload_gray(GLint x, GLint y, GLsizei width, GLsizei height, const uint8_t* pixels)
+		{
+#if defined(PLATFORM_SDL)
+			static std::vector<uint8_t> rgba;
+			size_t count = static_cast<size_t>(width) * height;
+			rgba.resize(count * 4);
+
+			for (size_t i = 0; i < count; i++)
+			{
+				uint8_t value = pixels[i];
+				rgba[i * 4 + 0] = value;
+				rgba[i * 4 + 1] = value;
+				rgba[i * 4 + 2] = value;
+				rgba[i * 4 + 3] = value;
+			}
+
+			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+#else
+			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_RED, GL_UNSIGNED_BYTE, pixels);
+#endif
+		}
+	}
+
 	GraphicsGL::GraphicsGL()
 	{
 		locked = false;
@@ -578,7 +630,7 @@ namespace ms
 				std::copy(src, src + w, padded.begin() + (row + pad_top) * pw + pad_left);
 			}
 
-			glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, pw, ph, GL_RED, GL_UNSIGNED_BYTE, padded.data());
+			upload_gray(ox, oy, pw, ph, padded.data());
 		}
 
 		Font::Char ch;
@@ -726,7 +778,7 @@ namespace ms
 				yrange = Range<int16_t>(gy + strike_h, strike_h);
 		}
 
-		glTexSubImage2D(GL_TEXTURE_2D, 0, gx, gy, strike_w, strike_h, GL_BGRA, GL_UNSIGNED_BYTE, src_pixels);
+		upload_bgra(gx, gy, strike_w, strike_h, src_pixels);
 
 		Font::Char ch;
 		ch.ax = target;
@@ -1128,7 +1180,7 @@ namespace ms
 			}
 		}
 
-		glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+		upload_bgra(x, y, width, height, pixels);
 
 		if (gfx_debug_enabled())
 		{
