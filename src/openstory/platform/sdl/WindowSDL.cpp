@@ -32,6 +32,7 @@
 #include "Gameplay/Stage.h"
 #include "IO/Components/Icon.h"
 #include "IO/UITypes/UIChatBar.h"
+#include "Net/Packets/MessagingPackets.h"
 #include "Net/Packets/PlayerPackets.h"
 
 #include "Configuration.h"
@@ -565,6 +566,12 @@ namespace ms
 							chatbar->focus_chatfield();
 					}
 				}
+
+				break;
+			case TouchControls::Output::SOLO_MENU:
+				// The server answers the command with its menu NPC.
+				if (action.pressed)
+					GeneralChatPacket("@solo", false).dispatch();
 
 				break;
 			case TouchControls::Output::SLOT:

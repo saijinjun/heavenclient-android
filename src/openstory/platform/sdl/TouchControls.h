@@ -51,7 +51,9 @@ namespace ms
 			MENU,
 			SLOT,
 			// Opens the chat field, or sends it away when it is open.
-			CHAT
+			CHAT,
+			// Opens the server's solo menu (the @solo command).
+			SOLO_MENU
 		};
 
 		struct Action
@@ -136,6 +138,7 @@ namespace ms
 			JUMP_ATTACK,
 			MENU_LAYOUT,
 			MENU_CHAT,
+			MENU_SOLO,
 			NUM_CONTROLS
 		};
 

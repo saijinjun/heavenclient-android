@@ -52,6 +52,7 @@ namespace ms
 			RESET,      // Editor: back to the default layout
 			CHECK,      // Editor: done
 			CHAT,       // Chat: a speech bubble with three dots
+			LIST,       // The server's solo menu: a list with bullets
 			NUM_SPRITES
 		};
 

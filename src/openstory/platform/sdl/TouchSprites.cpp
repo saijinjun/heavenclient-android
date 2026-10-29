@@ -288,6 +288,19 @@ namespace ms
 						circle(p, { 0.3f, -0.1f }, 0.09f) });
 					return std::max(bubble, -dots);
 				}
+				case LIST:
+				{
+					float rows = 1.0f;
+
+					for (float y : { -0.36f, 0.0f, 0.36f })
+					{
+						rows = std::min({ rows,
+							circle(p, { -0.42f, y }, 0.09f),
+							capsule(p, { -0.18f, y }, { 0.48f, y }, 0.075f) });
+					}
+
+					return rows;
+				}
 				default:
 					return 1.0f;
 				}
