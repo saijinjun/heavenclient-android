@@ -80,6 +80,13 @@ namespace ms
 		// EVENT balloon above an event-flagged world's plank
 		constexpr Point<int16_t> EVENT_PLANK_OFF(-1, -16);
 
+		// Panel the drawn channel grid sits on, under the world title (the
+		// newer scroll art has no parchment to lay it out against)
+		constexpr int16_t PANEL_X = 158;
+		constexpr int16_t PANEL_Y = 150;
+		constexpr int16_t PANEL_W = 364;
+		constexpr int16_t PANEL_H = 196;
+
 		// Population gauge over a channel button's bar area (the gauge art
 		// has origin (36,4); the stretch width encodes the load fraction).
 		// The fill is relative to the busiest channel, with a floor so a
@@ -301,6 +308,17 @@ namespace ms
 
 			// divider sheet, world title above the line, EVENT balloon for
 			// event-flagged worlds
+			if (drawn_channels)
+			{
+				Point<int16_t> p = lay(PANEL_X, PANEL_Y);
+				int16_t w = static_cast<int16_t>(PANEL_W * ui_scale);
+				int16_t h = static_cast<int16_t>(PANEL_H * ui_scale);
+
+				ColorBox(w + 4, h + 4, Color::Name::BLACK, 0.3f).draw(DrawArgument(p + Point<int16_t>(-2, 2)));
+				ColorBox(w, h, Color::Name::HUD_PANEL, 0.85f).draw(DrawArgument(p));
+				ColorBox(w, 2, Color::Name::HUD_EXP, 1.0f).draw(DrawArgument(p));
+			}
+
 			if (!drawn_channels)
 				chback.draw(DrawArgument(
 				lay(SCROLL_POS + CHBACK_OFF + chback.get_origin()), ui_scale, ui_scale));
@@ -895,11 +913,10 @@ namespace ms
 		constexpr int16_t GAP = 6;
 		constexpr int16_t CELL_H = 24;
 
-		Point<int16_t> tl = SCROLL_POS - scroll_open_tex.get_origin();
-		int16_t width = scroll_open_tex.width() - 40;
+		int16_t width = PANEL_W - 32;
 		int16_t cell_w = (width - GAP * (COLS - 1)) / COLS;
-		int16_t x = tl.x() + 20 + (index % COLS) * (cell_w + GAP);
-		int16_t y = tl.y() + 84 + (index / COLS) * (CELL_H + GAP);
+		int16_t x = PANEL_X + 16 + (index % COLS) * (cell_w + GAP);
+		int16_t y = PANEL_Y + 46 + (index / COLS) * (CELL_H + GAP);
 
 		return Rectangle<int16_t>(lay(x, y), lay(x + cell_w, y + CELL_H));
 	}
@@ -909,9 +926,8 @@ namespace ms
 		constexpr int16_t W = 120;
 		constexpr int16_t H = 28;
 
-		Point<int16_t> tl = SCROLL_POS - scroll_open_tex.get_origin();
-		int16_t x = tl.x() + (scroll_open_tex.width() - W) / 2;
-		int16_t y = tl.y() + scroll_open_tex.height() - H - 14;
+		int16_t x = PANEL_X + (PANEL_W - W) / 2;
+		int16_t y = PANEL_Y + PANEL_H - H - 14;
 
 		return Rectangle<int16_t>(lay(x, y), lay(x + W, y + H));
 	}

@@ -222,6 +222,9 @@ namespace ms
 			{
 				pending_hits = 0;
 
+				if (dying && stance != Stance::DIE)
+					apply_death();
+
 				if (pending_hppercent >= 0)
 				{
 					hppercent = pending_hppercent;
@@ -489,7 +492,7 @@ namespace ms
 			{
 				namelabel.draw(absp);
 
-				if (!dying && hppercent > 0)
+				if ((!dying || pending_hits > 0) && hppercent > 0)
 					hpbar.draw(headpos, hppercent);
 			}
 		}
@@ -559,7 +562,10 @@ namespace ms
 		case 1:
 			dying = true;
 
-			apply_death();
+			// The server reports the kill as soon as it gets the attack; if
+			// our swing hasn't landed yet, the last hit plays the death.
+			if (pending_hits == 0)
+				apply_death();
 			break;
 		case 2:
 			fading = true;
@@ -783,7 +789,8 @@ namespace ms
 
 		if (dying && stance != Stance::DIE)
 		{
-			apply_death();
+			if (pending_hits == 0)
+				apply_death();
 		}
 		else if (control && is_alive() && damage >= knockback)
 		{
