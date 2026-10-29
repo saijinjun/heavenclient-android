@@ -291,6 +291,18 @@ namespace ms
 		qs_key_label = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::WHITE);
 		v83_menu_label = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::WHITE);
 
+		modern_hud = Setting<ModernHud>::get().load();
+		hud_hp_shown = hud_hp_trail = gethppercent();
+		hud_mp_shown = hud_mp_trail = getmppercent();
+		hud_exp_shown = getexppercent();
+		hud_level = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE);
+		hud_level_caption = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::HUD_EXP, "LV");
+		hud_name = Text(Text::Font::A12B, Text::Alignment::LEFT, Color::Name::WHITE);
+		hud_job = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::SILVERCHALICE);
+		hud_exp = Text(Text::Font::A11B, Text::Alignment::RIGHT, Color::Name::HUD_EXP);
+		hud_hp = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE);
+		hud_mp = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE);
+
 		// The quickslot key caps live in StatusBar.img in every build.
 		nl::node keynames = nl::nx::ui["StatusBar.img"]["key"];
 		for (int i = 0; i < 8; i++)
@@ -965,11 +977,18 @@ namespace ms
 			boss_gage.draw(boss_pos, boss_hp_percent);
 		}
 
+		if (hud_collapsed())
+		{
+			draw_hud();
+			return;
+		}
+
 		// Stock v83 assets need their own layout; everything below this point
 		// reads StatusBar2/StatusBar3 nodes that such a build does not ship.
 		if (v83_layout)
 		{
 			draw_v83(alpha);
+			draw_hud_tab();
 			return;
 		}
 
@@ -1256,6 +1275,8 @@ namespace ms
 			draw_sys(BT_SYS_OPTION);
 			draw_sys(BT_SYS_GAMEQUIT);
 		}
+
+		draw_hud_tab();
 	}
 
 	void UIStatusBar::draw_tiled_panel(Point<int16_t> tl, int16_t panel_w, int16_t panel_h,
@@ -1296,6 +1317,9 @@ namespace ms
 		// viewport put it.
 		if (v83_layout && v83_laid_out_width != VWIDTH)
 			layout_v83();
+
+		if (modern_hud)
+			update_hud();
 
 		UIElement::update();
 
@@ -1614,6 +1638,12 @@ namespace ms
 
 	bool UIStatusBar::is_in_range(Point<int16_t> cursorpos) const
 	{
+		if (hud_collapsed())
+			return hud_dock_bounds().contains(cursorpos);
+
+		if (modern_hud && hud_tab_bounds().contains(cursorpos))
+			return true;
+
 		int16_t vwidth = Constants::Constants::get().get_viewwidth();
 
 		// Extend upward when menu, system sub-panel, or quick slot is open
@@ -1636,7 +1666,12 @@ namespace ms
 	void UIStatusBar::send_key(int32_t keycode, bool pressed, bool escape)
 	{
 		if (pressed && escape)
+		{
+			if (modern_hud && hud_expanded && !is_menu_active())
+				hud_expanded = false;
+
 			remove_menus();
+		}
 	}
 
 	void UIStatusBar::toggle_qs()
@@ -1922,6 +1957,30 @@ namespace ms
 
 	Cursor::State UIStatusBar::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
+		if (modern_hud)
+		{
+			bool on_dock = hud_collapsed() && hud_dock_bounds().contains(cursorpos);
+			bool on_tab = !hud_collapsed() && hud_tab_bounds().contains(cursorpos);
+			bool press = clicked && !hud_pressed;
+			hud_pressed = clicked;
+
+			if (on_dock || on_tab)
+			{
+				if (press)
+				{
+					if (on_tab)
+						remove_menus();
+
+					hud_expanded = on_dock;
+				}
+
+				return clicked ? Cursor::State::CLICKING : Cursor::State::CANCLICK;
+			}
+
+			if (hud_collapsed())
+				return Cursor::State::IDLE;
+		}
+
 		// If cursor is over a quickslot cube that has a binding, allow the
 		// user to pick it up and drag it (either to another cube, or off the
 		// quickslot to clear the binding).
@@ -2011,6 +2070,228 @@ namespace ms
 		if (type == KeyType::Id::ITEM)
 			return Icon::IconType::ITEM;
 		return Icon::IconType::NONE;
+	}
+
+
+	// === Modern HUD ===
+
+	namespace
+	{
+		constexpr int16_t HUD_DOCK_W = 440;
+		constexpr int16_t HUD_DOCK_H = 46;
+		constexpr int16_t HUD_EXP_H = 4;
+		constexpr int16_t HUD_GAP = 6;
+		constexpr int16_t HUD_BADGE = 36;
+		constexpr int16_t HUD_GAUGE_H = 15;
+		constexpr int16_t HUD_TAB_W = 64;
+		constexpr int16_t HUD_TAB_H = 14;
+
+		// A box with its corners clipped by `r` pixels, built from three
+		// non-overlapping strips so translucent fills blend evenly.
+		void soft_box(int16_t x, int16_t y, int16_t w, int16_t h, Color::Name color, float opacity, int16_t r = 2)
+		{
+			if (w <= 0 || h <= 0)
+				return;
+
+			if (w <= r * 2 || h <= r * 2)
+			{
+				ColorBox(w, h, color, opacity).draw(DrawArgument(Point<int16_t>(x, y)));
+				return;
+			}
+
+			ColorBox(w - r * 2, h, color, opacity).draw(DrawArgument(Point<int16_t>(x + r, y)));
+			ColorBox(r, h - r * 2, color, opacity).draw(DrawArgument(Point<int16_t>(x, y + r)));
+			ColorBox(r, h - r * 2, color, opacity).draw(DrawArgument(Point<int16_t>(x + w - r, y + r)));
+		}
+
+		void ease(float& shown, float& trail, float target)
+		{
+			if (target < shown)
+				shown = target;
+			else
+				shown += (target - shown) * 0.2f;
+
+			if (std::abs(target - shown) < 0.002f)
+				shown = target;
+
+			// The trail waits at the old value and drains toward the new one.
+			if (trail < shown)
+				trail = shown;
+			else
+				trail -= std::max(0.003f, (trail - shown) * 0.05f);
+
+			if (trail < shown)
+				trail = shown;
+		}
+
+		void set_text(Text& text, const std::string& value)
+		{
+			if (text.get_text() != value)
+				text.change_text(value);
+		}
+	}
+
+	bool UIStatusBar::hud_collapsed() const
+	{
+		return modern_hud && !hud_expanded;
+	}
+
+	Rectangle<int16_t> UIStatusBar::hud_dock_bounds() const
+	{
+		int16_t vw = Constants::Constants::get().get_viewwidth();
+		int16_t vh = Constants::Constants::get().get_viewheight();
+		int16_t w = std::min<int16_t>(HUD_DOCK_W, vw - 16);
+		int16_t x = (vw - w) / 2;
+		int16_t y = vh - HUD_EXP_H - HUD_GAP - HUD_DOCK_H;
+
+		return Rectangle<int16_t>(Point<int16_t>(x, y), Point<int16_t>(x + w, y + HUD_DOCK_H));
+	}
+
+	Rectangle<int16_t> UIStatusBar::hud_tab_bounds() const
+	{
+		int16_t vw = Constants::Constants::get().get_viewwidth();
+		int16_t bar_h = v83_layout ? V83_BAR_H : 84;
+		int16_t x = (vw - HUD_TAB_W) / 2;
+		int16_t y = position.y() - bar_h - HUD_TAB_H;
+
+		return Rectangle<int16_t>(Point<int16_t>(x, y), Point<int16_t>(x + HUD_TAB_W, y + HUD_TAB_H));
+	}
+
+	void UIStatusBar::update_hud()
+	{
+		ease(hud_hp_shown, hud_hp_trail, gethppercent());
+		ease(hud_mp_shown, hud_mp_trail, getmppercent());
+
+		float exp_target = getexppercent();
+		if (exp_target < hud_exp_shown)
+			hud_exp_shown = exp_target;
+		else
+			hud_exp_shown += (exp_target - hud_exp_shown) * 0.1f;
+
+		hud_pulse++;
+
+		int32_t hp = stats.get_stat(MapleStat::Id::HP);
+		int32_t mp = stats.get_stat(MapleStat::Id::MP);
+		int32_t maxhp = stats.get_total(EquipStat::Id::HP);
+		int32_t maxmp = stats.get_total(EquipStat::Id::MP);
+
+		std::string exp = std::to_string(100.0f * exp_target);
+		exp = exp.substr(0, exp.find('.') + 3);
+
+		set_text(hud_level, std::to_string(stats.get_stat(MapleStat::Id::LEVEL)));
+		set_text(hud_name, stats.get_name());
+		set_text(hud_job, stats.get_jobname());
+		set_text(hud_exp, "EXP " + exp + "%");
+		set_text(hud_hp, std::to_string(hp) + " / " + std::to_string(maxhp));
+		set_text(hud_mp, std::to_string(mp) + " / " + std::to_string(maxmp));
+	}
+
+	void UIStatusBar::draw_hud() const
+	{
+		int16_t vw = Constants::Constants::get().get_viewwidth();
+		int16_t vh = Constants::Constants::get().get_viewheight();
+		float pulse = 0.5f + 0.5f * std::sin(hud_pulse * 0.12f);
+
+		// EXP strip along the bottom edge.
+		ColorBox(vw, HUD_EXP_H, Color::Name::HUD_TRACK, 0.9f).draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H)));
+		int16_t exp_w = static_cast<int16_t>(vw * std::clamp(hud_exp_shown, 0.0f, 1.0f));
+		ColorBox(exp_w, HUD_EXP_H, Color::Name::HUD_EXP, 1.0f).draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H)));
+		ColorBox(exp_w, 1, Color::Name::WHITE, 0.35f).draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H)));
+
+		// Dock.
+		Rectangle<int16_t> dock = hud_dock_bounds();
+		int16_t x0 = dock.left();
+		int16_t y0 = dock.top();
+		int16_t w = dock.width();
+
+		soft_box(x0 - 1, y0 + 2, w + 2, HUD_DOCK_H, Color::Name::BLACK, 0.3f, 3);
+		soft_box(x0, y0, w, HUD_DOCK_H, Color::Name::HUD_PANEL, 0.84f, 3);
+		ColorBox(w - 6, 1, Color::Name::WHITE, 0.14f).draw(DrawArgument(Point<int16_t>(x0 + 3, y0)));
+
+		// Level badge, with a dot while AP or SP is waiting to be spent.
+		int16_t bx = x0 + 5;
+		int16_t by = y0 + 5;
+		soft_box(bx, by, HUD_BADGE, HUD_BADGE, Color::Name::HUD_EXP, 0.95f);
+		soft_box(bx + 2, by + 2, HUD_BADGE - 4, HUD_BADGE - 4, Color::Name::HUD_PANEL, 1.0f);
+		hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 2));
+		hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 14));
+
+		if (stats.get_stat(MapleStat::Id::AP) > 0 || stats.get_stat(MapleStat::Id::SP) > 0)
+			soft_box(bx + HUD_BADGE - 6, by - 2, 8, 8, Color::Name::ORANGE, 0.6f + 0.4f * pulse, 1);
+
+		// Name, job and EXP on the first row.
+		int16_t cx = bx + HUD_BADGE + 8;
+		int16_t cw = x0 + w - 16 - cx;
+		hud_name.draw(Point<int16_t>(cx, y0 + 4));
+		hud_job.draw(Point<int16_t>(cx + hud_name.width() + 6, y0 + 5));
+		hud_exp.draw(Point<int16_t>(cx + cw, y0 + 5));
+
+		// HP and MP gauges side by side on the second row.
+		int16_t gy = y0 + 24;
+		int16_t gw = (cw - 6) / 2;
+		float hp_warn = Setting<HPWarning>::get().load() / 100.0f;
+
+		auto gauge = [&](int16_t gx, float shown, float trail, Color::Name color, const Text& label, bool warn)
+		{
+			soft_box(gx, gy, gw, HUD_GAUGE_H, Color::Name::HUD_TRACK, 0.95f);
+
+			int16_t trail_w = static_cast<int16_t>(gw * std::clamp(trail, 0.0f, 1.0f));
+			int16_t fill_w = static_cast<int16_t>(gw * std::clamp(shown, 0.0f, 1.0f));
+
+			if (trail_w > fill_w)
+				ColorBox(trail_w - fill_w, HUD_GAUGE_H - 2, Color::Name::WHITE, 0.45f)
+					.draw(DrawArgument(Point<int16_t>(gx + fill_w, gy + 1)));
+
+			soft_box(gx, gy, fill_w, HUD_GAUGE_H, color, 1.0f);
+			if (fill_w > 4)
+				ColorBox(fill_w - 4, HUD_GAUGE_H / 2 - 1, Color::Name::WHITE, 0.16f)
+					.draw(DrawArgument(Point<int16_t>(gx + 2, gy + 1)));
+
+			if (warn)
+			{
+				float a = 0.35f + 0.55f * pulse;
+				ColorBox(gw, 1, Color::Name::RED, a).draw(DrawArgument(Point<int16_t>(gx, gy - 1)));
+				ColorBox(gw, 1, Color::Name::RED, a).draw(DrawArgument(Point<int16_t>(gx, gy + HUD_GAUGE_H)));
+				ColorBox(1, HUD_GAUGE_H, Color::Name::RED, a).draw(DrawArgument(Point<int16_t>(gx - 1, gy)));
+				ColorBox(1, HUD_GAUGE_H, Color::Name::RED, a).draw(DrawArgument(Point<int16_t>(gx + gw, gy)));
+			}
+
+			label.draw(Point<int16_t>(gx + gw / 2, gy + 1));
+		};
+
+		gauge(cx, hud_hp_shown, hud_hp_trail, Color::Name::HUD_HP, hud_hp, gethppercent() < hp_warn);
+		gauge(cx + gw + 6, hud_mp_shown, hud_mp_trail, Color::Name::HUD_MP, hud_mp, false);
+
+		// Three dots on the right hint that the dock opens the full bar;
+		// the top one turns red for an unread notice.
+		int16_t dx = x0 + w - 10;
+		int16_t dy = y0 + HUD_DOCK_H / 2 - 7;
+		for (int16_t i = 0; i < 3; i++)
+		{
+			bool alert = i == 0 && has_notification;
+			ColorBox(alert ? 5 : 3, alert ? 5 : 3, alert ? Color::Name::TORCHRED : Color::Name::WHITE, alert ? 1.0f : 0.55f)
+				.draw(DrawArgument(Point<int16_t>(alert ? dx - 1 : dx, dy + i * 6 - (alert ? 1 : 0))));
+		}
+	}
+
+	void UIStatusBar::draw_hud_tab() const
+	{
+		if (!modern_hud)
+			return;
+
+		Rectangle<int16_t> tab = hud_tab_bounds();
+		int16_t x = tab.left();
+		int16_t y = tab.top();
+
+		soft_box(x, y, HUD_TAB_W, HUD_TAB_H + 3, Color::Name::HUD_PANEL, 0.84f, 3);
+
+		// A small down chevron.
+		int16_t cx = x + HUD_TAB_W / 2;
+		for (int16_t i = 0; i < 4; i++)
+		{
+			ColorBox(2, 2, Color::Name::WHITE, 0.8f).draw(DrawArgument(Point<int16_t>(cx - 4 + i, y + 4 + i)));
+			ColorBox(2, 2, Color::Name::WHITE, 0.8f).draw(DrawArgument(Point<int16_t>(cx + 2 - i, y + 4 + i)));
+		}
 	}
 
 }

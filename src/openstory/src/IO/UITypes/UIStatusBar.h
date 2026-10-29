@@ -325,6 +325,33 @@ namespace ms
 		// the richer layout if later-version art is supplied.
 		bool v83_layout = false;
 
+		// Modern HUD: a compact player dock and a thin EXP strip replace the
+		// full bar until the dock is tapped; a tab above the full bar folds
+		// it away again.
+		bool modern_hud = false;
+		bool hud_expanded = false;
+		bool hud_pressed = false;
+		// Displayed fill (eases toward the real value) and the lighter trail
+		// that drains behind it after a hit.
+		float hud_hp_shown = 0.0f, hud_hp_trail = 0.0f;
+		float hud_mp_shown = 0.0f, hud_mp_trail = 0.0f;
+		float hud_exp_shown = 0.0f;
+		uint16_t hud_pulse = 0;
+		Text hud_level;
+		Text hud_level_caption;
+		Text hud_name;
+		Text hud_job;
+		Text hud_exp;
+		Text hud_hp;
+		Text hud_mp;
+
+		bool hud_collapsed() const;
+		Rectangle<int16_t> hud_dock_bounds() const;
+		Rectangle<int16_t> hud_tab_bounds() const;
+		void update_hud();
+		void draw_hud() const;
+		void draw_hud_tab() const;
+
 		void build_v83();
 		// Recomputes every width-dependent v83 position. Cheap, and re-run
 		// from update() whenever the logical view width changes, so an

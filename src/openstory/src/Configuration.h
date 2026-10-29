@@ -841,6 +841,17 @@ namespace ms
 #endif
 	};
 
+	// Compact modern HUD (player dock + EXP strip) instead of the full
+	// bottom bar; tapping the dock brings the full bar back.
+	struct ModernHud : public Configuration::BoolEntry
+	{
+#ifdef __ANDROID__
+		ModernHud() : BoolEntry("ModernHud", "true") {}
+#else
+		ModernHud() : BoolEntry("ModernHud", "false") {}
+#endif
+	};
+
 	// Show the on-screen FPS counter (top-right, yellow).
 	struct ShowFPS : public Configuration::BoolEntry
 	{

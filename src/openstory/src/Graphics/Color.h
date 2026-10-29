@@ -99,6 +99,11 @@ namespace ms
 			PRUSSIANBLUE,
 			PINK,
 			LIGHTBLUE,
+			HUD_PANEL,
+			HUD_TRACK,
+			HUD_HP,
+			HUD_MP,
+			HUD_EXP,
 			NUM_COLORS
 		};
 
@@ -147,7 +152,12 @@ namespace ms
 			{ 0.00f, 0.23f, 0.56f }, // Smalt
 			{ 0.01f, 0.19f, 0.28f }, // Prussian Blue
 			{ 1.00f, 0.50f, 0.75f }, // Pink (Server message type 5)
-			{ 0.53f, 0.81f, 0.98f }  // Light Blue (Server message type 6)
+			{ 0.53f, 0.81f, 0.98f }, // Light Blue (Server message type 6)
+			{ 0.06f, 0.07f, 0.11f }, // HUD panel
+			{ 0.16f, 0.17f, 0.23f }, // HUD gauge track
+			{ 0.94f, 0.27f, 0.36f }, // HUD HP
+			{ 0.27f, 0.58f, 1.00f }, // HUD MP
+			{ 1.00f, 0.78f, 0.25f }  // HUD EXP
 		};
 
 		// Create a color by an array of real numbers [0.0f, 1.0f]
