@@ -24,7 +24,9 @@ namespace ms
 			Texture window[9];
 			Texture button[3];
 			Texture button_lit[3];
+			Texture cell[3];
 			Texture cell_lit[3];
+			Texture input[3];
 			Texture close;
 
 			Art()
@@ -41,7 +43,9 @@ namespace ms
 				{
 					button[i] = load(std::string("button_") + ends[i]);
 					button_lit[i] = load(std::string("button_lit_") + ends[i]);
+					cell[i] = load(std::string("cell_") + ends[i]);
 					cell_lit[i] = load(std::string("cell_lit_") + ends[i]);
+					input[i] = load(std::string("input_") + ends[i]);
 				}
 
 				close = load("close");
@@ -87,12 +91,14 @@ namespace ms
 		// Caps keep their shape at height h; the middle stretches.
 		inline void three_slice(const Texture* parts, Point<int16_t> tl, int16_t w, int16_t h)
 		{
-			int16_t cap = static_cast<int16_t>(parts[0].width() * h / std::max<int16_t>(parts[0].height(), 1));
-			cap = std::min<int16_t>(cap, w / 2);
+			int16_t l = static_cast<int16_t>(parts[0].width() * h / std::max<int16_t>(parts[0].height(), 1));
+			int16_t r = static_cast<int16_t>(parts[2].width() * h / std::max<int16_t>(parts[2].height(), 1));
+			l = std::min<int16_t>(l, w / 2);
+			r = std::min<int16_t>(r, w / 2);
 
-			stretch(parts[0], tl.x(), tl.y(), cap, h);
-			stretch(parts[1], tl.x() + cap, tl.y(), w - cap * 2, h);
-			stretch(parts[2], tl.x() + w - cap, tl.y(), cap, h);
+			stretch(parts[0], tl.x(), tl.y(), l, h);
+			stretch(parts[1], tl.x() + l, tl.y(), w - l - r, h);
+			stretch(parts[2], tl.x() + w - r, tl.y(), r, h);
 		}
 
 		// A window: the gold-framed navy panel with a title band on top.
@@ -156,15 +162,31 @@ namespace ms
 			int16_t y = tl.y();
 			const Art& a = art();
 
-			if (selected && Art::valid(a.cell_lit, 3))
+			const Texture* parts = selected ? a.cell_lit : a.cell;
+
+			if (Art::valid(parts, 3))
 			{
-				three_slice(a.cell_lit, tl, w, h);
+				three_slice(parts, tl, w, h);
 				return;
 			}
 
 			box(x + 1, y + 1, w - 2, h - 2, selected ? Color::Name::HUD_EXP : Color::Name::HUD_TRACK, 0.95f);
 			box(x + 1, y + 1, w - 2, 1, Color::Name::WHITE, 0.15f);
 			frame(x, y, w, h, Color::Name::HUD_EXP, selected ? 1.0f : 0.45f);
+		}
+
+		// A light text field in a gold rim with a gem on its left end;
+		// returns false when the APK has no art for it
+		inline bool input(Point<int16_t> tl, int16_t w, int16_t h)
+		{
+			const Art& a = art();
+
+			if (!Art::valid(a.input, 3))
+				return false;
+
+			three_slice(a.input, tl, w, h);
+
+			return true;
 		}
 
 		// The round red close button, or false when the APK has no art for it

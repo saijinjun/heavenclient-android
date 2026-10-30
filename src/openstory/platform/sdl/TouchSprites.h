@@ -53,6 +53,7 @@ namespace ms
 			CHECK,      // Editor: done
 			CHAT,       // Chat: a speech bubble with three dots
 			LIST,       // The server's solo menu: a list with bullets
+			ORB,        // A navy and gold button face, only from bundled art
 			NUM_SPRITES
 		};
 
@@ -78,5 +79,9 @@ namespace ms
 
 		// The whole sheet, WIDTH x HEIGHT RGBA pixels.
 		std::vector<uint8_t> render();
+
+		// Whether render() found the bundled art for a sprite with no
+		// generated fallback (ORB).
+		bool has_art(Sprite sprite);
 	}
 }

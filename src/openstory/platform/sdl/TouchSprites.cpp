@@ -349,19 +349,26 @@ namespace ms
 		}
 
 		// Copies a CELL x CELL PNG from the APK assets into the sheet.
-		void load_icon(std::vector<uint8_t>& pixels, Cell area, const std::string& path)
+		bool orb_loaded = false;
+
+		bool has_art(Sprite sprite)
+		{
+			return sprite == ORB && orb_loaded;
+		}
+
+		bool load_icon(std::vector<uint8_t>& pixels, Cell area, const std::string& path)
 		{
 			SDL_RWops* file = SDL_RWFromFile(path.c_str(), "rb");
 
 			if (!file)
-				return;
+				return false;
 
 			std::vector<uint8_t> bytes(static_cast<size_t>(std::max<Sint64>(SDL_RWsize(file), 0)));
 			bool read = !bytes.empty() && SDL_RWread(file, bytes.data(), 1, bytes.size()) == bytes.size();
 			SDL_RWclose(file);
 
 			if (!read)
-				return;
+				return false;
 
 			int width = 0;
 			int height = 0;
@@ -369,9 +376,11 @@ namespace ms
 			stbi_uc* data = stbi_load_from_memory(bytes.data(), static_cast<int>(bytes.size()), &width, &height, &channels, 4);
 
 			if (!data)
-				return;
+				return false;
 
-			if (width == CELL && height == CELL)
+			bool fits = width == CELL && height == CELL;
+
+			if (fits)
 			{
 				for (int32_t y = 0; y < CELL; y++)
 				{
@@ -381,6 +390,8 @@ namespace ms
 			}
 
 			stbi_image_free(data);
+
+			return fits;
 		}
 
 		std::vector<uint8_t> render()
@@ -428,6 +439,8 @@ namespace ms
 
 			for (const auto& [sprite, name] : art)
 				load_icon(pixels, cell(sprite), std::string("touch/icon_") + name + ".png");
+
+			orb_loaded = load_icon(pixels, cell(ORB), "touch/btn_face.png");
 
 			return pixels;
 		}

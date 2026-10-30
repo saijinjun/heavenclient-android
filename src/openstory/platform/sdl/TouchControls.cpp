@@ -551,9 +551,23 @@ namespace ms
 			float face = empty ? 0.18f : (pressed ? 0.80f : 0.55f);
 			float lift = pressed ? 0.25f : 0.0f;
 
-			sprite(DISC, circle.x, circle.y, half,
-				std::min(1.0f, look.red + lift), std::min(1.0f, look.green + lift), std::min(1.0f, look.blue + lift), face);
-			sprite(RING, circle.x, circle.y, half, 1.0f, 1.0f, 1.0f, empty ? 0.25f : 0.45f);
+			if (TouchSprites::has_art(ORB))
+			{
+				// The navy orb, lightly tinted with the button's color and
+				// lit gold while held
+				auto tint = [&](float c) { return std::min(1.0f, 0.7f + 0.3f * c + lift); };
+				sprite(ORB, circle.x, circle.y, half, tint(look.red), tint(look.green), tint(look.blue),
+					empty ? 0.45f : (pressed ? 1.0f : 0.85f));
+
+				if (pressed)
+					sprite(DISC, circle.x, circle.y, half * 0.8f, 1.0f, 0.82f, 0.25f, 0.25f);
+			}
+			else
+			{
+				sprite(DISC, circle.x, circle.y, half,
+					std::min(1.0f, look.red + lift), std::min(1.0f, look.green + lift), std::min(1.0f, look.blue + lift), face);
+				sprite(RING, circle.x, circle.y, half, 1.0f, 1.0f, 1.0f, empty ? 0.25f : 0.45f);
+			}
 
 			// A ring that grows and fades for a moment after each press.
 			constexpr uint32_t RIPPLE_MS = 280;
