@@ -140,7 +140,7 @@ namespace ms
 		// the channels and Enter are drawn and hit-tested here instead.
 		bool drawn_channels = false;
 		bool drawn_pressed = false;
-		std::vector<Text> drawn_labels;
+		mutable std::vector<Text> drawn_labels;
 		Text drawn_enter;
 
 		uint8_t selected_channel_count() const;

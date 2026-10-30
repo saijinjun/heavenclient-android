@@ -204,7 +204,7 @@ namespace ms
 
 		const char* captions[7] = { "Level", "Fame", "STR", "DEX", "INT", "LUK", "Rank" };
 		for (size_t i = 0; i < 7; i++)
-			card_captions[i] = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::MAPLE_TEXT, captions[i]);
+			card_captions[i] = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::SILVERCHALICE, captions[i]);
 
 		level_label = OutlinedText(Text::Font::A11M, Text::Alignment::RIGHT, Color::Name::WHITE, Color::Name::TOBACCOBROWN);
 		fame_label = OutlinedText(Text::Font::A11M, Text::Alignment::RIGHT, Color::Name::WHITE, Color::Name::TOBACCOBROWN);
@@ -438,7 +438,7 @@ namespace ms
 
 						namelabel.draw(c + scl(CW / 2, 8));
 						infolabels[InfoLabel::JOB].draw(c + scl(CW / 2 + infolabels[InfoLabel::JOB].width() / 2, 30));
-						box(14, 50, CW - 28, 1, Color::Name::MAPLE_BORDER, 0.45f);
+						box(14, 50, CW - 28, 1, Color::Name::HUD_EXP, 0.45f);
 
 						// Two columns of caption + right-aligned value
 						const OutlinedText* values[7] = {

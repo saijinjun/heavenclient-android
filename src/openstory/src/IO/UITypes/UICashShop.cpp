@@ -257,8 +257,15 @@ namespace ms
 	void UICashShop::draw_touch_buttons() const
 	{
 		Rectangle<int16_t> e = exit_rect();
-		classic::button(e.get_left_top(), e.width(), e.height());
-		exit_label.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (e.height() - exit_label.height()) / 2));
+		int16_t eh = e.height();
+
+		// A navy plate with the label and the round close button on its right
+		classic::panel(e.get_left_top(), e.width(), eh);
+
+		if (classic::close_button(Point<int16_t>(e.right() - eh, e.top()), eh))
+			exit_label.draw(Point<int16_t>(e.left() + (e.width() - eh) / 2, e.top() + (eh - exit_label.height()) / 2));
+		else
+			exit_label.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (eh - exit_label.height()) / 2));
 
 		if (selected_item >= 0 && selected_item < static_cast<int16_t>(items.size()))
 		{
@@ -284,7 +291,7 @@ namespace ms
 			Point<int16_t> p = get_draw_position() + Point<int16_t>((1024 - w) / 2, 330);
 			Rectangle<int16_t> r(p, p + Point<int16_t>(w, 40));
 
-			status_text.change_color(status_error ? Color::Name::DARKRED : Color::Name::MAPLE_TEXT);
+			status_text.change_color(status_error ? Color::Name::TORCHRED : Color::Name::WHITE);
 			classic::panel(p, w, 40);
 			status_text.draw(Point<int16_t>(r.left() + w / 2, r.top() + (40 - status_text.height()) / 2));
 		}

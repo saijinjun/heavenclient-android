@@ -236,7 +236,7 @@ namespace ms
 		if (drawn_channels)
 		{
 			for (uint8_t i = 0; i < 20; ++i)
-				drawn_labels.emplace_back(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::MAPLE_TEXT, "Ch. " + std::to_string(i + 1));
+				drawn_labels.emplace_back(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Ch. " + std::to_string(i + 1));
 
 			drawn_enter = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Enter");
 		}
@@ -947,6 +947,7 @@ namespace ms
 			bool lit = i == channelid;
 
 			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
+			drawn_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
 			drawn_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, r.top() + (r.height() - drawn_labels[i].height()) / 2));
 		}
 

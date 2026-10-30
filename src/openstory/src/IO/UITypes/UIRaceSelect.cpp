@@ -113,8 +113,8 @@ namespace ms
 			for (uint16_t i = 0; i < CLASS_COUNT; i++)
 			{
 				classes[i].dim = Point<int16_t>(CARD_W, CARD_H);
-				card_name[i] = Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::MAPLE_TEXT, CLASS_NAMES[i]);
-				card_blurb[i] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::MAPLE_TEXT, CLASS_BLURBS[i], CARD_W - 36);
+				card_name[i] = Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::WHITE, CLASS_NAMES[i]);
+				card_blurb[i] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::GALLERY, CLASS_BLURBS[i], CARD_W - 36);
 			}
 
 			title_text = Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::WHITE, "Choose your path");
@@ -192,12 +192,12 @@ namespace ms
 				if (lit || hovered[i])
 				{
 					float a = lit ? 1.0f : 0.6f;
-					classic::frame(card.x() - 2, card.y() - 2, CARD_W + 4, CARD_H + 4, Color::Name::MAPLE_ORANGE, a);
-					classic::frame(card.x() - 3, card.y() - 3, CARD_W + 6, CARD_H + 6, Color::Name::MAPLE_ORANGE_LIGHT, a * 0.7f);
+					classic::frame(card.x() - 2, card.y() - 2, CARD_W + 4, CARD_H + 4, Color::Name::HUD_EXP, a);
+					classic::frame(card.x() - 3, card.y() - 3, CARD_W + 6, CARD_H + 6, Color::Name::MAPLE_ORANGE_LIGHT, a * 0.6f);
 				}
 
 				card_name[i].draw(card + Point<int16_t>(CARD_W / 2, 34));
-				ColorBox(CARD_W - 60, 1, Color::Name::MAPLE_BORDER, 0.45f).draw(DrawArgument(card + Point<int16_t>(30, 70)));
+				ColorBox(CARD_W - 60, 1, Color::Name::HUD_EXP, 0.45f).draw(DrawArgument(card + Point<int16_t>(30, 70)));
 				card_blurb[i].draw(card + Point<int16_t>(CARD_W / 2, 92));
 			}
 		}

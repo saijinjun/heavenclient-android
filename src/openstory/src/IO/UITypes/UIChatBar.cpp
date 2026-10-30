@@ -472,12 +472,14 @@ namespace ms
 		if (UI::get().is_typing_on_top() && chatfield.get_state() == Textfield::State::FOCUSED)
 		{
 			// A typing bar at the top of the screen, above the soft keyboard:
-			// a parchment strip with an orange accent on its left.
+			// a light field in a navy strip, with a gold accent on its left.
 			int16_t width = std::min<int16_t>(Constants::Constants::get().get_viewwidth() - 32, 460);
 			Point<int16_t> bar((Constants::Constants::get().get_viewwidth() - width) / 2, 10);
 
-			classic::panel(bar, width, 28);
-			classic::box(bar.x() + 1, bar.y() + 1, 4, 26, Color::Name::MAPLE_ORANGE);
+			// A light input field inside a gold-rimmed navy strip
+			classic::panel(bar + Point<int16_t>(-3, -3), width + 6, 34);
+			classic::box(bar.x(), bar.y(), width, 28, Color::Name::GALLERY, 0.97f);
+			classic::box(bar.x(), bar.y(), 4, 28, Color::Name::HUD_EXP);
 
 			// The field's bounds start at (-435, -59) from the bar's position.
 			Point<int16_t> text_pos = bar + Point<int16_t>(14, 5);
