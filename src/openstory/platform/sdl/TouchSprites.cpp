@@ -20,6 +20,10 @@
 #include <array>
 #include <cmath>
 #include <initializer_list>
+#include <string>
+
+#include <SDL.h>
+#include <stb_image.h>
 
 namespace ms
 {
@@ -344,6 +348,41 @@ namespace ms
 			};
 		}
 
+		// Copies a CELL x CELL PNG from the APK assets into the sheet.
+		void load_icon(std::vector<uint8_t>& pixels, Cell area, const std::string& path)
+		{
+			SDL_RWops* file = SDL_RWFromFile(path.c_str(), "rb");
+
+			if (!file)
+				return;
+
+			std::vector<uint8_t> bytes(static_cast<size_t>(std::max<Sint64>(SDL_RWsize(file), 0)));
+			bool read = !bytes.empty() && SDL_RWread(file, bytes.data(), 1, bytes.size()) == bytes.size();
+			SDL_RWclose(file);
+
+			if (!read)
+				return;
+
+			int width = 0;
+			int height = 0;
+			int channels = 0;
+			stbi_uc* data = stbi_load_from_memory(bytes.data(), static_cast<int>(bytes.size()), &width, &height, &channels, 4);
+
+			if (!data)
+				return;
+
+			if (width == CELL && height == CELL)
+			{
+				for (int32_t y = 0; y < CELL; y++)
+				{
+					size_t row = (static_cast<size_t>(area.top + y) * WIDTH + area.left) * 4;
+					std::copy_n(data + static_cast<size_t>(y) * CELL * 4, CELL * 4, pixels.begin() + row);
+				}
+			}
+
+			stbi_image_free(data);
+		}
+
 		std::vector<uint8_t> render()
 		{
 			std::vector<uint8_t> pixels(static_cast<size_t>(WIDTH) * HEIGHT * 4, 0);
@@ -376,6 +415,19 @@ namespace ms
 					}
 				}
 			}
+
+			// Icons drawn by hand, bundled as 256x256 white PNGs, replace
+			// the generated ones where present.
+			const std::pair<Sprite, const char*> art[] = {
+				{ SWORD, "attack" }, { JUMP, "jump" }, { DROP_DOWN, "jump_down" },
+				{ JUMP_SLASH, "jump_attack" }, { PICKUP, "pickup" }, { BAG, "inventory" },
+				{ SHIRT, "equip" }, { BARS, "stats" }, { STAR, "skills" },
+				{ QUEST, "quests" }, { GLOBE, "map" }, { GEAR, "settings" },
+				{ CHAT, "chat" }, { LIST, "solo" }
+			};
+
+			for (const auto& [sprite, name] : art)
+				load_icon(pixels, cell(sprite), std::string("touch/icon_") + name + ".png");
 
 			return pixels;
 		}

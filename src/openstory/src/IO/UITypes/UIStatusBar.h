@@ -346,6 +346,9 @@ namespace ms
 		Text hud_mp;
 		// Optional art for the dock: left cap, stretched middle, right cap.
 		Texture hud_dock[3];
+		Texture hud_badge;
+		Texture hud_frame[3];
+		Texture hud_fill[3][3];
 
 		bool hud_collapsed() const;
 		Rectangle<int16_t> hud_dock_bounds() const;

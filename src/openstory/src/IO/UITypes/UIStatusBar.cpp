@@ -305,6 +305,18 @@ namespace ms
 		hud_dock[0] = Texture::from_file("hud/dock_l.png", Point<int16_t>(0, 0));
 		hud_dock[1] = Texture::from_file("hud/dock_m.png", Point<int16_t>(0, 0));
 		hud_dock[2] = Texture::from_file("hud/dock_r.png", Point<int16_t>(0, 0));
+		hud_badge = Texture::from_file("hud/badge.png", Point<int16_t>(0, 0));
+
+		const char* ends[3] = { "l", "m", "r" };
+		const char* fills[3] = { "hp", "mp", "exp" };
+
+		for (size_t i = 0; i < 3; i++)
+		{
+			hud_frame[i] = Texture::from_file(std::string("hud/gauge_frame_") + ends[i] + ".png", Point<int16_t>(0, 0));
+
+			for (size_t f = 0; f < 3; f++)
+				hud_fill[f][i] = Texture::from_file(std::string("hud/fill_") + fills[f] + "_" + ends[i] + ".png", Point<int16_t>(0, 0));
+		}
 
 		// The quickslot key caps live in StatusBar.img in every build.
 		nl::node keynames = nl::nx::ui["StatusBar.img"]["key"];
@@ -2085,7 +2097,7 @@ namespace ms
 		constexpr int16_t HUD_EXP_H = 4;
 		constexpr int16_t HUD_GAP = 6;
 		constexpr int16_t HUD_BADGE = 36;
-		constexpr int16_t HUD_GAUGE_H = 15;
+		constexpr int16_t HUD_GAUGE_H = 16;
 		constexpr int16_t HUD_TAB_W = 64;
 		constexpr int16_t HUD_TAB_H = 14;
 
@@ -2105,6 +2117,27 @@ namespace ms
 			ColorBox(w - r * 2, h, color, opacity).draw(DrawArgument(Point<int16_t>(x + r, y)));
 			ColorBox(r, h - r * 2, color, opacity).draw(DrawArgument(Point<int16_t>(x, y + r)));
 			ColorBox(r, h - r * 2, color, opacity).draw(DrawArgument(Point<int16_t>(x + w - r, y + r)));
+		}
+
+		bool all_valid(const Texture* parts)
+		{
+			return parts[0].is_valid() && parts[1].is_valid() && parts[2].is_valid();
+		}
+
+		// Left cap, stretched middle and right cap, scaled to height h.
+		void three_slice(const Texture* parts, int16_t x, int16_t y, int16_t w, int16_t h)
+		{
+			int16_t cap = static_cast<int16_t>(parts[0].width() * h / std::max<int16_t>(parts[0].height(), 1));
+
+			if (w < cap * 2)
+			{
+				parts[1].draw(DrawArgument(Point<int16_t>(x, y), Point<int16_t>(w, h)));
+				return;
+			}
+
+			parts[0].draw(DrawArgument(Point<int16_t>(x, y), Point<int16_t>(cap, h)));
+			parts[1].draw(DrawArgument(Point<int16_t>(x + cap, y), Point<int16_t>(w - cap * 2, h)));
+			parts[2].draw(DrawArgument(Point<int16_t>(x + w - cap, y), Point<int16_t>(cap, h)));
 		}
 
 		void ease(float& shown, float& trail, float target)
@@ -2198,8 +2231,16 @@ namespace ms
 		// EXP strip along the bottom edge.
 		ColorBox(vw, HUD_EXP_H, Color::Name::HUD_TRACK, 0.9f).draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H)));
 		int16_t exp_w = static_cast<int16_t>(vw * std::clamp(hud_exp_shown, 0.0f, 1.0f));
-		ColorBox(exp_w, HUD_EXP_H, Color::Name::HUD_EXP, 1.0f).draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H)));
-		ColorBox(exp_w, 1, Color::Name::WHITE, 0.35f).draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H)));
+		if (all_valid(hud_fill[2]))
+		{
+			if (exp_w > 0)
+				hud_fill[2][1].draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H), Point<int16_t>(exp_w, HUD_EXP_H)));
+		}
+		else
+		{
+			ColorBox(exp_w, HUD_EXP_H, Color::Name::HUD_EXP, 1.0f).draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H)));
+			ColorBox(exp_w, 1, Color::Name::WHITE, 0.35f).draw(DrawArgument(Point<int16_t>(0, vh - HUD_EXP_H)));
+		}
 
 		// Dock.
 		Rectangle<int16_t> dock = hud_dock_bounds();
@@ -2226,10 +2267,22 @@ namespace ms
 		// Level badge, with a dot while AP or SP is waiting to be spent.
 		int16_t bx = x0 + 8;
 		int16_t by = y0 + 5;
-		soft_box(bx, by, HUD_BADGE, HUD_BADGE, Color::Name::HUD_EXP, 0.95f);
-		soft_box(bx + 2, by + 2, HUD_BADGE - 4, HUD_BADGE - 4, Color::Name::HUD_PANEL, 1.0f);
-		hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 2));
-		hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 14));
+		if (hud_badge.is_valid())
+		{
+			// The star on top rises above the dock; the square sits on it.
+			int16_t bw = HUD_BADGE + 2;
+			int16_t bh = static_cast<int16_t>(bw * hud_badge.height() / std::max<int16_t>(hud_badge.width(), 1));
+			hud_badge.draw(DrawArgument(Point<int16_t>(bx - 1, by + HUD_BADGE + 1 - bh), Point<int16_t>(bw, bh)));
+			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 8));
+			hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 18));
+		}
+		else
+		{
+			soft_box(bx, by, HUD_BADGE, HUD_BADGE, Color::Name::HUD_EXP, 0.95f);
+			soft_box(bx + 2, by + 2, HUD_BADGE - 4, HUD_BADGE - 4, Color::Name::HUD_PANEL, 1.0f);
+			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 2));
+			hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 14));
+		}
 
 		if (stats.get_stat(MapleStat::Id::AP) > 0 || stats.get_stat(MapleStat::Id::SP) > 0)
 			soft_box(bx + HUD_BADGE - 6, by - 2, 8, 8, Color::Name::ORANGE, 0.6f + 0.4f * pulse, 1);
@@ -2246,21 +2299,44 @@ namespace ms
 		int16_t gw = (cw - 6) / 2;
 		float hp_warn = Setting<HPWarning>::get().load() / 100.0f;
 
-		auto gauge = [&](int16_t gx, float shown, float trail, Color::Name color, const Text& label, bool warn)
+		bool art = all_valid(hud_frame) && all_valid(hud_fill[0]) && all_valid(hud_fill[1]);
+
+		auto gauge = [&](int16_t gx, float shown, float trail, Color::Name color, const Texture* fill, const Text& label, bool warn)
 		{
-			soft_box(gx, gy, gw, HUD_GAUGE_H, Color::Name::HUD_TRACK, 0.95f);
+			if (art)
+			{
+				// The fill sits inside the frame's metal rim.
+				constexpr int16_t INSET = 2;
+				int16_t iw = gw - INSET * 2;
+				int16_t ih = HUD_GAUGE_H - INSET * 2;
+				int16_t trail_w = static_cast<int16_t>(iw * std::clamp(trail, 0.0f, 1.0f));
+				int16_t fill_w = static_cast<int16_t>(iw * std::clamp(shown, 0.0f, 1.0f));
 
-			int16_t trail_w = static_cast<int16_t>(gw * std::clamp(trail, 0.0f, 1.0f));
-			int16_t fill_w = static_cast<int16_t>(gw * std::clamp(shown, 0.0f, 1.0f));
+				three_slice(hud_frame, gx, gy, gw, HUD_GAUGE_H);
 
-			if (trail_w > fill_w)
-				ColorBox(trail_w - fill_w, HUD_GAUGE_H - 2, Color::Name::WHITE, 0.45f)
-					.draw(DrawArgument(Point<int16_t>(gx + fill_w, gy + 1)));
+				if (trail_w > fill_w)
+					ColorBox(trail_w - fill_w, ih, Color::Name::WHITE, 0.45f)
+						.draw(DrawArgument(Point<int16_t>(gx + INSET + fill_w, gy + INSET)));
 
-			soft_box(gx, gy, fill_w, HUD_GAUGE_H, color, 1.0f);
-			if (fill_w > 4)
-				ColorBox(fill_w - 4, HUD_GAUGE_H / 2 - 1, Color::Name::WHITE, 0.16f)
-					.draw(DrawArgument(Point<int16_t>(gx + 2, gy + 1)));
+				if (fill_w > 0)
+					three_slice(fill, gx + INSET, gy + INSET, fill_w, ih);
+			}
+			else
+			{
+				soft_box(gx, gy, gw, HUD_GAUGE_H, Color::Name::HUD_TRACK, 0.95f);
+
+				int16_t trail_w = static_cast<int16_t>(gw * std::clamp(trail, 0.0f, 1.0f));
+				int16_t fill_w = static_cast<int16_t>(gw * std::clamp(shown, 0.0f, 1.0f));
+
+				if (trail_w > fill_w)
+					ColorBox(trail_w - fill_w, HUD_GAUGE_H - 2, Color::Name::WHITE, 0.45f)
+						.draw(DrawArgument(Point<int16_t>(gx + fill_w, gy + 1)));
+
+				soft_box(gx, gy, fill_w, HUD_GAUGE_H, color, 1.0f);
+				if (fill_w > 4)
+					ColorBox(fill_w - 4, HUD_GAUGE_H / 2 - 1, Color::Name::WHITE, 0.16f)
+						.draw(DrawArgument(Point<int16_t>(gx + 2, gy + 1)));
+			}
 
 			if (warn)
 			{
@@ -2274,8 +2350,8 @@ namespace ms
 			label.draw(Point<int16_t>(gx + gw / 2, gy + 1));
 		};
 
-		gauge(cx, hud_hp_shown, hud_hp_trail, Color::Name::HUD_HP, hud_hp, gethppercent() < hp_warn);
-		gauge(cx + gw + 6, hud_mp_shown, hud_mp_trail, Color::Name::HUD_MP, hud_mp, false);
+		gauge(cx, hud_hp_shown, hud_hp_trail, Color::Name::HUD_HP, hud_fill[0], hud_hp, gethppercent() < hp_warn);
+		gauge(cx + gw + 6, hud_mp_shown, hud_mp_trail, Color::Name::HUD_MP, hud_fill[1], hud_mp, false);
 
 		// Three dots on the right hint that the dock opens the full bar;
 		// the top one turns red for an unread notice.
