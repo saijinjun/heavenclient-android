@@ -90,7 +90,7 @@ namespace ms
 		if (pressed && escape)
 		{
 			if (auto cashshop = dynamic_cast<UICashShop*>(get(UIElement::Type::CASHSHOP)))
-				cashshop->exit_cashshop();
+				cashshop->request_exit();
 		}
 	}
 

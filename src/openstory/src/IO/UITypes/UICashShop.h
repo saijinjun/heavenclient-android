@@ -53,6 +53,8 @@ namespace ms
 
 		UIElement::Type get_type() const override;
 
+		// Asks the server to leave; exit_cashshop() runs on its answer
+		void request_exit();
 		void exit_cashshop();
 
 	private:
@@ -65,6 +67,7 @@ namespace ms
 		Rectangle<int16_t> buy_rect() const;
 		void draw_touch_buttons() const;
 		bool buy_armed = false;
+		int32_t exit_ticks = 0;
 		mutable Text exit_label;
 		mutable Text buy_label;
 		mutable Text status_text;

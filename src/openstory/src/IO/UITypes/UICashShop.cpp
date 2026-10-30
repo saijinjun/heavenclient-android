@@ -457,6 +457,9 @@ namespace ms
 		if (status_ticks > 0)
 			status_ticks--;
 
+		if (exit_ticks > 0 && --exit_ticks == 0)
+			show_status("The server didn't answer. Tap Exit to try again.", true);
+
 		preview_look.update(Constants::TIMESTEP);
 
 		// Walk
@@ -518,33 +521,9 @@ namespace ms
 			preview_index = buttonid;
 			return Button::State::PRESSED;
 		case Buttons::BtExit:
-		{
-			uint16_t width = Setting<Width>::get().load();
-			uint16_t height = Setting<Height>::get().load();
-
-			// Restore the user's pre-cashshop UI scale (transition() forced
-			// it to 1.0 so the 1024x768 cash shop UI fit the window exactly).
-			Constants::Constants::get().set_ui_scale(get_pre_cashshop_ui_scale());
-			Constants::Constants::get().set_viewwidth(width);
-			Constants::Constants::get().set_viewheight(height);
-
-			float fadestep = 0.025f;
-
-			Window::get().fadeout(
-				fadestep,
-				[]()
-				{
-					GraphicsGL::get().clear();
-					ChangeMapPacket().dispatch();
-				}
-			);
-
-			GraphicsGL::get().lock();
-			Stage::get().clear();
-			Timer::get().start();
+			request_exit();
 
 			return Button::State::NORMAL;
-		}
 		case Buttons::BtNext:
 		{
 			size_t size = promotion_sprites.size() - 1;
@@ -689,8 +668,23 @@ namespace ms
 		return TYPE;
 	}
 
+	void UICashShop::request_exit()
+	{
+		// The shop stays up until the server sends the channel back, so the
+		// tap shows at once and a second tap doesn't send a second request.
+		if (exit_ticks > 0)
+			return;
+
+		exit_ticks = 8000 / Constants::TIMESTEP;
+		buy_armed = false;
+		show_status("Leaving the Cash Shop...", false);
+		ChangeMapPacket().dispatch();
+	}
+
 	void UICashShop::exit_cashshop()
 	{
+		exit_ticks = 0;
+
 		UI& ui = UI::get();
 
 		// Restore UI scale + physical window size that were overridden in
@@ -712,7 +706,11 @@ namespace ms
 
 		ui.change_state(UI::State::GAME);
 
+		// The shop's preview stage is still loaded; Stage::load only
+		// loads into a cleared stage.
+		GraphicsGL::get().clear();
 		Stage& stage = Stage::get();
+		stage.clear();
 		Player& player = stage.get_player();
 
 		PlayerLoginPacket(player.get_oid()).dispatch();
