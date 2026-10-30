@@ -35,11 +35,82 @@
 #endif
 
 #ifdef USE_NX
+#ifdef __ANDROID__
+#include <SDL.h>
+#include <sys/stat.h>
+#endif
+
+#include <fstream>
+
 #include <nlnx/nx.hpp>
 #endif
 
 namespace ms
 {
+	namespace
+	{
+		// The saved password. On Android the Settings file sits in shared
+		// storage that the user and, on older versions, other apps can read,
+		// so the password is kept in the app's private storage instead.
+#ifdef __ANDROID__
+		std::string private_password_path()
+		{
+			const char* internal = SDL_AndroidGetInternalStoragePath();
+
+			return internal ? std::string(internal) + "/login" : std::string();
+		}
+#endif
+
+		std::string load_saved_password()
+		{
+#ifdef __ANDROID__
+			std::string path = private_password_path();
+			std::string saved;
+
+			if (!path.empty())
+			{
+				std::ifstream file(path, std::ios::binary);
+				std::getline(file, saved);
+			}
+
+			// Move a password left in the shared Settings file by an older build.
+			std::string legacy = Setting<DefaultPassword>::get().load();
+
+			if (!legacy.empty())
+			{
+				if (saved.empty())
+					saved = legacy;
+
+				Setting<DefaultPassword>::get().save("");
+				Configuration::get().save();
+			}
+
+			return saved;
+#else
+			return Setting<DefaultPassword>::get().load();
+#endif
+		}
+
+		void save_password(const std::string& value)
+		{
+#ifdef __ANDROID__
+			std::string path = private_password_path();
+
+			if (path.empty())
+				return;
+
+			{
+				std::ofstream file(path, std::ios::binary | std::ios::trunc);
+				file << value;
+			}
+
+			::chmod(path.c_str(), S_IRUSR | S_IWUSR);
+#else
+			Setting<DefaultPassword>::get().save(value);
+#endif
+		}
+	}
+
 	UILogin::UILogin() : UIElement(Point<int16_t>(0, 0), Point<int16_t>(800, 600), ScaleMode::CENTER_OFFSET)
 	{
 		signboard_pos = Point<int16_t>(510, 330);
@@ -149,7 +220,7 @@ namespace ms
 		{
 			account.change_text(Setting<DefaultAccount>::get().load());
 
-			std::string saved_pass = Setting<DefaultPassword>::get().load();
+			std::string saved_pass = load_saved_password();
 			if (!saved_pass.empty())
 			{
 				password.change_text(saved_pass);
@@ -243,7 +314,7 @@ namespace ms
 		if (saveid)
 		{
 			Setting<DefaultAccount>::get().save(account_text);
-			Setting<DefaultPassword>::get().save(password_text);
+			save_password(password_text);
 			Configuration::get().save();
 		}
 
@@ -316,6 +387,10 @@ namespace ms
 			case Buttons::BT_SAVEID:
 			{
 				saveid = !saveid;
+
+				// Turning "save login" off forgets the saved password.
+				if (!saveid)
+					save_password("");
 
 				Setting<SaveLogin>::get().save(saveid);
 				Configuration::get().save();
