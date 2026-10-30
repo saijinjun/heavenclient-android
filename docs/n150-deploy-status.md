@@ -11,6 +11,21 @@
 
 ## Recent events (newest first)
 
+- 2026-10-31 06:47 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: Connection timed out
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+- 2026-10-30 22:22 · client · ⚠ deploy check errored: git fetch -q origin main -> 128: git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+- 2026-10-30 22:22 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
 - 2026-10-29 18:36 · client · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: Connection timed out
 fatal: Could not read from remote repository.
 
