@@ -271,7 +271,7 @@ namespace ms
 #define OPENSTORY_ASSETS_URL ""
 #endif
 	// Android port: where .nx files missing on the device are streamed from,
-	// e.g. http://100.91.238.34:8090/assets/. Empty turns streaming off.
+	// e.g. http://<server>:8090/assets/. Empty turns streaming off.
 	struct AssetsUrl : public Configuration::StringEntry
 	{
 		AssetsUrl() : StringEntry("AssetsUrl", OPENSTORY_ASSETS_URL) {}

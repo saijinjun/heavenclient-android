@@ -66,13 +66,11 @@ namespace ms
 
 	void Session::reconnect(const char* address, const char* port)
 	{
-		// Close the current connection and open a new one
-		bool success = socket.close();
-
-		if (success)
-			init(address, port);
-		else
-			connected = false;
+		// Close the current connection and open a new one. Closing fails
+		// when the server already dropped the connection; open anyway, or a
+		// lost connection could never be replaced.
+		socket.close();
+		init(address, port);
 	}
 
 	void Session::process(const int8_t* bytes, size_t available)

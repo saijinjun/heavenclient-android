@@ -24,5 +24,9 @@ namespace ms
 
 		// Shows a startup error in a dialog, with where the files go.
 		void show_error(const std::string& message);
+
+		// Asks whether to try connecting again. True for Reconnect, false
+		// for Quit. Blocks until the player answers.
+		bool ask_reconnect(const std::string& message);
 	}
 }
