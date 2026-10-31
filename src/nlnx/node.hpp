@@ -132,7 +132,7 @@ namespace nl {
         bitmap to_bitmap() const;
         audio to_audio() const;
         //Internal variables
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         uint32_t m_offset = 0;
 #else
         data const * m_data = nullptr;

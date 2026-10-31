@@ -18,6 +18,7 @@
 #include "Stage.h"
 
 #include "../Audio/Audio.h"
+#include "../Graphics/GraphicsGL.h"
 #include "../IO/KeyAction.h"
 #include "../IO/Messages.h"
 #include "../Net/Packets/GameplayPackets.h"
@@ -132,6 +133,7 @@ namespace jrc
         double viewy = viewrpos.y();
 
         backgrounds.drawbackgrounds(viewx, viewy, alpha);
+        GraphicsGL::get().mark_world();
         for (auto id : Layer::IDs)
         {
             tilesobjs.draw(id, viewpos, alpha);

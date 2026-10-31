@@ -27,7 +27,10 @@
 
 #include "nlnx/bitmap.hpp"
 
-#include "GL/glew.h"
+#include "GLHeaders.h"
+#ifdef MS_PLATFORM_SDL
+#include "PostProcess.h"
+#endif
 
 #include "ft2build.h"
 #include FT_FREETYPE_H
@@ -45,6 +48,10 @@ namespace jrc
 
         // Initialise all resources.
         Error init();
+        // How many times larger than their game size glyphs are rasterized
+        // (1 or 2), to match how much the screen scales the game up. Set
+        // before init().
+        void set_text_scale(int16_t scale);
         // Re-initialise after changing screen modes.
         void reinit();
         // Update runtime viewport-dependent uniforms and clipping.
@@ -81,6 +88,34 @@ namespace jrc
 
         // Draw the buffer contents with the specified scene opacity.
         void flush(float opacity);
+
+        // Mark where the far background ends and where the UI starts in
+        // this frame's drawing, so the world can get the HD effects and
+        // the UI stays sharp.
+        void mark_world();
+        void mark_ui();
+#ifdef MS_PLATFORM_SDL
+        void set_effects(const PostProcess::Options& options);
+#endif
+
+#ifdef MS_PLATFORM_SDL
+        // Rectangles drawn over the whole window in its own pixels, outside
+        // the game view, e.g. touch controls in the black bars.
+        void draw_screen_rectangle(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
+        // A game image (e.g. a skill icon) stretched over a screen rectangle.
+        void draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
+        // A separate RGBA texture for screen overlays such as the touch
+        // controls' artwork, sampled smoothly so it scales well.
+        void set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height);
+        bool has_overlay_texture() const;
+        // Part of the overlay texture (source pixels) over a screen rectangle.
+        void draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
+            int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color);
+        // Draws the queued overlay pieces, then the queued screen rectangles
+        // and images, into a width x height viewport, then restores the game
+        // view projection.
+        void flush_screen(int16_t width, int16_t height);
+#endif
         // Clear the buffer contents.
         void clearscene();
 
@@ -277,9 +312,27 @@ namespace jrc
         GLint uniform_screensize;
         GLint uniform_yoffset;
         GLint uniform_fontregion;
+        GLint uniform_fontbox;
+        int16_t text_scale = 1;
 
         std::unordered_map<size_t, Offset> offsets;
         Offset nulloffset;
+#ifdef MS_PLATFORM_SDL
+        std::vector<Quad> screen_quads;
+        std::vector<Quad> overlay_quads;
+        GLuint overlay = 0;
+        GLshort overlay_w = 0;
+        GLshort overlay_h = 0;
+
+        void draw_screen_quads(const std::vector<Quad>& batch);
+        void bind_quad_state();
+        void draw_quad_range(size_t first, size_t last);
+
+        PostProcess post;
+#endif
+        static constexpr size_t NO_MARK = static_cast<size_t>(-1);
+        size_t world_mark = NO_MARK;
+        size_t ui_mark = NO_MARK;
 
         QuadTree<size_t, Leftover> leftovers;
         size_t rlid;

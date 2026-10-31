@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HeavenClient</string>
+    <string name="setup_title">Game files</string>
+    <string name="setup_connecting">Connecting to the game server…</string>
+    <string name="setup_offer">Play now and the game loads its files from the server as you go. Each new area takes a moment the first time, then it\'s kept on the phone.\n\nOr download all %1$s first (Wi-Fi recommended) to never wait.</string>
+    <string name="setup_play">Play now</string>
+    <string name="setup_download">Download all (%1$s)</string>
+    <string name="setup_starting">Starting download…</string>
+    <string name="setup_progress">Downloading %1$s\n%2$s of %3$s · %4$s/s</string>
+    <string name="setup_unreachable">Can\'t reach the game server at %1$s\n\nMake sure Tailscale is on and connected, and that the server is running.\n\n(%2$s)</string>
+    <string name="setup_no_space">Not enough space: the files need %1$s but only %2$s is free.</string>
+    <string name="setup_failed">The download stopped: %1$s\n\nWhat\'s already downloaded is kept; Resume picks up from there.</string>
+</resources>
