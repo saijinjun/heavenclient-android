@@ -40,6 +40,9 @@ jobs:
 
       - name: Build APK and run unit tests
         working-directory: android
+        env:
+          HEAVEN_SERVER_IP: ${{ vars.HEAVEN_SERVER_IP }}
+          HEAVEN_ASSETS_URL: ${{ vars.HEAVEN_ASSETS_URL }}
         run: ./gradlew --no-daemon assembleRelease testReleaseUnitTest
 
       - name: Upload APK

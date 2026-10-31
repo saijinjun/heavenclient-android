@@ -20,7 +20,7 @@ namespace LazyFS
 	}
 
 	// Base URL that remote .nx files are fetched from, ending in a slash,
-	// e.g. http://100.91.238.34:8090/assets/. Empty disables streaming.
+	// e.g. http://<server>:8090/assets/. Empty disables streaming.
 	void set_remote_base(const std::string& url);
 	const std::string& remote_base();
 }

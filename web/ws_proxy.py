@@ -17,7 +17,7 @@ Target allowlist:
     The browser names the host:port it wants, so without a limit the proxy
     relays to anything this machine can reach. Set WS_PROXY_ALLOWED_TARGETS to
     a comma-separated list of host:port or host:lo-hi entries, e.g.
-        WS_PROXY_ALLOWED_TARGETS=100.91.238.34:8484,100.91.238.34:7575-7577
+        WS_PROXY_ALLOWED_TARGETS=<n150-tailscale-ip>:8484,<n150-tailscale-ip>:7575-7577
     and every other target is refused. Unset keeps the open behavior for local
     development and prints a warning at startup.
 """
