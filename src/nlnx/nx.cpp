@@ -26,7 +26,7 @@ namespace nl {
     namespace nx {
         std::vector<std::unique_ptr<file>> files;
         bool exists(std::string name) {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
             return true;
 #else
             return std::ifstream(name).is_open();
@@ -35,7 +35,7 @@ namespace nl {
         node add_file(std::string name) {
             if (!exists(name))
                 return {};
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
             files.emplace_back(new file(name));
 #else
             files.emplace_back(new file(name));

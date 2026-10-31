@@ -30,6 +30,10 @@ namespace jrc
         void restore_position(Point<int16_t> saved_position);
         void keep_on_screen();
 
+        // Stays at its default position on a wide view instead of moving
+        // toward the middle, e.g. the minimap in the corner.
+        bool anchored_left = false;
+
         // A zero width follows the current window width, including resizing.
         Point<int16_t> dragarea;
 
@@ -39,6 +43,8 @@ namespace jrc
 
         bool dragging = false;
         bool manually_positioned = false;
+        // How far default positions are moved right on a wide view.
+        int16_t wide_shift = 0;
         Point<int16_t> drag_offset;
     };
 }

@@ -19,15 +19,23 @@
 
 #include "../Configuration.h"
 
-#ifndef MS_PLATFORM_WASM
+// WASM and SDL builds register each sound as a clip with an id and play it
+// by that id (clip_audio_*). Other builds use BASS.
+#if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
+#define JOURNEY_CLIP_AUDIO
+#endif
+
+#ifndef JOURNEY_CLIP_AUDIO
 #define WIN32_LEAN_AND_MEAN
 #include "bass/bass.h"
-#else
+#elif defined(MS_PLATFORM_WASM)
 #include <emscripten.h>
 using HSTREAM = uint64_t;
 using HCHANNEL = uint64_t;
 using HSAMPLE = uint64_t;
 using DWORD = uint32_t;
+#else
+#include "ClipAudio.h"
 #endif
 
 #include "nlnx/nx.hpp"
@@ -39,7 +47,7 @@ namespace jrc
     constexpr uint32_t kNxAudioHeaderSize = 82;
 
 #ifdef MS_PLATFORM_WASM
-    EM_JS(int, wasm_audio_init, (), {
+    EM_JS(int, clip_audio_init, (), {
         if (Module.MapleAudio) {
             return 1;
         }
@@ -225,13 +233,13 @@ namespace jrc
         return 1;
     });
 
-    EM_JS(void, wasm_audio_close, (), {
+    EM_JS(void, clip_audio_close, (), {
         if (Module.MapleAudio) {
             Module.MapleAudio.close();
         }
     });
 
-    EM_JS(int, wasm_audio_set_sfx_volume, (double volume), {
+    EM_JS(int, clip_audio_set_sfx_volume, (double volume), {
         if (!Module.MapleAudio) {
             return 0;
         }
@@ -240,7 +248,7 @@ namespace jrc
         return 1;
     });
 
-    EM_JS(int, wasm_audio_set_bgm_volume, (double volume), {
+    EM_JS(int, clip_audio_set_bgm_volume, (double volume), {
         if (!Module.MapleAudio) {
             return 0;
         }
@@ -249,7 +257,7 @@ namespace jrc
         return 1;
     });
 
-    EM_JS(int, wasm_audio_register_clip, (int id, const void* data, int length), {
+    EM_JS(int, clip_audio_register_clip, (int id, const void* data, int length), {
         if (!Module.MapleAudio) {
             return 0;
         }
@@ -258,18 +266,18 @@ namespace jrc
         return 1;
     });
 
-    EM_JS(void, wasm_audio_play_sound, (int id), {
+    EM_JS(void, clip_audio_play_sound, (int id), {
         if (Module.MapleAudio) {
             Module.MapleAudio.playSound(id);
         }
     });
 
-    EM_JS(void, wasm_audio_play_music, (int id), {
+    EM_JS(void, clip_audio_play_music, (int id), {
         if (Module.MapleAudio) {
             Module.MapleAudio.playMusic(id);
         }
     });
-#else
+#elif !defined(JOURNEY_CLIP_AUDIO)
     using HSTREAM = uint64_t;
     using HCHANNEL = uint64_t;
     using HSAMPLE = uint64_t;
@@ -291,14 +299,14 @@ namespace jrc
     }
 
     Error Sound::init() {
-#ifndef MS_PLATFORM_WASM
+#ifndef JOURNEY_CLIP_AUDIO
         if (!set_sfxvolume(100)) return Error::AUDIO;
         if (!BASS_Init(1, 44100, 0, nullptr, nullptr))
         {
             return Error::AUDIO;
         }
 #else
-        if (!wasm_audio_init())
+        if (!clip_audio_init())
         {
             return Error::AUDIO;
         }
@@ -333,19 +341,19 @@ namespace jrc
 
     void Sound::close()
     {
-#ifndef MS_PLATFORM_WASM
+#ifndef JOURNEY_CLIP_AUDIO
         BASS_Free();
 #else
-        wasm_audio_close();
+        clip_audio_close();
 #endif
     }
 
     bool Sound::set_sfxvolume(uint8_t vol)
     {
-#ifndef MS_PLATFORM_WASM
+#ifndef JOURNEY_CLIP_AUDIO
         return BASS_SetConfig(BASS_CONFIG_GVOL_STREAM, vol * 100u) == TRUE;
 #else
-        return wasm_audio_set_sfx_volume(static_cast<double>(vol) / 100.0) != 0;
+        return clip_audio_set_sfx_volume(static_cast<double>(vol) / 100.0) != 0;
 #endif
     }
 
@@ -356,14 +364,14 @@ namespace jrc
             return;
         }
 
-#ifndef MS_PLATFORM_WASM
+#ifndef JOURNEY_CLIP_AUDIO
         HCHANNEL channel = BASS_SampleGetChannel(
             static_cast<HSAMPLE>(samples.at(id)),
             false
         );
         BASS_ChannelPlay(channel, true);
 #else
-        wasm_audio_play_sound(static_cast<int>(id));
+        clip_audio_play_sound(static_cast<int>(id));
 #endif
     }
 
@@ -377,7 +385,7 @@ namespace jrc
         {
             size_t id = ad.id();
 
-#ifndef MS_PLATFORM_WASM
+#ifndef JOURNEY_CLIP_AUDIO
             samples[id] = BASS_SampleLoad(
                 true,
                 data,
@@ -393,7 +401,7 @@ namespace jrc
             }
 
             samples[id] = id;
-            wasm_audio_register_clip(
+            clip_audio_register_clip(
                 static_cast<int>(id),
                 static_cast<uint8_t const*>(data) + kNxAudioHeaderSize,
                 static_cast<int>(ad.length() - kNxAudioHeaderSize)
@@ -426,7 +434,7 @@ namespace jrc
 
     void Music::play() const
     {
-#ifndef MS_PLATFORM_WASM
+#ifndef JOURNEY_CLIP_AUDIO
         static HSTREAM stream = 0;
 #endif
         static std::string bgmpath;
@@ -441,7 +449,7 @@ namespace jrc
 
         if (data)
         {
-#ifndef MS_PLATFORM_WASM
+#ifndef JOURNEY_CLIP_AUDIO
             if (stream)
             {
                 BASS_ChannelStop(stream);
@@ -463,12 +471,12 @@ namespace jrc
             }
 
             size_t id = ad.id();
-            wasm_audio_register_clip(
+            clip_audio_register_clip(
                 static_cast<int>(id),
                 static_cast<uint8_t const*>(data) + kNxAudioHeaderSize,
                 static_cast<int>(ad.length() - kNxAudioHeaderSize)
             );
-            wasm_audio_play_music(static_cast<int>(id));
+            clip_audio_play_music(static_cast<int>(id));
 #endif
 
             bgmpath = path;
@@ -490,10 +498,10 @@ namespace jrc
 
     bool Music::set_bgmvolume(uint8_t vol)
     {
-#ifndef MS_PLATFORM_WASM
+#ifndef JOURNEY_CLIP_AUDIO
         return BASS_SetConfig(BASS_CONFIG_GVOL_SAMPLE, vol * 100u) == TRUE;
 #else
-        return wasm_audio_set_bgm_volume(static_cast<double>(vol) / 100.0) != 0;
+        return clip_audio_set_bgm_volume(static_cast<double>(vol) / 100.0) != 0;
 #endif
     }
 }

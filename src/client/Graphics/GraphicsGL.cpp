@@ -22,6 +22,7 @@
 #include "../Console.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace jrc
@@ -33,10 +34,12 @@ namespace jrc
 
     Error GraphicsGL::init()
     {
+#ifndef MS_PLATFORM_SDL
         if (glewInit())
         {
             return Error::GLEW;
         }
+#endif
 
         if (FT_Init_FreeType(&ftlibrary))
         {
@@ -74,19 +77,32 @@ namespace jrc
         }
 
         GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+        // texpos is in atlas pixels (up to 8192). Phone GPUs implement
+        // mediump as 16-bit floats, which step by 4-8 pixels that far into
+        // the atlas and smear text and icons; desktop GPUs ignore mediump.
         const char *fs_source =
-            "precision mediump float;\n"
+            "precision highp float;\n"
             "varying vec2 texpos;"
             "varying vec4 colormod;"
             "uniform sampler2D texture;"
             "uniform vec2 atlassize;"
             "uniform int fontregion;"
+            // 1 while drawing into a target at game resolution with glyphs
+            // rasterized at twice that: average each 2x2 block of texels.
+            "uniform float fontbox;"
 
             "void main(void) {"
             "    if (texpos.y == 0.0) {"
             "        gl_FragColor = colormod;"
             "    } else if (texpos.y <= float(fontregion)) {"
-            "        gl_FragColor = vec4(1.0, 1.0, 1.0, texture2D(texture, texpos / atlassize).r) * colormod;"
+            "        float a = texture2D(texture, texpos / atlassize).r;"
+            "        if (fontbox > 0.5) {"
+            "            a = 0.25 * (texture2D(texture, (texpos + vec2(-0.5, -0.5)) / atlassize).r"
+            "                      + texture2D(texture, (texpos + vec2(0.5, -0.5)) / atlassize).r"
+            "                      + texture2D(texture, (texpos + vec2(-0.5, 0.5)) / atlassize).r"
+            "                      + texture2D(texture, (texpos + vec2(0.5, 0.5)) / atlassize).r);"
+            "        }"
+            "        gl_FragColor = vec4(1.0, 1.0, 1.0, a) * colormod;"
             "    } else {"
             "        gl_FragColor = texture2D(texture, texpos / atlassize) * colormod;"
             "    }"
@@ -119,6 +135,7 @@ namespace jrc
         uniform_screensize = glGetUniformLocation(program, "screensize");
         uniform_yoffset    = glGetUniformLocation(program, "yoffset");
         uniform_fontregion = glGetUniformLocation(program, "fontregion");
+        uniform_fontbox    = glGetUniformLocation(program, "fontbox");
         if (
             attribute_coord    == -1 ||
             attribute_color    == -1 ||
@@ -132,6 +149,10 @@ namespace jrc
 
         glGenBuffers(1, &vbo);
         glGenBuffers(1, &ibo);
+
+#ifdef MS_PLATFORM_SDL
+        post.init();
+#endif
 
         glGenTextures(1, &atlas);
         glBindTexture(GL_TEXTURE_2D, atlas);
@@ -154,8 +175,8 @@ namespace jrc
             );
         }
 
-        constexpr const char* FALLBACK_FONT_NORMAL = "/fonts/Arial/Arial.ttf";
-        constexpr const char* FALLBACK_FONT_BOLD = "/fonts/Arial/Arial-Bold.ttf";
+        constexpr const char* FALLBACK_FONT_NORMAL = FontPathNormal::DEFAULT;
+        constexpr const char* FALLBACK_FONT_BOLD = FontPathBold::DEFAULT;
 
         if (font_normal.empty())
         {
@@ -235,10 +256,19 @@ namespace jrc
             return false;
         }
 
-        if (FT_Set_Pixel_Sizes(face, pixelw, pixelh))
+        // Glyphs are rasterized text_scale times larger than their size in
+        // the game, so text drawn to a scaled-up screen stays sharp. Each
+        // glyph's cell in the atlas is padded to whole game pixels.
+        const GLshort scale = text_scale;
+
+        if (FT_Set_Pixel_Sizes(face, pixelw * scale, pixelh * scale))
         {
             return false;
         }
+
+        auto game_units = [scale](GLshort texels) {
+            return static_cast<GLshort>((texels + scale - 1) / scale);
+        };
 
         FT_GlyphSlot g = face->glyph;
 
@@ -249,10 +279,10 @@ namespace jrc
             if (FT_Load_Char(face, c, FT_LOAD_RENDER))
                 continue;
 
-            GLshort w = static_cast<GLshort>(g->bitmap.width);
-            GLshort h = static_cast<GLshort>(g->bitmap.rows);
+            GLshort w = game_units(static_cast<GLshort>(g->bitmap.width));
+            GLshort h = game_units(static_cast<GLshort>(g->bitmap.rows));
 
-            width += w;
+            width += w * scale;
             if (h > height)
             {
                 height = h;
@@ -261,8 +291,9 @@ namespace jrc
 
         if (fontborder.x() + width > ATLASW)
         {
+            // Next row of fonts, below the tallest font of this row.
             fontborder.set_x(0);
-            fontborder.set_y(fontymax);
+            fontborder.set_y(fontborder.y() + fontymax);
             fontymax = 0;
         }
 
@@ -270,9 +301,9 @@ namespace jrc
         GLshort y = fontborder.y();
 
         fontborder.shift_x(width);
-        if (height > fontymax)
+        if (height * scale > fontymax)
         {
-            fontymax = height;
+            fontymax = height * scale;
         }
 
         fonts[id] = Font(width, height);
@@ -286,45 +317,61 @@ namespace jrc
                 continue;
             }
 
-            GLshort ax = static_cast<GLshort>(g->advance.x >> 6);
-            GLshort ay = static_cast<GLshort>(g->advance.y >> 6);
-            GLshort l  = static_cast<GLshort>(g->bitmap_left);
-            GLshort t  = static_cast<GLshort>(g->bitmap_top);
-            GLshort w  = static_cast<GLshort>(g->bitmap.width);
-            GLshort h  = static_cast<GLshort>(g->bitmap.rows);
+            // Metrics in game pixels, rounded to the nearest.
+            GLshort ax = static_cast<GLshort>((g->advance.x + 32 * scale) / (64 * scale));
+            GLshort ay = static_cast<GLshort>((g->advance.y + 32 * scale) / (64 * scale));
+            GLshort l  = static_cast<GLshort>(std::lround(static_cast<float>(g->bitmap_left) / scale));
+            GLshort t  = static_cast<GLshort>(std::lround(static_cast<float>(g->bitmap_top) / scale));
+            GLshort bw = static_cast<GLshort>(g->bitmap.width);
+            GLshort bh = static_cast<GLshort>(g->bitmap.rows);
+            GLshort w  = game_units(bw);
+            GLshort h  = game_units(bh);
 
-            if (w > 0 && h > 0)
+            if (bw > 0 && bh > 0)
             {
-#ifdef MS_PLATFORM_WASM
-                // WebGL path: expand single-channel glyph bitmap to RGBA.
-                std::vector<uint8_t> rgba_buffer(static_cast<size_t>(w) * h * 4);
-                for (int32_t i = 0; i < static_cast<int32_t>(w) * h; ++i)
+#if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
+                // WebGL path: expand single-channel glyph bitmap to RGBA,
+                // into a cell padded with transparent texels.
+                GLshort cw = w * scale;
+                GLshort chh = h * scale;
+                std::vector<uint8_t> rgba_buffer(static_cast<size_t>(cw) * chh * 4, 0);
+                for (int32_t row = 0; row < bh; ++row)
                 {
-                    uint8_t val = g->bitmap.buffer[i];
-                    rgba_buffer[static_cast<size_t>(i) * 4 + 0] = val;
-                    rgba_buffer[static_cast<size_t>(i) * 4 + 1] = val;
-                    rgba_buffer[static_cast<size_t>(i) * 4 + 2] = val;
-                    rgba_buffer[static_cast<size_t>(i) * 4 + 3] = val;
+                    const uint8_t* src = g->bitmap.buffer + row * g->bitmap.pitch;
+                    for (int32_t col = 0; col < bw; ++col)
+                    {
+                        uint8_t val = src[col];
+                        size_t at = (static_cast<size_t>(row) * cw + col) * 4;
+                        rgba_buffer[at + 0] = val;
+                        rgba_buffer[at + 1] = val;
+                        rgba_buffer[at + 2] = val;
+                        rgba_buffer[at + 3] = val;
+                    }
                 }
                 glTexSubImage2D(
-                    GL_TEXTURE_2D, 0, ox, oy, w, h,
+                    GL_TEXTURE_2D, 0, ox, oy, cw, chh,
                     GL_RGBA, GL_UNSIGNED_BYTE, rgba_buffer.data()
                 );
 #else
                 glTexSubImage2D(
-                    GL_TEXTURE_2D, 0, ox, oy, w, h,
+                    GL_TEXTURE_2D, 0, ox, oy, bw, bh,
                     GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer
                 );
 #endif
             }
 
-            Offset offset = Offset(ox, oy, w, h);
+            Offset offset = Offset(ox, oy, w * scale, h * scale);
             fonts[id].chars[c] = { ax, ay, w, h, l, t, offset };
 
-            ox += w;
+            ox += w * scale;
         }
 
         return true;
+    }
+
+    void GraphicsGL::set_text_scale(int16_t scale)
+    {
+        text_scale = std::clamp<int16_t>(scale, 1, 2);
     }
 
     void GraphicsGL::reinit()
@@ -335,6 +382,7 @@ namespace jrc
         glUniform1i(uniform_fontregion, fontymax);
         glUniform2f(uniform_atlassize, ATLASW, ATLASH);
         glUniform2f(uniform_screensize, Constants::viewwidth(), Constants::viewheight());
+        glUniform1f(uniform_fontbox, 0.0f);
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
@@ -515,7 +563,7 @@ namespace jrc
         Console::get().print("Used: " + std::to_string(usedpercent) + ", wasted: " + std::to_string(wastedpercent));
         */
 
-#ifdef MS_PLATFORM_WASM
+#if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
         // WebGL 2 does not support GL_BGRA, so we need to manually swap the channels
         // from BGRA (what the game uses) to RGBA (what WebGL expects).
         int32_t len = w * h * 4;
@@ -900,8 +948,8 @@ namespace jrc
                         bottom = std::min<GLshort>(bottom, vertical->second());
                         if (top >= bottom)
                             continue;
-                        glyph.t += top - chy;
-                        glyph.b -= chy + chh - bottom;
+                        glyph.t += (top - chy) * text_scale;
+                        glyph.b -= (chy + chh - bottom) * text_scale;
                         chy = top;
                     }
                     DrawBounds::check({chx, static_cast<int16_t>(chx + chw), chy, bottom}, DrawBounds::Kind::TEXT);
@@ -938,6 +986,47 @@ namespace jrc
         locked = false;
     }
 
+    void GraphicsGL::mark_world()
+    {
+        world_mark = quads.size();
+    }
+
+    void GraphicsGL::mark_ui()
+    {
+        ui_mark = quads.size();
+    }
+
+#ifdef MS_PLATFORM_SDL
+    void GraphicsGL::set_effects(const PostProcess::Options& options)
+    {
+        post.set_options(options);
+    }
+
+    void GraphicsGL::bind_quad_state()
+    {
+        glUseProgram(program);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, atlas);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnableVertexAttribArray(attribute_coord);
+        glEnableVertexAttribArray(attribute_color);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+        glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    }
+
+    void GraphicsGL::draw_quad_range(size_t first, size_t last)
+    {
+        if (last > first)
+        {
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((last - first) * 6), GL_UNSIGNED_SHORT,
+                reinterpret_cast<const void*>(first * 6 * sizeof(GLushort)));
+        }
+    }
+#endif
+
     void GraphicsGL::flush(float opacity)
     {
         bool coverscene = opacity != 1.0f;
@@ -949,18 +1038,8 @@ namespace jrc
             quads.emplace_back(screen_rect.l(), screen_rect.r(), screen_rect.t(), screen_rect.b(), nulloffset, color, 0.0f);
         }
 
-        glClearColor(1.0, 1.0, 1.0, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        GLsizei csize = static_cast<GLsizei>(quads.size() * sizeof(Quad));
-        glEnableVertexAttribArray(attribute_coord);
-        glEnableVertexAttribArray(attribute_color);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, csize, quads.data(), GL_STREAM_DRAW);
-        glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
-        glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
-#ifdef MS_PLATFORM_WASM
-        // Initialize indices for GL_TRIANGLES (2 triangles per quad, 6 indices per quad)
+#if defined(MS_PLATFORM_WASM) || defined(MS_PLATFORM_SDL)
+        // Indices for GL_TRIANGLES (2 triangles per quad, 6 indices per quad)
         std::vector<GLushort> indices;
         indices.reserve(quads.size() * 6);
         for (size_t i = 0; i < quads.size(); ++i)
@@ -973,12 +1052,82 @@ namespace jrc
             indices.push_back(base + 2);
             indices.push_back(base + 3);
         }
+#endif
 
+        GLsizei csize = static_cast<GLsizei>(quads.size() * sizeof(Quad));
+        glEnableVertexAttribArray(attribute_coord);
+        glEnableVertexAttribArray(attribute_color);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, csize, quads.data(), GL_STREAM_DRAW);
+        glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+        glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+
+#ifdef MS_PLATFORM_SDL
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), indices.data(), GL_STREAM_DRAW);
+
+        // The world (everything before the UI) goes through the HD effects
+        // when they are on and this frame has a world at all.
+        bool has_world = ui_mark != NO_MARK && ui_mark > 0 && ui_mark <= quads.size();
+        if (has_world && post.ready() && post.get_options().any())
+        {
+            GLint view[4];
+            glGetIntegerv(GL_VIEWPORT, view);
+            GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
+            glDisable(GL_SCISSOR_TEST);
+
+            post.resize(Constants::viewwidth(), Constants::viewheight());
+
+            size_t background_end = world_mark != NO_MARK && world_mark <= ui_mark ? world_mark : 0;
+            // Text in the world is drawn at game resolution: average the
+            // larger glyphs down instead of skipping texels.
+            glUniform1f(uniform_fontbox, text_scale > 1 ? 1.0f : 0.0f);
+
+            if (post.get_options().depth && background_end > 0)
+            {
+                post.begin_background();
+                bind_quad_state();
+                draw_quad_range(0, background_end);
+                post.begin_world(true);
+                bind_quad_state();
+            }
+            else
+            {
+                post.begin_world(false);
+                bind_quad_state();
+                background_end = 0;
+            }
+
+            draw_quad_range(background_end, ui_mark);
+            post.present(0, view[0], view[1], view[2], view[3]);
+
+            glViewport(view[0], view[1], view[2], view[3]);
+            if (scissor)
+            {
+                glEnable(GL_SCISSOR_TEST);
+            }
+
+            bind_quad_state();
+            glUniform1f(uniform_fontbox, 0.0f);
+            draw_quad_range(ui_mark, quads.size());
+        }
+        else
+        {
+            glClearColor(1.0, 1.0, 1.0, 1.0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            draw_quad_range(0, quads.size());
+        }
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+#elif defined(MS_PLATFORM_WASM)
+        glClearColor(1.0, 1.0, 1.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), indices.data(), GL_STREAM_DRAW);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 #else
+        glClearColor(1.0, 1.0, 1.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
         GLsizei fsize = static_cast<GLsizei>(quads.size() * Quad::LENGTH);
         glDrawArrays(GL_QUADS, 0, fsize);
 #endif
@@ -991,14 +1140,126 @@ namespace jrc
         {
             quads.pop_back();
         }
-
     }
+
+#ifdef MS_PLATFORM_SDL
+    void GraphicsGL::draw_screen_rectangle(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color)
+    {
+        screen_quads.emplace_back(left, right, top, bottom, nulloffset, color, 0.0f);
+    }
+
+    void GraphicsGL::draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color)
+    {
+        const Offset& offset = getoffset(bmp);
+        if (offset.r > offset.l)
+        {
+            screen_quads.emplace_back(left, right, top, bottom, offset, color, 0.0f);
+        }
+    }
+
+    void GraphicsGL::set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height)
+    {
+        if (!overlay)
+        {
+            glGenTextures(1, &overlay);
+        }
+
+        glBindTexture(GL_TEXTURE_2D, overlay);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+        glBindTexture(GL_TEXTURE_2D, atlas);
+
+        overlay_w = width;
+        overlay_h = height;
+    }
+
+    bool GraphicsGL::has_overlay_texture() const
+    {
+        return overlay != 0;
+    }
+
+    void GraphicsGL::draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
+        int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color)
+    {
+        Offset source(src_left, src_top, src_right - src_left, src_bottom - src_top);
+        overlay_quads.emplace_back(left, right, top, bottom, source, color, 0.0f);
+    }
+
+    void GraphicsGL::draw_screen_quads(const std::vector<Quad>& batch)
+    {
+        if (batch.empty())
+        {
+            return;
+        }
+
+        std::vector<GLushort> indices;
+        indices.reserve(batch.size() * 6);
+        for (size_t i = 0; i < batch.size(); ++i)
+        {
+            GLushort base = static_cast<GLushort>(i * 4);
+            indices.insert(indices.end(), { base, static_cast<GLushort>(base + 1), static_cast<GLushort>(base + 2),
+                                            base, static_cast<GLushort>(base + 2), static_cast<GLushort>(base + 3) });
+        }
+
+        glEnableVertexAttribArray(attribute_coord);
+        glEnableVertexAttribArray(attribute_color);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(batch.size() * sizeof(Quad)), batch.data(), GL_STREAM_DRAW);
+        glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+        glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(GLushort)), indices.data(), GL_STREAM_DRAW);
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glDisableVertexAttribArray(attribute_coord);
+        glDisableVertexAttribArray(attribute_color);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    void GraphicsGL::flush_screen(int16_t width, int16_t height)
+    {
+        if (screen_quads.empty() && overlay_quads.empty())
+        {
+            return;
+        }
+
+        // Window pixels with the origin at the top left, no map scroll offset.
+        glUseProgram(program);
+        glUniform2f(uniform_screensize, width, height);
+        glUniform1i(uniform_yoffset, 0);
+
+        if (overlay && !overlay_quads.empty())
+        {
+            // The overlay texture has no font region: sample it as RGBA.
+            glBindTexture(GL_TEXTURE_2D, overlay);
+            glUniform2f(uniform_atlassize, overlay_w, overlay_h);
+            glUniform1i(uniform_fontregion, -1);
+            draw_screen_quads(overlay_quads);
+            glBindTexture(GL_TEXTURE_2D, atlas);
+            glUniform2f(uniform_atlassize, ATLASW, ATLASH);
+            glUniform1i(uniform_fontregion, fontymax);
+        }
+        overlay_quads.clear();
+
+        draw_screen_quads(screen_quads);
+        screen_quads.clear();
+
+        glUniform1i(uniform_yoffset, Constants::VIEWYOFFSET);
+        glUniform2f(uniform_screensize, Constants::viewwidth(), Constants::viewheight());
+    }
+#endif
 
     void GraphicsGL::clearscene()
     {
         if (!locked)
         {
             quads.clear();
+            world_mark = NO_MARK;
+            ui_mark = NO_MARK;
         }
     }
 }

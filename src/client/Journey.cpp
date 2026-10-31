@@ -19,6 +19,7 @@
 #ifdef MS_PLATFORM_WASM
 #include <emscripten.h>
 #endif
+#include "Console.h"
 #include "Constants.h"
 #include "Error.h"
 #include "Timer.h"
@@ -28,12 +29,24 @@
 #include "Gameplay/Combat/DamageNumber.h"
 #include "Gameplay/Stage.h"
 #include "Gameplay/CashShop.h"
+#include "Graphics/GraphicsGL.h"
 #include "IO/UI.h"
 #include "IO/Window.h"
 #include "Net/Session.h"
 #include "Util/NxFiles.h"
 
+#include <algorithm>
+#include <chrono>
 #include <iostream>
+#include <thread>
+
+#ifdef MS_PLATFORM_SDL
+#include <SDL.h>
+
+#include <fstream>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 
 namespace jrc
@@ -117,6 +130,7 @@ namespace jrc
         Window::get().begin();
         if (CashShop::get().state != CashShop::State::OPEN && CashShop::get().state != CashShop::State::EXITING)
             Stage::get().draw(alpha);
+        GraphicsGL::get().mark_ui();
         UI::get().draw(alpha);
         Window::get().end();
     }
@@ -182,8 +196,22 @@ namespace jrc
         int64_t period  = 0;
         int32_t samples = 0;
 
+        // Frames are spaced out to at most MaxFps per second, which saves
+        // battery on phones whose screens refresh at 90 or 120 Hz.
+        using clock = std::chrono::steady_clock;
+        uint8_t max_fps = Setting<MaxFps>::get().load();
+        auto frame_time = max_fps > 0 ? std::chrono::microseconds(1000000 / max_fps) : std::chrono::microseconds(0);
+        auto next_frame = clock::now();
+
         while (running())
         {
+            if (max_fps > 0)
+            {
+                std::this_thread::sleep_until(next_frame);
+                // Skip frames that are already late rather than racing to catch up.
+                next_frame = std::max(next_frame + frame_time, clock::now());
+            }
+
             int64_t elapsed = Timer::get().stop();
 
             // Update game with constant timestep as many times as possible.
@@ -215,6 +243,114 @@ namespace jrc
 #endif
     }
 
+#ifdef MS_PLATFORM_SDL
+    // Copies a file bundled with the app into the working directory, unless a
+    // copy is already there. Android bundles files as APK assets; desktop
+    // builds keep them next to the executable.
+    void extract_bundled_file(const std::string& path)
+    {
+        if (std::ifstream{ path }.good())
+        {
+            return;
+        }
+
+#ifdef __ANDROID__
+        std::string bundled = path;
+#else
+        char* base = SDL_GetBasePath();
+        std::string bundled = (base ? base : "") + path;
+        SDL_free(base);
+#endif
+
+        SDL_RWops* source = SDL_RWFromFile(bundled.c_str(), "rb");
+
+        if (!source)
+        {
+            return;
+        }
+
+        size_t size = 0;
+        void* data = SDL_LoadFile_RW(source, &size, 1);
+
+        if (!data)
+        {
+            return;
+        }
+
+        // Create the parent folders, e.g. fonts and fonts/Arial.
+        for (size_t slash = path.find('/'); slash != std::string::npos; slash = path.find('/', slash + 1))
+        {
+            ::mkdir(path.substr(0, slash).c_str(), 0755);
+        }
+
+        std::ofstream out(path, std::ios::binary);
+        out.write(static_cast<const char*>(data), static_cast<std::streamsize>(size));
+        SDL_free(data);
+    }
+
+    // Moves into the folder holding the NX files and the Settings file.
+    // Android uses the app's external files folder, which is reachable over
+    // USB at Android/data/<package>/files. Desktop builds take the folder as
+    // the first argument and otherwise stay in the current directory.
+    std::string prepare_data_directory(int argc, char* argv[])
+    {
+        std::string directory;
+
+#ifdef __ANDROID__
+        const char* external = SDL_AndroidGetExternalStoragePath();
+        directory = external ? external : "";
+#else
+        if (argc > 1)
+        {
+            directory = argv[1];
+        }
+#endif
+
+        if (!directory.empty() && ::chdir(directory.c_str()) != 0)
+        {
+            Console::get().print("Could not open data folder " + directory);
+        }
+
+        char buffer[4096];
+        directory = ::getcwd(buffer, sizeof(buffer)) ? buffer : directory;
+
+        extract_bundled_file(FontPathNormal::DEFAULT);
+        extract_bundled_file(FontPathBold::DEFAULT);
+
+        // Write the Settings file now so it exists to edit before the first
+        // successful start. Android often ends the app without running the
+        // destructor that would otherwise save it.
+        Configuration::get().save();
+
+        return directory;
+    }
+
+    void show_error(const Error& error, const std::string& directory)
+    {
+        std::string message = std::string(error.get_message()) + error.get_args();
+        message += "\n\nGame files and the Settings file go in:\n" + directory;
+        message += "\n\nThe server address is MapleStoryServerIp in Settings.";
+
+        std::cout << "Error: " << message << std::endl;
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Journey", message.c_str(), nullptr);
+    }
+
+    void start(int argc, char* argv[])
+    {
+        std::string directory = prepare_data_directory(argc, argv);
+
+        if (Error error = init())
+        {
+            show_error(error, directory);
+        }
+        else
+        {
+            loop();
+        }
+
+        Configuration::get().save();
+    }
+#else
     void start()
     {
         // Initialize and check for errors.
@@ -239,10 +375,20 @@ namespace jrc
             loop();
         }
     }
+#endif
 }
 
+#ifdef MS_PLATFORM_SDL
+// SDL renames main so that Android can call it from its Java activity.
+int main(int argc, char* argv[])
+{
+    jrc::start(argc, argv);
+    return 0;
+}
+#else
 int main()
 {
     jrc::start();
     return 0;
 }
+#endif

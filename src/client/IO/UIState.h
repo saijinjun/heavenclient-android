@@ -49,6 +49,8 @@ namespace jrc
 
         virtual void cancel_drag() = 0;
         virtual void drag_icon(Icon* icon) = 0;
+        // The icon being dragged, if any.
+        virtual const Icon* get_dragged_icon() const { return nullptr; }
         virtual void clear_tooltip(Tooltip::Parent parent) = 0;
         virtual void show_equip(Tooltip::Parent parent, int16_t slot) = 0;
         virtual void show_item(Tooltip::Parent parent, int32_t itemid) = 0;

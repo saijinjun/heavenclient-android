@@ -18,7 +18,7 @@
 
 //Define things here.
 
-#ifndef MS_PLATFORM_WASM
+#if !defined(MS_PLATFORM_WASM) && !defined(MS_PLATFORM_SDL)
 #define JOURNEY_USE_ASIO
 #endif
 
