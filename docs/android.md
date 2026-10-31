@@ -34,11 +34,19 @@ with the debug key, which is fine for sideloading but not for a store.
      without waiting. Wi-Fi is recommended. If the download stops, open the
      app again and tap **Resume**.
 
-The files come from the web stack's `assets/` folder at
-`http://100.91.238.34:8090/assets/`, and the game connects to
-`100.91.238.34:8484`. Both addresses are only reachable over Tailscale. To
-build for another server, pass `-PassetsUrl=<url>` and `-PserverIp=<address>`
-to Gradle. The game's own `AssetsUrl` setting can point it elsewhere later.
+The files come from the web stack's `assets/` folder on the server, e.g.
+`http://<n150-tailscale-ip>:8090/assets/`, and the game connects to
+`<n150-tailscale-ip>:8484`. Both are only reachable over Tailscale. The
+addresses are not in this public repo; they are set at build time:
+
+- Gradle properties: `./gradlew assembleRelease -PserverIp=<address> -PassetsUrl=<url>`,
+  or put `serverIp=` and `assetsUrl=` in `~/.gradle/gradle.properties`.
+- Or environment variables `HEAVEN_SERVER_IP` and `HEAVEN_ASSETS_URL`.
+- CI (`android-build.yml`) passes the repository variables `HEAVEN_SERVER_IP`
+  and `HEAVEN_ASSETS_URL` (Settings > Secrets and variables > Actions > Variables).
+
+With neither set, the APK connects to `127.0.0.1` and streaming is off. The
+game's own `AssetsUrl` setting can point it elsewhere later.
 
 The files land in `Android/data/com.saijinjun.heavenclient/files/`. A
 streamed file is kept as `<name>.cache` plus a small `<name>.lazy` map of the
