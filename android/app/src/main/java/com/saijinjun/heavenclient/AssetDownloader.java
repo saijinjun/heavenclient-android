@@ -42,7 +42,7 @@ public final class AssetDownloader {
     private final File directory;
     private volatile boolean cancelled;
 
-    /** baseUrl ends with a slash, e.g. http://100.91.238.34:8090/assets/ */
+    /** baseUrl ends with a slash, e.g. http://<server>:8090/assets/ */
     public AssetDownloader(String baseUrl, File directory) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
         this.directory = directory;

@@ -166,7 +166,7 @@ namespace jrc
 #endif
 
     // Where a streaming native build fetches .nx files it does not have yet,
-    // e.g. http://100.91.238.34:8090/assets/. Empty turns streaming off.
+    // e.g. http://<server>:8090/assets/. Empty turns streaming off.
     struct AssetsUrl : public Configuration::StringEntry
     {
         AssetsUrl() : StringEntry("AssetsUrl", JOURNEY_ASSETS_URL) {}
