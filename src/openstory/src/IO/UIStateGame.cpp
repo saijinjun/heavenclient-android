@@ -39,6 +39,7 @@
 #include "UITypes/UIEvent.h"
 #include "UITypes/UIItemInventory.h"
 #include "UITypes/UIMobileInventory.h"
+#include "UITypes/UIMobileStats.h"
 #include "UITypes/UIKeyConfig.h"
 #include "UITypes/UIMiniMap.h"
 #include "UITypes/UIPartyHUD.h"
@@ -335,9 +336,15 @@ namespace ms
 							}
 							case KeyAction::Id::STATS:
 							{
+#ifdef __ANDROID__
+								emplace<UIMobileStats>(
+									Stage::get().get_player().get_stats()
+									);
+#else
 								emplace<UIStatsInfo>(
 									Stage::get().get_player().get_stats()
 									);
+#endif
 
 								break;
 							}

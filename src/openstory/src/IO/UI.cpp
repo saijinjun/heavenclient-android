@@ -34,6 +34,7 @@
 #endif
 
 #include "UITypes/UIMobileInventory.h"
+#include "UITypes/UIMobileStats.h"
 #include "UITypes/UIAvatarBanner.h"
 #include "UITypes/UICashShop.h"
 #include "UITypes/UIChannel.h"
@@ -297,9 +298,11 @@ namespace ms
 		if (state_id != State::GAME)
 			return false;
 
-		auto panel = const_cast<UI*>(this)->get_element<UIMobileInventory>();
+		UI& ui = const_cast<UI&>(*this);
+		auto inventory = ui.get_element<UIMobileInventory>();
+		auto stats = ui.get_element<UIMobileStats>();
 
-		return panel && panel->is_active();
+		return (inventory && inventory->is_active()) || (stats && stats->is_active());
 	}
 
 	void UI::fit_login_view(int16_t screen_width, int16_t screen_height)
