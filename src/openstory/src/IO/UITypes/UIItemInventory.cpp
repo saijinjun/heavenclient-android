@@ -419,6 +419,11 @@ namespace ms
 		int16_t slot = slot_by_position(cursorpos - position);
 
 		if (icons.count(slot) && is_visible(slot))
+			use_item(inventory, tab, slot);
+	}
+
+	void UIItemInventory::use_item(const Inventory& inventory, InventoryType::Id tab, int16_t slot)
+	{
 		{
 			if (int32_t item_id = inventory.get_item_id(tab, slot))
 			{
@@ -433,7 +438,7 @@ namespace ms
 				{
 					case InventoryType::Id::EQUIP:
 					{
-						if (can_wear_equip(slot))
+						if (can_wear(inventory, slot))
 							EquipItemPacket(slot, inventory.find_equipslot(item_id)).dispatch();
 
 						break;
@@ -897,6 +902,11 @@ namespace ms
 	}
 
 	bool UIItemInventory::can_wear_equip(int16_t slot) const
+	{
+		return can_wear(inventory, slot);
+	}
+
+	bool UIItemInventory::can_wear(const Inventory& inventory, int16_t slot)
 	{
 		const Player& player = Stage::get().get_player();
 		const CharStats& stats = player.get_stats();

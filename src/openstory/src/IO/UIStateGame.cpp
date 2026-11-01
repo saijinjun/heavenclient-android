@@ -38,6 +38,7 @@
 #include "UITypes/UIEquipInventory.h"
 #include "UITypes/UIEvent.h"
 #include "UITypes/UIItemInventory.h"
+#include "UITypes/UIMobileInventory.h"
 #include "UITypes/UIKeyConfig.h"
 #include "UITypes/UIMiniMap.h"
 #include "UITypes/UIPartyHUD.h"
@@ -311,9 +312,17 @@ namespace ms
 							}
 							case KeyAction::Id::ITEMS:
 							{
+#ifdef __ANDROID__
+								// A full-screen panel for touch; it has a
+								// button for the classic window
+								emplace<UIMobileInventory>(
+									Stage::get().get_player().get_inventory()
+									);
+#else
 								emplace<UIItemInventory>(
 									Stage::get().get_player().get_inventory()
 									);
+#endif
 
 								break;
 							}

@@ -442,7 +442,7 @@ namespace ms
 
 		// Controls only exist on the game screen; on login and in the cash
 		// shop every touch is the cursor.
-		bool controls = UI::get().in_game();
+		bool controls = UI::get().in_game() && !UI::get().in_mobile_panel();
 
 		switch (type)
 		{
@@ -509,7 +509,7 @@ namespace ms
 				UI::get().send_cursor(pos);
 
 				// Dragging a finger scrolls lists that only take the wheel
-				if (UI::get().in_cashshop())
+				if (UI::get().in_cashshop() || UI::get().in_mobile_panel())
 				{
 					constexpr int16_t SCROLL_STEP = 60;
 					int16_t dy = pos.y() - scroll_anchor_y;
@@ -882,7 +882,7 @@ namespace ms
 		update_text_input();
 
 		// Leaving the game screen lets go of any held stick or button.
-		if (!UI::get().in_game())
+		if (!UI::get().in_game() || UI::get().in_mobile_panel())
 		{
 			std::vector<TouchControls::Action> released;
 			touch.release_all(released);
@@ -1021,7 +1021,7 @@ namespace ms
 	{
 		GraphicsGL::get().flush(opacity);
 
-		if (touch_seen && UI::get().in_game())
+		if (touch_seen && UI::get().in_game() && !UI::get().in_mobile_panel())
 			draw_touch_controls();
 
 		SDL_GL_SwapWindow(glwnd);
