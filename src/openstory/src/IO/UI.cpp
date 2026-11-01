@@ -36,6 +36,7 @@
 #include "UITypes/UIMobileInventory.h"
 #include "UITypes/UIMobileStats.h"
 #include "UITypes/UIMobileSkills.h"
+#include "UITypes/UIMobileQuests.h"
 #include "UITypes/UIAvatarBanner.h"
 #include "UITypes/UICashShop.h"
 #include "UITypes/UIChannel.h"
@@ -303,8 +304,21 @@ namespace ms
 		auto inventory = ui.get_element<UIMobileInventory>();
 		auto stats = ui.get_element<UIMobileStats>();
 		auto skills = ui.get_element<UIMobileSkills>();
+		auto quests = ui.get_element<UIMobileQuests>();
 
-		return (inventory && inventory->is_active()) || (stats && stats->is_active()) || (skills && skills->is_active());
+		if ((inventory && inventory->is_active()) || (stats && stats->is_active()) || (skills && skills->is_active())
+			|| (quests && quests->is_active()))
+			return true;
+
+#ifdef __ANDROID__
+		// The shop fills the screen on phones
+		auto shop = ui.get_element<UIShop>();
+
+		if (shop && shop->is_active())
+			return true;
+#endif
+
+		return false;
 	}
 
 	void UI::fit_login_view(int16_t screen_width, int16_t screen_height)

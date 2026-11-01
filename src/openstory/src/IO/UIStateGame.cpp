@@ -41,6 +41,7 @@
 #include "UITypes/UIMobileInventory.h"
 #include "UITypes/UIMobileStats.h"
 #include "UITypes/UIMobileSkills.h"
+#include "UITypes/UIMobileQuests.h"
 #include "UITypes/UIKeyConfig.h"
 #include "UITypes/UIMiniMap.h"
 #include "UITypes/UIPartyHUD.h"
@@ -428,9 +429,15 @@ namespace ms
 							}
 							case KeyAction::Id::QUESTLOG:
 							{
+#ifdef __ANDROID__
+								emplace<UIMobileQuests>(
+									Stage::get().get_player().get_quests()
+									);
+#else
 								emplace<UIQuestLog>(
 									Stage::get().get_player().get_quests()
 									);
+#endif
 
 								break;
 							}

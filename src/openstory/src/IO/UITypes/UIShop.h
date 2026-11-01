@@ -24,6 +24,9 @@
 #include "../../Character/Look/CharLook.h"
 #include "../../Graphics/Animation.h"
 
+#include <array>
+#include <map>
+
 namespace ms
 {
 	class UIShop : public UIDragElement<PosSHOP>
@@ -45,6 +48,11 @@ namespace ms
 		void send_key(int32_t keycode, bool pressed, bool escape) override;
 
 		UIElement::Type get_type() const override;
+
+#ifdef __ANDROID__
+		// On phones the shop fills the screen
+		bool is_in_range(Point<int16_t> cursorpos) const override;
+#endif
 
 		void reset(int32_t npcid);
 		// Build the buy-side category tabs — call after the server's
@@ -153,6 +161,7 @@ namespace ms
 			int16_t get_buyable() const;
 			int32_t get_price() const;
 			int32_t get_pitch() const;
+			int16_t get_chargeprice() const { return chargeprice; }
 
 		private:
 			Texture icon;
@@ -232,5 +241,60 @@ namespace ms
 		};
 
 		SellState sellstate;
+
+#ifdef __ANDROID__
+		// The shop as a full-screen panel for touch (UIShopMobile.cpp): Buy
+		// and Sell modes, big category tabs and rows, and the selected item
+		// with a big Buy or Sell button. The buy and sell states above stay
+		// the model, so prices, quantities and packets work as on desktop.
+		static constexpr size_t MOBILE_TABS = 6;
+
+		struct MobileLayout
+		{
+			Rectangle<int16_t> panel;
+			Rectangle<int16_t> leave;
+			Rectangle<int16_t> buy_mode;
+			Rectangle<int16_t> sell_mode;
+			std::array<Rectangle<int16_t>, MOBILE_TABS> tabs;
+			Rectangle<int16_t> list;
+			Rectangle<int16_t> detail;
+			Rectangle<int16_t> action;
+			int16_t rows;
+		};
+
+		void init_mobile();
+		MobileLayout mobile_layout() const;
+		// The categories shown for the current mode, in tab order
+		std::vector<InventoryType::Id> mobile_categories() const;
+		int16_t mobile_count() const;
+		int32_t mobile_item(int16_t index) const;
+		int16_t mobile_selection() const;
+		Rectangle<int16_t> mobile_row(const MobileLayout& l, int16_t index) const;
+		void mobile_clamp();
+		void draw_mobile(float alpha) const;
+		Cursor::State send_cursor_mobile(bool clicked, Point<int16_t> cursorpos);
+		const Text& mobile_name(int32_t itemid) const;
+		const Text& mobile_price(int16_t index) const;
+		void mobile_draw_icon(int32_t itemid, Rectangle<int16_t> box) const;
+
+		bool m_sell = false;
+		int16_t m_first = 0;
+		bool m_was_down = false;
+		Text m_title;
+		Text m_leave;
+		mutable Text m_buy;
+		mutable Text m_sell_label;
+		mutable std::array<Text, MOBILE_TABS> m_tabs;
+		Text m_hint;
+		Text m_empty;
+		mutable Text m_action;
+		mutable Text m_detail_name;
+		mutable Text m_detail_desc;
+		mutable Text m_detail_price;
+		mutable int32_t m_shown = 0;
+		mutable std::map<int32_t, Text> m_names;
+		mutable std::map<std::pair<int32_t, int32_t>, Text> m_prices;
+		mutable std::map<int16_t, std::pair<int16_t, Text>> m_counts;
+#endif
 	};
 }
