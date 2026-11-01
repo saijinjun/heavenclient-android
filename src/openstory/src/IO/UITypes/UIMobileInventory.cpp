@@ -12,6 +12,7 @@
 #include "../UI.h"
 
 #include "../../Constants.h"
+#include "../../Character/Look/EquipSlot.h"
 #include "../../Data/ItemData.h"
 #include "../../Graphics/ClassicStyle.h"
 #include "../../Gameplay/Stage.h"
@@ -25,11 +26,24 @@ namespace ms
 	namespace
 	{
 		const InventoryType::Id TAB_TYPES[] = {
-			InventoryType::Id::EQUIP, InventoryType::Id::USE, InventoryType::Id::SETUP,
+			InventoryType::Id::EQUIPPED, InventoryType::Id::EQUIP, InventoryType::Id::USE, InventoryType::Id::SETUP,
 			InventoryType::Id::ETC, InventoryType::Id::CASH
 		};
 
-		const char* TAB_NAMES[] = { "Equip", "Use", "Set-up", "Etc", "Cash" };
+		const char* TAB_NAMES[] = { "Worn", "Equip", "Use", "Set-up", "Etc", "Cash" };
+
+		// The worn tab lists these equipment slots in order
+		const std::pair<EquipSlot::Id, const char*> WORN[] = {
+			{ EquipSlot::Id::HAT, "Hat" }, { EquipSlot::Id::FACE, "Face" }, { EquipSlot::Id::EYEACC, "Eye" },
+			{ EquipSlot::Id::EARACC, "Earring" }, { EquipSlot::Id::TOP, "Top" }, { EquipSlot::Id::BOTTOM, "Bottom" },
+			{ EquipSlot::Id::SHOES, "Shoes" }, { EquipSlot::Id::GLOVES, "Gloves" }, { EquipSlot::Id::CAPE, "Cape" },
+			{ EquipSlot::Id::WEAPON, "Weapon" }, { EquipSlot::Id::SHIELD, "Shield" }, { EquipSlot::Id::PENDANT1, "Pendant" },
+			{ EquipSlot::Id::BELT, "Belt" }, { EquipSlot::Id::MEDAL, "Medal" }, { EquipSlot::Id::RING1, "Ring" },
+			{ EquipSlot::Id::RING2, "Ring" }, { EquipSlot::Id::RING3, "Ring" }, { EquipSlot::Id::RING4, "Ring" },
+			{ EquipSlot::Id::SHOULDER, "Shoulder" }, { EquipSlot::Id::POCKET, "Pocket" }
+		};
+
+		constexpr int16_t NUM_WORN = static_cast<int16_t>(sizeof(WORN) / sizeof(WORN[0]));
 
 		constexpr int16_t MARGIN = 12;
 		constexpr int16_t TITLE_H = 26;
@@ -45,7 +59,7 @@ namespace ms
 		}
 	}
 
-	UIMobileInventory::UIMobileInventory(const Inventory& invent) : UIElement(Point<int16_t>(0, 0), Point<int16_t>(0, 0)), inventory(invent)
+	UIMobileInventory::UIMobileInventory(const Inventory& invent, bool worn) : UIElement(Point<int16_t>(0, 0), Point<int16_t>(0, 0)), inventory(invent), tab(worn ? 0 : 1)
 	{
 		title = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "Inventory");
 
@@ -60,6 +74,9 @@ namespace ms
 		drop_label = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Drop");
 		classic_label = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, "Classic view");
 		close_label = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "X");
+		for (const auto& worn : WORN)
+			worn_labels.emplace_back(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, worn.second);
+
 		empty_hint = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, "Tap an item to see it here", DETAIL_W - 20);
 	}
 
@@ -104,9 +121,27 @@ namespace ms
 		return TAB_TYPES[tab];
 	}
 
+	bool UIMobileInventory::worn_tab() const
+	{
+		return tab_type() == InventoryType::Id::EQUIPPED;
+	}
+
 	int16_t UIMobileInventory::slot_count() const
 	{
-		return inventory.get_slotmax(tab_type());
+		return worn_tab() ? NUM_WORN : inventory.get_slotmax(tab_type());
+	}
+
+	int16_t UIMobileInventory::inventory_slot(int16_t slot) const
+	{
+		return worn_tab() ? WORN[slot - 1].first : slot;
+	}
+
+	int32_t UIMobileInventory::item_at(int16_t slot) const
+	{
+		if (slot <= 0 || slot > slot_count())
+			return 0;
+
+		return inventory.get_item_id(tab_type(), inventory_slot(slot));
 	}
 
 	int16_t UIMobileInventory::total_rows(const Layout& l) const
@@ -210,16 +245,22 @@ namespace ms
 			Rectangle<int16_t> r = slot_rect(l, slot);
 			classic::cell(r.get_left_top(), r.width(), r.height(), slot == selected);
 
-			int32_t itemid = inventory.get_item_id(type, slot);
+			int32_t itemid = item_at(slot);
 
 			if (itemid == 0)
+			{
+				// Empty worn slots say what goes there
+				if (worn_tab())
+					draw_label(worn_labels[slot - 1], r);
+
 				continue;
+			}
 
 			draw_icon(itemid, r);
 
 			int16_t count = inventory.get_item_count(type, slot);
 
-			if (type != InventoryType::Id::EQUIP && count > 1)
+			if (type != InventoryType::Id::EQUIP && !worn_tab() && count > 1)
 			{
 				auto& entry = counts[slot];
 
@@ -251,7 +292,7 @@ namespace ms
 		classic::box(l.detail.left(), l.detail.top(), l.detail.width(), l.detail.height(), Color::Name::BLACK, 0.25f);
 		classic::frame(l.detail.left(), l.detail.top(), l.detail.width(), l.detail.height(), Color::Name::HUD_EXP, 0.4f);
 
-		int32_t itemid = selected ? inventory.get_item_id(type, selected) : 0;
+		int32_t itemid = item_at(selected);
 
 		if (itemid == 0)
 		{
@@ -268,7 +309,7 @@ namespace ms
 			}
 
 			int16_t count = inventory.get_item_count(type, selected);
-			std::string amount_text = type == InventoryType::Id::EQUIP ? "" : "Quantity: " + std::to_string(count);
+			std::string amount_text = (type == InventoryType::Id::EQUIP || worn_tab()) ? "" : "Quantity: " + std::to_string(count);
 
 			if (amount.get_text() != amount_text)
 				amount.change_text(amount_text);
@@ -302,8 +343,11 @@ namespace ms
 				draw_label(action_label, l.action);
 			}
 
-			classic::button(l.drop.get_left_top(), l.drop.width(), l.drop.height());
-			draw_label(drop_label, l.drop);
+			if (!worn_tab())
+			{
+				classic::button(l.drop.get_left_top(), l.drop.width(), l.drop.height());
+				draw_label(drop_label, l.drop);
+			}
 		}
 
 		std::string meso_text = std::to_string(inventory.get_meso());
@@ -323,7 +367,7 @@ namespace ms
 		UIElement::update();
 
 		// The selection goes away with the item (used up, dropped, moved)
-		if (selected && inventory.get_item_id(tab_type(), selected) == 0)
+		if (selected && item_at(selected) == 0)
 			selected = 0;
 
 		clamp_scroll();
@@ -333,6 +377,8 @@ namespace ms
 	{
 		switch (tab_type())
 		{
+		case InventoryType::Id::EQUIPPED:
+			return "Take off";
 		case InventoryType::Id::EQUIP:
 			return "Equip";
 		case InventoryType::Id::USE:
@@ -348,17 +394,29 @@ namespace ms
 
 	void UIMobileInventory::use_selected()
 	{
-		if (selected && inventory.get_item_id(tab_type(), selected))
-			UIItemInventory::use_item(inventory, tab_type(), selected);
+		if (!item_at(selected))
+			return;
+
+		if (worn_tab())
+		{
+			if (int16_t freeslot = inventory.find_free_slot(InventoryType::Id::EQUIP))
+				UnequipItemPacket(inventory_slot(selected), freeslot).dispatch();
+			else
+				UI::get().emplace<UIOk>("Your Equip inventory is full.", [](bool) {});
+
+			return;
+		}
+
+		UIItemInventory::use_item(inventory, tab_type(), selected);
 	}
 
 	void UIMobileInventory::drop_selected()
 	{
 		InventoryType::Id type = tab_type();
 		int16_t slot = selected;
-		int32_t itemid = slot ? inventory.get_item_id(type, slot) : 0;
+		int32_t itemid = item_at(slot);
 
-		if (itemid == 0)
+		if (itemid == 0 || worn_tab())
 			return;
 
 		const ItemData& data = ItemData::get(itemid);
@@ -442,7 +500,7 @@ namespace ms
 			}
 		}
 
-		if (selected && inventory.get_item_id(tab_type(), selected))
+		if (item_at(selected))
 		{
 			if (!action_name().empty() && l.action.contains(cursorpos))
 			{
@@ -450,7 +508,7 @@ namespace ms
 				return Cursor::State::CLICKING;
 			}
 
-			if (l.drop.contains(cursorpos))
+			if (!worn_tab() && l.drop.contains(cursorpos))
 			{
 				drop_selected();
 				return Cursor::State::CLICKING;
@@ -460,10 +518,10 @@ namespace ms
 		if (int16_t slot = slot_at(l, cursorpos))
 		{
 			// A second tap on the selected item uses it, like a double-click
-			if (slot == selected && inventory.get_item_id(tab_type(), slot) && !action_name().empty())
+			if (slot == selected && item_at(slot) && !action_name().empty())
 				use_selected();
 			else
-				selected = inventory.get_item_id(tab_type(), slot) ? slot : 0;
+				selected = item_at(slot) ? slot : 0;
 
 			return Cursor::State::CLICKING;
 		}

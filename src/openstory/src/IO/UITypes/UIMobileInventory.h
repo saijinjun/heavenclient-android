@@ -13,6 +13,7 @@
 
 #include <array>
 #include <map>
+#include <vector>
 
 namespace ms
 {
@@ -24,9 +25,11 @@ namespace ms
 	public:
 		static constexpr Type TYPE = UIElement::Type::MOBILEINVENTORY;
 		static constexpr bool FOCUSED = true;
-		static constexpr bool TOGGLED = true;
+		// Made fresh each time, so it always opens focused and on the tab asked for
+		static constexpr bool TOGGLED = false;
 
-		UIMobileInventory(const Inventory& inventory);
+		// Opens on the worn equipment when `worn`, else on the equip bag
+		UIMobileInventory(const Inventory& inventory, bool worn = false);
 
 		void draw(float inter) const override;
 		void update() override;
@@ -40,7 +43,7 @@ namespace ms
 		UIElement::Type get_type() const override;
 
 	private:
-		static constexpr size_t NUM_TABS = 5;
+		static constexpr size_t NUM_TABS = 6;
 
 		struct Layout
 		{
@@ -59,7 +62,11 @@ namespace ms
 
 		Layout layout() const;
 		InventoryType::Id tab_type() const;
+		bool worn_tab() const;
 		int16_t slot_count() const;
+		// The inventory's own slot number for a grid position (1-based)
+		int16_t inventory_slot(int16_t slot) const;
+		int32_t item_at(int16_t slot) const;
 		int16_t total_rows(const Layout& l) const;
 		int16_t slot_at(const Layout& l, Point<int16_t> cursorpos) const;
 		Rectangle<int16_t> slot_rect(const Layout& l, int16_t slot) const;
@@ -75,7 +82,7 @@ namespace ms
 		void draw_label(const Text& text, Rectangle<int16_t> box) const;
 
 		const Inventory& inventory;
-		size_t tab = 0;
+		size_t tab;
 		int16_t selected = 0;
 		int16_t first_row = 0;
 		bool was_down = false;
@@ -91,6 +98,7 @@ namespace ms
 		Text classic_label;
 		Text close_label;
 		Text empty_hint;
+		std::vector<Text> worn_labels;
 		mutable std::map<int16_t, std::pair<int16_t, Text>> counts;
 		mutable int32_t shown_item = 0;
 	};

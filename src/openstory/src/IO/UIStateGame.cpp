@@ -304,9 +304,16 @@ namespace ms
 						{
 							case KeyAction::Id::EQUIPMENT:
 							{
+#ifdef __ANDROID__
+								// The mobile inventory, on its worn tab
+								emplace<UIMobileInventory>(
+									Stage::get().get_player().get_inventory(), true
+									);
+#else
 								emplace<UIEquipInventory>(
 									Stage::get().get_player().get_inventory()
 									);
+#endif
 
 								break;
 							}
