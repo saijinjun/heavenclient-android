@@ -35,6 +35,7 @@
 
 #include "UITypes/UIMobileInventory.h"
 #include "UITypes/UIMobileStats.h"
+#include "UITypes/UIMobileSkills.h"
 #include "UITypes/UIAvatarBanner.h"
 #include "UITypes/UICashShop.h"
 #include "UITypes/UIChannel.h"
@@ -301,8 +302,9 @@ namespace ms
 		UI& ui = const_cast<UI&>(*this);
 		auto inventory = ui.get_element<UIMobileInventory>();
 		auto stats = ui.get_element<UIMobileStats>();
+		auto skills = ui.get_element<UIMobileSkills>();
 
-		return (inventory && inventory->is_active()) || (stats && stats->is_active());
+		return (inventory && inventory->is_active()) || (stats && stats->is_active()) || (skills && skills->is_active());
 	}
 
 	void UI::fit_login_view(int16_t screen_width, int16_t screen_height)

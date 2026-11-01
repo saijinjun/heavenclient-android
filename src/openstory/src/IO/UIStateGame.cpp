@@ -40,6 +40,7 @@
 #include "UITypes/UIItemInventory.h"
 #include "UITypes/UIMobileInventory.h"
 #include "UITypes/UIMobileStats.h"
+#include "UITypes/UIMobileSkills.h"
 #include "UITypes/UIKeyConfig.h"
 #include "UITypes/UIMiniMap.h"
 #include "UITypes/UIPartyHUD.h"
@@ -355,10 +356,17 @@ namespace ms
 							}
 							case KeyAction::Id::SKILLS:
 							{
+#ifdef __ANDROID__
+								emplace<UIMobileSkills>(
+									Stage::get().get_player().get_stats(),
+									Stage::get().get_player().get_skills()
+									);
+#else
 								emplace<UISkillBook>(
 									Stage::get().get_player().get_stats(),
 									Stage::get().get_player().get_skills()
 									);
+#endif
 
 								break;
 							}
