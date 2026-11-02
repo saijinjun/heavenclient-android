@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../UIElement.h"
+#include "../Components/TapGesture.h"
 
 #include "../../Character/CharStats.h"
 #include "../../Character/Job.h"
@@ -94,7 +95,7 @@ namespace ms
 		uint16_t shown_job = 0;
 		int32_t selected = 0;
 		int16_t first_row = 0;
-		bool was_down = false;
+		TapGesture gesture;
 		std::vector<Row> rows;
 
 		Text title;

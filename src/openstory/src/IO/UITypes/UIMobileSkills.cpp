@@ -434,10 +434,18 @@ namespace ms
 			name.draw(Point<int16_t>(big.right() + 8, big.top() + 4));
 			level_text.draw(Point<int16_t>(big.right() + 8, big.top() + 8 + name.height()));
 
+			// Long texts are left out rather than run under the slot buttons
+			int16_t bottom = can_bind(*row) ? l.slots[0].top() - 22 : l.detail.bottom() - 6;
 			int16_t y = big.bottom() + 8;
-			desc.draw(Point<int16_t>(l.detail.left() + 10, y));
-			y += desc.height() + 6;
-			level_desc.draw(Point<int16_t>(l.detail.left() + 10, y));
+
+			if (y + desc.height() <= bottom)
+			{
+				desc.draw(Point<int16_t>(l.detail.left() + 10, y));
+				y += desc.height() + 6;
+			}
+
+			if (y + level_desc.height() <= bottom)
+				level_desc.draw(Point<int16_t>(l.detail.left() + 10, y));
 
 			if (can_bind(*row))
 			{
@@ -481,13 +489,17 @@ namespace ms
 
 	Cursor::State UIMobileSkills::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
-		// The game sends clicked on every move while a finger is down; act on
-		// the moment it lands only.
-		bool tap = clicked && !was_down;
-		was_down = clicked;
+		// Stay on top and keep the touches after a dialog over this closes
+		UI::get().bring_to_front(TYPE, true);
 
-		if (!tap)
-			return Cursor::State::IDLE;
+		// Act when the finger lifts where it landed, so a swipe to scroll
+		// never presses what it started on
+		Point<int16_t> at;
+
+		if (!gesture.update(clicked, cursorpos, at))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+
+		cursorpos = at;
 
 		Layout l = layout();
 
@@ -561,6 +573,8 @@ namespace ms
 
 	void UIMobileSkills::send_scroll(double yoffset)
 	{
+		gesture.cancel();
+
 		first_row += yoffset > 0 ? -1 : 1;
 		clamp_scroll();
 	}
@@ -578,7 +592,7 @@ namespace ms
 
 	void UIMobileSkills::remove_cursor()
 	{
-		was_down = false;
+		gesture.reset();
 	}
 
 	UIElement::Type UIMobileSkills::get_type() const

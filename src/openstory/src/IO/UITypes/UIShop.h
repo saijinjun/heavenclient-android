@@ -20,6 +20,7 @@
 #include "../UIDragElement.h"
 
 #include "../Components/Slider.h"
+#include "../Components/TapGesture.h"
 
 #include "../../Character/Look/CharLook.h"
 #include "../../Graphics/Animation.h"
@@ -279,7 +280,7 @@ namespace ms
 
 		bool m_sell = false;
 		int16_t m_first = 0;
-		bool m_was_down = false;
+		TapGesture m_gesture;
 		Text m_title;
 		Text m_leave;
 		mutable Text m_buy;

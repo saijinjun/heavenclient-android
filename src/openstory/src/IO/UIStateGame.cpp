@@ -955,6 +955,20 @@ namespace ms
 		}
 	}
 
+	void UIStateGame::bring_to_front(UIElement::Type type, bool focus)
+	{
+		auto& element = elements[type];
+
+		if (!element || !element->is_active())
+			return;
+
+		elementorder.remove(type);
+		elementorder.push_back(type);
+
+		if (focus)
+			focused = type;
+	}
+
 	void UIStateGame::remove(UIElement::Type type)
 	{
 		if (type == focused)

@@ -391,18 +391,23 @@ namespace ms
 			draw_centered(m_action, l.action);
 		}
 
-		UIElement::draw(alpha);
+		// Not UIElement::draw: that would paint the desktop window's art and
+		// buttons over this layout
 	}
 
 	Cursor::State UIShop::send_cursor_mobile(bool clicked, Point<int16_t> cursorpos)
 	{
-		// The game sends clicked on every move while a finger is down; act on
-		// the moment it lands only.
-		bool tap = clicked && !m_was_down;
-		m_was_down = clicked;
+		// Stay on top and keep the touches after a dialog over this closes
+		UI::get().bring_to_front(TYPE, true);
 
-		if (!tap)
-			return Cursor::State::IDLE;
+		// Act when the finger lifts where it landed, so a swipe to scroll
+		// never presses what it started on
+		Point<int16_t> at;
+
+		if (!m_gesture.update(clicked, cursorpos, at))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+
+		cursorpos = at;
 
 		MobileLayout l = mobile_layout();
 

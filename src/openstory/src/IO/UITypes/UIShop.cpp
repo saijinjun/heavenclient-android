@@ -349,7 +349,7 @@ namespace ms
 	void UIShop::remove_cursor()
 	{
 #ifdef __ANDROID__
-		m_was_down = false;
+		m_gesture.reset();
 #endif
 
 		UIDragElement::remove_cursor();
@@ -496,6 +496,7 @@ namespace ms
 	{
 #ifdef __ANDROID__
 		// A swipe moves the list one row at a time
+		m_gesture.cancel();
 		m_first += yoffset > 0 ? -1 : 1;
 		mobile_clamp();
 		return;
@@ -713,6 +714,11 @@ namespace ms
 
 		makeactive();
 		rightclicksell = Configuration::get().get_rightclicksell();
+
+#ifdef __ANDROID__
+		// Full screen on phones: above every other window, and every touch is the shop's
+		UI::get().bring_to_front(TYPE, true);
+#endif
 	}
 
 	void UIShop::modify(InventoryType::Id type)

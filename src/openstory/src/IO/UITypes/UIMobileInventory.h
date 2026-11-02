@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../UIElement.h"
+#include "../Components/TapGesture.h"
 
 #include "../../Character/Inventory/Inventory.h"
 #include "../../Graphics/Text.h"
@@ -85,7 +86,7 @@ namespace ms
 		size_t tab;
 		int16_t selected = 0;
 		int16_t first_row = 0;
-		bool was_down = false;
+		TapGesture gesture;
 
 		Text title;
 		mutable std::array<Text, NUM_TABS> tab_labels;

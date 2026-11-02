@@ -462,13 +462,17 @@ namespace ms
 
 	Cursor::State UIMobileInventory::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
-		// The game sends clicked on every move while a finger is down; act on
-		// the moment it lands only.
-		bool tap = clicked && !was_down;
-		was_down = clicked;
+		// Stay on top and keep the touches after a dialog over this closes
+		UI::get().bring_to_front(TYPE, true);
 
-		if (!tap)
-			return Cursor::State::IDLE;
+		// Act when the finger lifts where it landed, so a swipe to scroll
+		// never presses what it started on
+		Point<int16_t> at;
+
+		if (!gesture.update(clicked, cursorpos, at))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+
+		cursorpos = at;
 
 		Layout l = layout();
 
@@ -531,6 +535,8 @@ namespace ms
 
 	void UIMobileInventory::send_scroll(double yoffset)
 	{
+		gesture.cancel();
+
 		// Wheel up or a finger moving down shows earlier rows
 		first_row += yoffset > 0 ? -1 : 1;
 		clamp_scroll();
@@ -550,7 +556,7 @@ namespace ms
 
 	void UIMobileInventory::remove_cursor()
 	{
-		was_down = false;
+		gesture.reset();
 	}
 
 	UIElement::Type UIMobileInventory::get_type() const

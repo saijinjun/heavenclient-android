@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../UIElement.h"
+#include "../Components/TapGesture.h"
 
 #include "../../Character/QuestLog.h"
 #include "../../Graphics/Text.h"
@@ -90,7 +91,7 @@ namespace ms
 		size_t tab = IN_PROGRESS;
 		int16_t selected = 0;
 		int16_t first_row = 0;
-		bool was_down = false;
+		TapGesture gesture;
 		size_t loaded_signature = 0;
 		int16_t loaded_level = 0;
 		int16_t refresh_ticks = 0;

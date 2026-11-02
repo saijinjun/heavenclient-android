@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../UIElement.h"
+#include "../Components/TapGesture.h"
 
 #include "../../Character/CharStats.h"
 #include "../../Graphics/Text.h"
@@ -56,7 +57,7 @@ namespace ms
 		void auto_assign() const;
 
 		const CharStats& stats;
-		bool was_down = false;
+		TapGesture gesture;
 
 		Text title;
 		Text header;

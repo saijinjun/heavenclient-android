@@ -238,11 +238,17 @@ namespace ms
 
 	Cursor::State UIMobileStats::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
-		bool tap = clicked && !was_down;
-		was_down = clicked;
+		// Stay on top and keep the touches after a dialog over this closes
+		UI::get().bring_to_front(TYPE, true);
 
-		if (!tap)
-			return Cursor::State::IDLE;
+		// Act when the finger lifts where it landed, so a swipe to scroll
+		// never presses what it started on
+		Point<int16_t> at;
+
+		if (!gesture.update(clicked, cursorpos, at))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+
+		cursorpos = at;
 
 		Layout l = layout();
 
@@ -286,7 +292,7 @@ namespace ms
 
 	void UIMobileStats::remove_cursor()
 	{
-		was_down = false;
+		gesture.reset();
 	}
 
 	UIElement::Type UIMobileStats::get_type() const

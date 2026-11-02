@@ -60,6 +60,9 @@ namespace ms
 
 		virtual Iterator pre_add(UIElement::Type type, bool toggled, bool focused) = 0;
 		virtual void remove(UIElement::Type type) = 0;
+		// Draws an open element above the others and, when `focus`, gives it
+		// every touch and key until it closes
+		virtual void bring_to_front(UIElement::Type type, bool focus) {}
 		virtual UIElement* get(UIElement::Type type) = 0;
 		virtual UIElement* get_front(std::list<UIElement::Type> types) = 0;
 		virtual UIElement* get_front(Point<int16_t> pos) = 0;

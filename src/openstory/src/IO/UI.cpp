@@ -727,4 +727,9 @@ namespace ms
 
 		state->remove(type);
 	}
+
+	void UI::bring_to_front(UIElement::Type type, bool focus)
+	{
+		state->bring_to_front(type, focus);
+	}
 }
