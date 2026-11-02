@@ -23,6 +23,7 @@
 #include "../../IO/UI.h"
 #include "../../IO/UITypes/UIChatBar.h"
 #include "../../IO/UITypes/UIStatusMessenger.h"
+#include "../../IO/UITypes/UIDuey.h"
 #include "../../IO/UITypes/UIStorage.h"
 #include "../../IO/UITypes/UITrade.h"
 #include "../../IO/UITypes/UINotice.h"
@@ -873,35 +874,44 @@ namespace ms
 		{
 			case 0x08:
 			{
-				// Open Duey window with package list
+				// Open the Duey panel with the package list
 				recv.read_byte(); // unused
 				int8_t count = recv.read_byte();
+				std::vector<UIDuey::Package> packages;
 
 				for (int8_t i = 0; i < count; i++)
 				{
-					recv.read_int(); // package id
-					recv.read_padded_string(13); // sender name
-					recv.read_int(); // mesos
+					UIDuey::Package package;
+					package.id = recv.read_int();
+					package.sender = recv.read_padded_string(13);
+					package.mesos = recv.read_int();
 					recv.read_long(); // sent timestamp
 
-					recv.read_int(); // has_message flag
-					recv.skip(200); // message buffer (fixed 200 bytes)
+					bool has_message = recv.read_int() != 0;
+					std::string message = recv.read_padded_string(200);
+
+					if (has_message)
+						package.message = message;
 
 					recv.read_byte(); // unused
 
 					int8_t has_item = recv.read_byte();
 
 					if (has_item == 1)
-						ItemParser::skip_item(recv);
+					{
+						ItemParser::SkimmedItem item = ItemParser::skim_item(recv);
+						package.itemid = item.itemid;
+						package.count = item.count;
+					}
+
+					packages.push_back(std::move(package));
 				}
 
-				recv.read_byte(); // terminal byte
+				if (recv.length() >= 1)
+					recv.read_byte(); // terminal byte
 
-				if (auto chatbar = UI::get().get_element<UIChatBar>())
-				{
-					std::string msg = "[Duey] You have " + std::to_string(count) + " package(s).";
-					chatbar->send_chatline(msg, UIChatBar::LineType::YELLOW);
-				}
+				const Inventory& inventory = Stage::get().get_player().get_inventory();
+				UI::get().emplace<UIDuey>(inventory, std::move(packages));
 
 				break;
 			}
@@ -962,8 +972,15 @@ namespace ms
 			}
 			case 0x17:
 			{
+				// A package left Duey: 3 = thrown away, 4 = claimed
+				int32_t packageid = recv.length() >= 4 ? recv.read_int() : 0;
+				int8_t how = recv.length() >= 1 ? recv.read_byte() : 4;
+
+				if (auto duey = UI::get().get_element<UIDuey>())
+					duey->remove_package(packageid);
+
 				if (auto messenger = UI::get().get_element<UIStatusMessenger>())
-					messenger->show_status(Color::Name::WHITE, "Package received!");
+					messenger->show_status(Color::Name::WHITE, how == 3 ? "Package thrown away." : "Package received!");
 
 				break;
 			}

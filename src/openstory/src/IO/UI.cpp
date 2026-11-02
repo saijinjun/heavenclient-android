@@ -37,6 +37,8 @@
 #include "UITypes/UIMobileStats.h"
 #include "UITypes/UIMobileSkills.h"
 #include "UITypes/UIMobileQuests.h"
+#include "UITypes/UIDuey.h"
+#include "UITypes/UIStorage.h"
 #include "UITypes/UIAvatarBanner.h"
 #include "UITypes/UICashShop.h"
 #include "UITypes/UIChannel.h"
@@ -306,8 +308,10 @@ namespace ms
 		auto skills = ui.get_element<UIMobileSkills>();
 		auto quests = ui.get_element<UIMobileQuests>();
 
+		auto duey = ui.get_element<UIDuey>();
+
 		if ((inventory && inventory->is_active()) || (stats && stats->is_active()) || (skills && skills->is_active())
-			|| (quests && quests->is_active()))
+			|| (quests && quests->is_active()) || (duey && duey->is_active()))
 			return true;
 
 #ifdef __ANDROID__
@@ -315,6 +319,12 @@ namespace ms
 		auto shop = ui.get_element<UIShop>();
 
 		if (shop && shop->is_active())
+			return true;
+
+		// ... and so does storage
+		auto storage = ui.get_element<UIStorage>();
+
+		if (storage && storage->is_active())
 			return true;
 #endif
 
