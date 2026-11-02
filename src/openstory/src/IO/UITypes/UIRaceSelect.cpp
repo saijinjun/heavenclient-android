@@ -30,6 +30,8 @@
 #include "../../Constants.h"
 
 #include "../../Audio/Audio.h"
+#include "../../Graphics/ClassicStyle.h"
+#include "../../Graphics/Geometry.h"
 
 #ifdef USE_NX
 #include <nlnx/nx.hpp>
@@ -49,6 +51,23 @@ namespace ms
 		// panel (not centred over the text).
 		constexpr int16_t SELECT_X = 535;
 		constexpr int16_t SELECT_Y = 520;
+
+		// The drawn cards used when the UI.nx has no RaceSelect art.
+		constexpr int16_t CARD_W = 230;
+		constexpr int16_t CARD_H = 200;
+		constexpr int16_t CARD_GAP = 20;
+		constexpr int16_t CARD_Y = 120;
+		constexpr int16_t DRAWN_SELECT_W = 180;
+		constexpr int16_t DRAWN_SELECT_H = 44;
+		constexpr int16_t DRAWN_SELECT_Y = 360;
+
+		const char* CLASS_NAMES[] = { "Explorer", "Cygnus Knight", "Aran" };
+		const char* CLASS_BLURBS[] =
+		{
+			"The classic adventurers of Maple Island. Grow into a Warrior, Magician, Bowman, Thief or Pirate.",
+			"Knights of Empress Cygnus. Train on Ereve and master one of five elemental paths.",
+			"A legendary hero waking from a long sleep, fighting with a polearm and combos."
+		};
 	}
 
 	UIRaceSelect::UIRaceSelect() : UIElement(Point<int16_t>(0, 0), Point<int16_t>(800, 600), ScaleMode::CENTER_OFFSET)
@@ -85,18 +104,50 @@ namespace ms
 		}
 		total_w += PANEL_GAP * (CLASS_COUNT - 1);
 
+		drawn_cards = !classes[0].panel[false].is_valid();
+		int16_t gap = PANEL_GAP;
+		int16_t top = PANEL_Y;
+
+		if (drawn_cards)
+		{
+			for (uint16_t i = 0; i < CLASS_COUNT; i++)
+			{
+				classes[i].dim = Point<int16_t>(CARD_W, CARD_H);
+				card_name[i] = Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::WHITE, CLASS_NAMES[i]);
+				card_blurb[i] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::GALLERY, CLASS_BLURBS[i], CARD_W - 36);
+			}
+
+			title_text = Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::WHITE, "Choose your path");
+			total_w = CARD_W * CLASS_COUNT + CARD_GAP * (CLASS_COUNT - 1);
+			gap = CARD_GAP;
+			top = CARD_Y;
+		}
+
 		// centre the row of panels; store each panel's top-left
 		int16_t x = (800 - total_w) / 2;
 		for (uint16_t i = 0; i < CLASS_COUNT; i++)
 		{
-			classes[i].pos = Point<int16_t>(x, PANEL_Y);
+			classes[i].pos = Point<int16_t>(x, top);
 			buttons[Buttons::CLASS0 + i] = std::make_unique<AreaButton>(classes[i].pos, classes[i].dim);
-			x += classes[i].dim.x() + PANEL_GAP;
+			x += classes[i].dim.x() + gap;
 			hovered[i] = false;
 		}
 
 		buttons[Buttons::BACK] = std::make_unique<MapleButton>(Common["BtStart"], Point<int16_t>(0, 515));
-		buttons[Buttons::SELECT] = std::make_unique<MapleButton>(RaceSelect["BtSelect"], Point<int16_t>(SELECT_X, SELECT_Y));
+
+		drawn_select = !RaceSelect["BtSelect"]["normal"];
+
+		if (drawn_select)
+		{
+			select_label = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "Create");
+			buttons[Buttons::SELECT] = std::make_unique<AreaButton>(
+				Point<int16_t>((800 - DRAWN_SELECT_W) / 2, DRAWN_SELECT_Y),
+				Point<int16_t>(DRAWN_SELECT_W, DRAWN_SELECT_H));
+		}
+		else
+		{
+			buttons[Buttons::SELECT] = std::make_unique<MapleButton>(RaceSelect["BtSelect"], Point<int16_t>(SELECT_X, SELECT_Y));
+		}
 
 		selected = Classes::EXPLORER;
 
@@ -123,23 +174,60 @@ namespace ms
 
 		UIElement::draw_sprites(inter);
 
-		header.draw(lay(HEADER_X, HEADER_Y));
-
-		// panels: the selected one lights up (glow), the rest stay greyed out
-		for (uint16_t i = 0; i < CLASS_COUNT; i++)
+		if (drawn_cards)
 		{
-			Point<int16_t> p = lay(classes[i].pos.x(), classes[i].pos.y());
+			// A dim veil so the white text reads on the bright forest.
+			ColorBox(800, 600, Color::Name::BLACK, 0.25f).draw(DrawArgument(lay(0, 0)));
+			title_text.draw(lay(400, CARD_Y - 52));
 
-			if (i == selected)
-				classes[i].glow.draw(p);
-			else
-				classes[i].panel[hovered[i]].draw(p);
+			for (uint16_t i = 0; i < CLASS_COUNT; i++)
+			{
+				Point<int16_t> p = lay(classes[i].pos.x(), classes[i].pos.y());
+				bool lit = i == selected;
+				int16_t lift = lit ? -8 : 0;
+				Point<int16_t> card = p + Point<int16_t>(0, lift);
+
+				classic::panel(card, CARD_W, CARD_H);
+
+				if (lit || hovered[i])
+				{
+					float a = lit ? 1.0f : 0.6f;
+					classic::frame(card.x() - 2, card.y() - 2, CARD_W + 4, CARD_H + 4, Color::Name::HUD_EXP, a);
+					classic::frame(card.x() - 3, card.y() - 3, CARD_W + 6, CARD_H + 6, Color::Name::MAPLE_ORANGE_LIGHT, a * 0.6f);
+				}
+
+				card_name[i].draw(card + Point<int16_t>(CARD_W / 2, 34));
+				ColorBox(CARD_W - 60, 1, Color::Name::HUD_EXP, 0.45f).draw(DrawArgument(card + Point<int16_t>(30, 70)));
+				card_blurb[i].draw(card + Point<int16_t>(CARD_W / 2, 92));
+			}
+		}
+		else
+		{
+			header.draw(lay(HEADER_X, HEADER_Y));
+
+			// panels: the selected one lights up (glow), the rest stay greyed out
+			for (uint16_t i = 0; i < CLASS_COUNT; i++)
+			{
+				Point<int16_t> p = lay(classes[i].pos.x(), classes[i].pos.y());
+
+				if (i == selected)
+					classes[i].glow.draw(p);
+				else
+					classes[i].panel[hovered[i]].draw(p);
+			}
+
+			// description bar for the selected class, centred at the bottom
+			const Texture& desc = classes[selected].desc;
+			int16_t dx = (800 - desc.get_dimensions().x()) / 2;
+			desc.draw(lay(dx, DESC_Y));
 		}
 
-		// description bar for the selected class, centred at the bottom
-		const Texture& desc = classes[selected].desc;
-		int16_t dx = (800 - desc.get_dimensions().x()) / 2;
-		desc.draw(lay(dx, DESC_Y));
+		if (drawn_select)
+		{
+			Point<int16_t> p = lay((800 - DRAWN_SELECT_W) / 2, DRAWN_SELECT_Y);
+			classic::button(p, DRAWN_SELECT_W, DRAWN_SELECT_H);
+			select_label.draw(p + Point<int16_t>(DRAWN_SELECT_W / 2, 9));
+		}
 
 		UIElement::draw_buttons(inter);
 
@@ -270,7 +358,11 @@ namespace ms
 		}
 		else if (buttonid >= Buttons::CLASS0)
 		{
-			select_class(buttonid - Buttons::CLASS0);
+			// Tapping the chosen card again starts creating that class.
+			if (drawn_cards && buttonid - Buttons::CLASS0 == selected)
+				launch_creation();
+			else
+				select_class(buttonid - Buttons::CLASS0);
 
 			return Button::State::NORMAL;
 		}

@@ -99,6 +99,17 @@ namespace ms
 			PRUSSIANBLUE,
 			PINK,
 			LIGHTBLUE,
+			HUD_PANEL,
+			HUD_TRACK,
+			HUD_HP,
+			HUD_MP,
+			HUD_EXP,
+			PARCHMENT,
+			PARCHMENT_DARK,
+			MAPLE_BORDER,
+			MAPLE_ORANGE,
+			MAPLE_ORANGE_LIGHT,
+			MAPLE_TEXT,
 			NUM_COLORS
 		};
 
@@ -147,7 +158,18 @@ namespace ms
 			{ 0.00f, 0.23f, 0.56f }, // Smalt
 			{ 0.01f, 0.19f, 0.28f }, // Prussian Blue
 			{ 1.00f, 0.50f, 0.75f }, // Pink (Server message type 5)
-			{ 0.53f, 0.81f, 0.98f }  // Light Blue (Server message type 6)
+			{ 0.53f, 0.81f, 0.98f }, // Light Blue (Server message type 6)
+			{ 0.06f, 0.07f, 0.11f }, // HUD panel
+			{ 0.16f, 0.17f, 0.23f }, // HUD gauge track
+			{ 0.94f, 0.27f, 0.36f }, // HUD HP
+			{ 0.27f, 0.58f, 1.00f }, // HUD MP
+			{ 1.00f, 0.78f, 0.25f }, // HUD EXP
+			{ 0.97f, 0.94f, 0.85f }, // Parchment (classic window fill)
+			{ 0.89f, 0.83f, 0.70f }, // Parchment, shaded
+			{ 0.48f, 0.31f, 0.15f }, // Classic window border brown
+			{ 0.96f, 0.55f, 0.10f }, // Classic button orange
+			{ 1.00f, 0.75f, 0.30f }, // Classic button highlight
+			{ 0.36f, 0.23f, 0.11f }  // Classic dark brown text
 		};
 
 		// Create a color by an array of real numbers [0.0f, 1.0f]

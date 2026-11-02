@@ -368,9 +368,13 @@ namespace nl {
     }
     audio node::get_audio() const {
 #ifdef NX_LAZY_FILES
+        // A missing node has no file: check the data first, since reading
+        // m_file->header on it dereferences null (crashed map BGM lookups).
         auto d = DATA_PTR;
+        if (!d || !m_file || d->type != type::audio)
+            return {nullptr, 0, 0};
         auto header_ptr = get_data<file::header>(m_file, m_file->header);
-        if (d && d->type == type::audio && header_ptr && header_ptr->audio_count)
+        if (header_ptr && header_ptr->audio_count)
             return to_audio();
         return {nullptr, 0, 0};
 #else

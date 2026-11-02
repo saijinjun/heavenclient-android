@@ -22,6 +22,7 @@
 #include "UISoftKey.h"
 #include "UIWorldSelect.h"
 
+#include "../../Graphics/ClassicStyle.h"
 #include "../UI.h"
 
 #include "../Components/AreaButton.h"
@@ -198,6 +199,12 @@ namespace ms
 		info_sheet[1] = Texture(CharSelect["charInfo1"]);
 		info_state = 0;
 		info_tall = false;
+
+		drawn_info = !info_sheet[0].is_valid() || info_sheet[0].height() > 150;
+
+		const char* captions[7] = { "Level", "Fame", "STR", "DEX", "INT", "LUK", "Rank" };
+		for (size_t i = 0; i < 7; i++)
+			card_captions[i] = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::SILVERCHALICE, captions[i]);
 
 		level_label = OutlinedText(Text::Font::A11M, Text::Alignment::RIGHT, Color::Name::WHITE, Color::Name::TOBACCOBROWN);
 		fame_label = OutlinedText(Text::Font::A11M, Text::Alignment::RIGHT, Color::Name::WHITE, Color::Name::TOBACCOBROWN);
@@ -412,7 +419,48 @@ namespace ms
 					Point<int16_t> spos = lay(scroll_at);
 					size_t t = info_tall ? 1 : 0;
 
-					if (info_state == 1)
+					if (drawn_info)
+					{
+						constexpr int16_t CW = 200;
+						constexpr int16_t CH = 150;
+
+						int16_t cx = static_cast<int16_t>(get_character_slot_pos(i, 278, 374).x() - CW / 2);
+						cx = std::clamp<int16_t>(cx, 8, 800 - CW - 8);
+						Point<int16_t> c = lay(cx, 140);
+
+						auto box = [&](int16_t x, int16_t y, int16_t w, int16_t h, Color::Name color, float a)
+						{
+							ColorBox(static_cast<int16_t>(w * ui_scale), static_cast<int16_t>(h * ui_scale), color, a)
+								.draw(DrawArgument(c + scl(x, y)));
+						};
+
+						classic::panel(c, static_cast<int16_t>(CW * ui_scale), static_cast<int16_t>(CH * ui_scale));
+
+						namelabel.draw(c + scl(CW / 2, 8));
+						infolabels[InfoLabel::JOB].draw(c + scl(CW / 2 + infolabels[InfoLabel::JOB].width() / 2, 30));
+						box(14, 50, CW - 28, 1, Color::Name::HUD_EXP, 0.45f);
+
+						// Two columns of caption + right-aligned value
+						const OutlinedText* values[7] = {
+							&level_label, &fame_label,
+							&infolabels[InfoLabel::STR], &infolabels[InfoLabel::DEX],
+							&infolabels[InfoLabel::INT], &infolabels[InfoLabel::LUK],
+							&rank_label
+						};
+
+						for (size_t k = 0; k < 7; k++)
+						{
+							int16_t col = (k < 6) ? static_cast<int16_t>(k % 2) : 0;
+							int16_t row = static_cast<int16_t>(k / 2);
+							int16_t x = 16 + col * 92;
+							int16_t y = 58 + row * 21;
+
+							card_captions[k].draw(c + scl(x, y));
+							int16_t vx = (k == 6) ? x + 76 - values[k]->width() / 2 : x + 76;
+							values[k]->draw(c + scl(vx, y));
+						}
+					}
+					else if (info_state == 1)
 					{
 						info_unroll[t].draw(DrawArgument(spos, ui_scale, ui_scale), inter);
 					}

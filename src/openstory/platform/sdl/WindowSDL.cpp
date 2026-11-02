@@ -23,6 +23,17 @@
 #include "IO/Gamepad.h"
 #include "IO/UI.h"
 #include "KeyCodes.h"
+#include "TouchSprites.h"
+
+#include "Character/Player.h"
+#include "Data/ItemData.h"
+#include "Data/SkillData.h"
+#include "Gameplay/MapleMap/MapInfo.h"
+#include "Gameplay/Stage.h"
+#include "IO/Components/Icon.h"
+#include "IO/UITypes/UIChatBar.h"
+#include "Net/Packets/MessagingPackets.h"
+#include "Net/Packets/PlayerPackets.h"
 
 #include "Configuration.h"
 #include "Constants.h"
@@ -52,6 +63,48 @@ namespace ms
 		// Two taps this close in time and space are a double click.
 		constexpr uint32_t DOUBLE_TAP_MS = 400;
 		constexpr int16_t TAP_SLOP = 24;
+
+		// What a touch quick slot holds: the binding of the quickslot bar's
+		// key in the same position.
+		Keyboard::Mapping slot_mapping(uint8_t slot)
+		{
+			const auto& keys = UI::get().get_keyboard().get_quickslot_keys();
+			if (slot >= keys.size())
+				return {};
+
+			return UI::get().get_keyboard().get_maple_mapping(keys[slot]);
+		}
+
+		const Texture* slot_icon(const Keyboard::Mapping& mapping)
+		{
+			if (mapping.action == 0)
+				return nullptr;
+
+			switch (mapping.type)
+			{
+			case KeyType::Id::SKILL:
+				return &SkillData::get(mapping.action).get_icon(SkillData::Icon::NORMAL);
+			case KeyType::Id::ITEM:
+				return &ItemData::get(mapping.action).get_icon(false);
+			default:
+				return nullptr;
+			}
+		}
+
+		// Puts a skill or item on a quick slot, here and on the server.
+		void bind_slot(uint8_t slot, KeyType::Id type, int32_t action)
+		{
+			const auto& keys = UI::get().get_keyboard().get_quickslot_keys();
+			if (slot >= keys.size())
+				return;
+
+			uint8_t key = keys[slot];
+			UI::get().get_keyboard().assign(key, static_cast<uint8_t>(type), action);
+
+			std::vector<std::tuple<KeyConfig::Key, KeyType::Id, int32_t>> updates;
+			updates.emplace_back(static_cast<KeyConfig::Key>(key), type, action);
+			ChangeKeyMapPacket(updates).dispatch();
+		}
 
 		// Translates an SDL key into the GLFW key code the game expects.
 		int32_t to_glfw_key(SDL_Keycode key)
@@ -152,6 +205,11 @@ namespace ms
 			// SetFieldHandler reads these on every map load.
 			Setting<Width>::get().save(static_cast<int16_t>(drawable_w));
 			Setting<Height>::get().save(static_cast<int16_t>(drawable_h));
+
+			// Android resizes the window once it is shown; the login screens
+			// keep their own view through that.
+			if (UI::get().in_login())
+				UI::get().fit_login_view(static_cast<int16_t>(drawable_w), static_cast<int16_t>(drawable_h));
 		}
 	}
 
@@ -167,6 +225,9 @@ namespace ms
 		finger_down_time = 0;
 		long_press_sent = false;
 		last_tap_time = 0;
+		touch_seen = false;
+		touch_editing = false;
+		haptic = nullptr;
 		fullscreen = false;
 		opacity = 1.0f;
 		opcstep = 0.0f;
@@ -176,6 +237,9 @@ namespace ms
 
 	Window::~Window()
 	{
+		if (haptic)
+			SDL_HapticClose(haptic);
+
 		if (context)
 			SDL_GL_DeleteContext(context);
 
@@ -271,6 +335,20 @@ namespace ms
 		bool vsync = Setting<VSync>::get().load();
 		SDL_GL_SetSwapInterval(vsync ? 1 : 0);
 
+		touch.set_layout(Setting<TouchLayout>::get().load());
+
+		if (!haptic && Setting<TouchVibration>::get().load() &&
+			SDL_InitSubSystem(SDL_INIT_HAPTIC) == 0 && SDL_NumHaptics() > 0)
+		{
+			haptic = SDL_HapticOpen(0);
+
+			if (haptic && SDL_HapticRumbleInit(haptic) != 0)
+			{
+				SDL_HapticClose(haptic);
+				haptic = nullptr;
+			}
+		}
+
 		update_viewport();
 		SDL_ShowCursor(SDL_DISABLE);
 
@@ -288,22 +366,46 @@ namespace ms
 		if (drawable_w <= 0 || drawable_h <= 0)
 			return;
 
-		glViewport(0, 0, drawable_w, drawable_h);
+		int32_t phys_w = Constants::Constants::get().get_physicalwidth();
+		int32_t phys_h = Constants::Constants::get().get_physicalheight();
+
+		view_x = 0;
+		view_y = 0;
+		view_w = drawable_w;
+		view_h = drawable_h;
+
+		if (phys_w > 0 && phys_h > 0 && phys_w * drawable_h != phys_h * drawable_w)
+		{
+			float scale = std::min(static_cast<float>(drawable_w) / phys_w, static_cast<float>(drawable_h) / phys_h);
+			view_w = static_cast<int32_t>(phys_w * scale);
+			view_h = static_cast<int32_t>(phys_h * scale);
+			view_x = (drawable_w - view_w) / 2;
+			view_y = (drawable_h - view_h) / 2;
+		}
+
+		glViewport(view_x, view_y, view_w, view_h);
+		touch.set_screen(drawable_w, drawable_h);
 	}
 
 	Point<int16_t> Window::to_view(int32_t x, int32_t y) const
 	{
 		// Mouse and touch positions are in window units, which differ from
-		// drawable pixels on high-density screens. The view fills the screen.
+		// drawable pixels on high-density screens.
 		int32_t window_w = 1;
 		int32_t window_h = 1;
+		int32_t drawable_w = 1;
+		int32_t drawable_h = 1;
 		SDL_GetWindowSize(glwnd, &window_w, &window_h);
+		SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
+
+		float px = static_cast<float>(x) * drawable_w / std::max(window_w, 1);
+		float py = static_cast<float>(y) * drawable_h / std::max(window_h, 1);
 
 		int32_t vw = Constants::Constants::get().get_viewwidth();
 		int32_t vh = Constants::Constants::get().get_viewheight();
 
-		float vx = static_cast<float>(x) * vw / std::max(window_w, 1);
-		float vy = static_cast<float>(y) * vh / std::max(window_h, 1);
+		float vx = (px - view_x) * vw / std::max(view_w, 1);
+		float vy = (py - view_y) * vh / std::max(view_h, 1);
 
 		return {
 			static_cast<int16_t>(std::clamp(vx, 0.0f, static_cast<float>(vw - 1))),
@@ -322,15 +424,57 @@ namespace ms
 			static_cast<int32_t>(finger.y * window_h)
 		);
 
+		if (!touch_seen && Setting<RopeAssist>::get().load())
+		{
+			// About a character's width instead of the classic 10 pixels.
+			Ladder::set_reach(24);
+		}
+
+		touch_seen = true;
+
+		int32_t drawable_w = 0;
+		int32_t drawable_h = 0;
+		SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
+
+		float px = finger.x * drawable_w;
+		float py = finger.y * drawable_h;
+		std::vector<TouchControls::Action> actions;
+
+		// Controls only exist on the game screen; on login and in the cash
+		// shop every touch is the cursor.
+		bool controls = UI::get().in_game() && !UI::get().in_mobile_panel();
+
 		switch (type)
 		{
 		case SDL_FINGERDOWN:
 		{
+			// A skill or item picked up from its window goes on the touch
+			// quick slot it is put down on.
+			uint8_t slot = 0;
+			Icon* dragged = UI::get().get_dragged_icon();
+
+			if (controls && dragged && !touch.is_editing() && touch.slot_at(px, py, slot))
+			{
+				Icon::IconType icontype = dragged->get_type();
+				int32_t action = dragged->get_action_id();
+
+				if (action != 0 && (icontype == Icon::IconType::SKILL || icontype == Icon::IconType::ITEM))
+				{
+					bind_slot(slot, icontype == Icon::IconType::SKILL ? KeyType::Id::SKILL : KeyType::Id::ITEM, action);
+					UI::get().cancel_drag();
+					break;
+				}
+			}
+
+			if (controls && touch.finger_down(finger.fingerId, px, py, actions))
+				break;
+
 			if (cursor_finger_down)
 				break;
 
 			cursor_finger_down = true;
 			cursor_finger = finger.fingerId;
+			scroll_anchor_y = pos.y();
 			finger_down_time = SDL_GetTicks();
 			finger_down_pos = pos;
 			long_press_sent = false;
@@ -357,11 +501,32 @@ namespace ms
 			break;
 		}
 		case SDL_FINGERMOTION:
+			if (touch.finger_move(finger.fingerId, px, py, actions))
+				break;
+
 			if (cursor_finger_down && finger.fingerId == cursor_finger)
+			{
 				UI::get().send_cursor(pos);
+
+				// Dragging a finger scrolls lists that only take the wheel
+				if (UI::get().in_cashshop() || UI::get().in_mobile_panel())
+				{
+					constexpr int16_t SCROLL_STEP = 60;
+					int16_t dy = pos.y() - scroll_anchor_y;
+
+					if (std::abs(dy) >= SCROLL_STEP)
+					{
+						UI::get().send_scroll(dy > 0 ? 1.0 : -1.0);
+						scroll_anchor_y = pos.y();
+					}
+				}
+			}
 
 			break;
 		case SDL_FINGERUP:
+			if (touch.finger_up(finger.fingerId, actions))
+				break;
+
 			if (cursor_finger_down && finger.fingerId == cursor_finger)
 			{
 				UI::get().send_cursor(pos);
@@ -373,6 +538,122 @@ namespace ms
 		default:
 			break;
 		}
+
+		send_touch_actions(actions);
+
+		if (touch.take_layout_changed())
+		{
+			Setting<TouchLayout>::get().save(touch.get_layout());
+
+			// Written to disk when the editor closes, not on every drag.
+			if (!touch.is_editing())
+				Configuration::get().save();
+		}
+	}
+
+	void Window::send_touch_actions(const std::vector<TouchControls::Action>& actions)
+	{
+		for (const TouchControls::Action& action : actions)
+		{
+			// A short buzz for each button press; walking does not buzz.
+			bool walking = action.output == TouchControls::Output::ACTION &&
+				(action.id == KeyAction::Id::LEFT || action.id == KeyAction::Id::RIGHT ||
+				 action.id == KeyAction::Id::UP || action.id == KeyAction::Id::DOWN);
+
+			if (action.pressed && !walking && haptic)
+				SDL_HapticRumblePlay(haptic, 0.35f, 12);
+
+			switch (action.output)
+			{
+			case TouchControls::Output::ACTION:
+				UI::get().send_action(KeyType::Id::ACTION, action.id, action.pressed);
+				break;
+			case TouchControls::Output::MENU:
+				UI::get().send_action(KeyType::Id::MENU, action.id, action.pressed);
+				break;
+			case TouchControls::Output::CHAT:
+				if (action.pressed)
+				{
+					if (auto chatbar = UI::get().get_element<UIChatBar>())
+					{
+						if (UI::get().has_focused_textfield())
+							UI::get().remove_textfield();
+						else
+							chatbar->focus_chatfield();
+					}
+				}
+
+				break;
+			case TouchControls::Output::SOLO_MENU:
+				// The server answers the command with its menu NPC.
+				if (action.pressed)
+					GeneralChatPacket("@solo", false).dispatch();
+
+				break;
+			case TouchControls::Output::SLOT:
+			{
+				// Whatever the player put on the slot: a skill, a potion.
+				Keyboard::Mapping mapping = slot_mapping(static_cast<uint8_t>(action.id));
+
+				if (mapping.type != KeyType::Id::NONE && mapping.action != 0)
+					UI::get().send_action(mapping.type, mapping.action, action.pressed);
+
+				break;
+			}
+			}
+		}
+	}
+
+	void Window::draw_touch_controls() const
+	{
+		int32_t drawable_w = 0;
+		int32_t drawable_h = 0;
+		SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
+
+		GraphicsGL& graphics = GraphicsGL::get();
+
+		if (!graphics.has_overlay_texture())
+			graphics.set_overlay_texture(TouchSprites::render(), TouchSprites::WIDTH, TouchSprites::HEIGHT);
+
+		touch.set_time(SDL_GetTicks());
+
+		std::array<const Texture*, TouchControls::NUM_SLOTS> icons = {};
+		const Player& player = Stage::get().get_player();
+
+		for (uint8_t slot = 0; slot < TouchControls::NUM_SLOTS; slot++)
+		{
+			Keyboard::Mapping mapping = slot_mapping(slot);
+			icons[slot] = slot_icon(mapping);
+			touch.set_slot_filled(slot, icons[slot] && icons[slot]->is_valid());
+
+			// Potions show how many are left; skills dim while cooling down.
+			int32_t count = mapping.type == KeyType::Id::ITEM ? player.get_inventory().get_total_item_count(mapping.action) : -1;
+			bool cooling = mapping.type == KeyType::Id::SKILL && player.has_cooldown(mapping.action);
+			touch.set_slot_info(slot, count, cooling);
+		}
+
+		for (const TouchControls::Draw& draw : touch.draws())
+		{
+			auto left = static_cast<int16_t>(draw.x - draw.half);
+			auto top = static_cast<int16_t>(draw.y - draw.half);
+			auto right = static_cast<int16_t>(draw.x + draw.half);
+			auto bottom = static_cast<int16_t>(draw.y + draw.half);
+			Color color(draw.red, draw.green, draw.blue, draw.alpha);
+
+			if (draw.kind == TouchControls::Draw::SPRITE)
+			{
+				TouchSprites::Cell cell = TouchSprites::cell(static_cast<TouchSprites::Sprite>(draw.sprite));
+				graphics.draw_screen_overlay(left, top, right, bottom, cell.left, cell.top, cell.right, cell.bottom, color);
+			}
+			else if (const Texture* icon = icons[draw.slot])
+			{
+				icon->draw_screen(left, top, right, bottom, color);
+			}
+		}
+
+		glViewport(0, 0, drawable_w, drawable_h);
+		graphics.flush_screen(static_cast<int16_t>(drawable_w), static_cast<int16_t>(drawable_h));
+		glViewport(view_x, view_y, view_w, view_h);
 	}
 
 	void Window::on_app_event(uint32_t type)
@@ -383,6 +664,11 @@ namespace ms
 			// Let go of anything held so the character doesn't keep walking,
 			// and save settings: Android may end the app without warning.
 			UI::get().release_held_keys();
+			{
+				std::vector<TouchControls::Action> released;
+				touch.release_all(released);
+				send_touch_actions(released);
+			}
 			UI::get().send_focus(0);
 			Configuration::get().save();
 			break;
@@ -403,6 +689,10 @@ namespace ms
 	{
 		// Show the soft keyboard exactly while a text field has focus.
 		bool wanted = UI::get().has_focused_textfield();
+
+		// The keyboard covers the bottom of the screen, where the chat field
+		// is, so the chat bar mirrors what is typed at the top.
+		UI::get().set_typing_on_top(wanted && touch_seen);
 
 		if (wanted == text_input)
 			return;
@@ -508,6 +798,18 @@ namespace ms
 		case SDL_CONTROLLERDEVICEREMOVED:
 			Gamepad::get().poll();
 			break;
+		case SDL_CONTROLLERBUTTONDOWN:
+			// Playing with the buttons: the touch controls get out of the
+			// way until the screen is touched again.
+			if (touch_seen && !touch_editing)
+			{
+				std::vector<TouchControls::Action> released;
+				touch.release_all(released);
+				send_touch_actions(released);
+				touch_seen = false;
+			}
+
+			break;
 		case SDL_WINDOWEVENT:
 			switch (event.window.event)
 			{
@@ -579,6 +881,14 @@ namespace ms
 	{
 		update_text_input();
 
+		// Leaving the game screen lets go of any held stick or button.
+		if (!UI::get().in_game() || UI::get().in_mobile_panel())
+		{
+			std::vector<TouchControls::Action> released;
+			touch.release_all(released);
+			send_touch_actions(released);
+		}
+
 		// Something else (a map load, the cash shop) changed the view size.
 		int16_t new_width = Constants::Constants::get().get_physicalwidth();
 		int16_t new_height = Constants::Constants::get().get_physicalheight();
@@ -588,6 +898,7 @@ namespace ms
 			width = new_width;
 			height = new_height;
 			update_viewport();
+			GraphicsGL::get().reinit();
 		}
 
 		SDL_Event event;
@@ -607,16 +918,112 @@ namespace ms
 		}
 
 		Gamepad::get().poll();
+		poll_pad();
+	}
+
+	void Window::poll_pad()
+	{
+		if (pad && !SDL_GameControllerGetAttached(pad))
+		{
+			SDL_GameControllerClose(pad);
+			pad = nullptr;
+		}
+
+		for (int i = 0; i < SDL_NumJoysticks() && !pad; i++)
+			if (SDL_IsGameController(i))
+				pad = SDL_GameControllerOpen(i);
+
+		uint32_t now = SDL_GetTicks();
+		float seconds = pad_tick ? std::min((now - pad_tick) / 1000.0f, 0.1f) : 0.0f;
+		pad_tick = now;
+
+		bool in_game = UI::get().in_game();
+		bool slots[4] = {};
+		float stick_x = 0.0f;
+		float stick_y = 0.0f;
+		bool click = false;
+
+		if (pad)
+		{
+			constexpr Sint16 TRIGGER_DOWN = 12000;
+			slots[0] = SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+			slots[1] = SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+			slots[2] = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > TRIGGER_DOWN;
+			slots[3] = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > TRIGGER_DOWN;
+			stick_x = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_RIGHTX) / 32767.0f;
+			stick_y = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_RIGHTY) / 32767.0f;
+			click = SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+		}
+
+		// Bumpers and triggers use quick slots 1 to 4, like the touch slots.
+		std::vector<TouchControls::Action> actions;
+
+		for (uint8_t slot = 0; slot < 4; slot++)
+		{
+			bool held = slots[slot] && in_game && !UI::get().has_focused_textfield();
+
+			if (held != pad_slots[slot])
+			{
+				pad_slots[slot] = held;
+				actions.push_back({ TouchControls::Output::SLOT, slot, held });
+			}
+		}
+
+		send_touch_actions(actions);
+
+		// The right stick moves the cursor, faster the further it is pushed,
+		// so windows, shops and NPCs work without touching the screen.
+		constexpr float DEAD_ZONE = 0.2f;
+		float length = std::sqrt(stick_x * stick_x + stick_y * stick_y);
+
+		if (length > DEAD_ZONE)
+		{
+			float push = (length - DEAD_ZONE) / (1.0f - DEAD_ZONE);
+			float speed = 120.0f + 900.0f * push * push;
+			Point<int16_t> at = UI::get().get_cursor_position();
+
+			// Sub-pixel motion adds up across frames.
+			pad_cursor_x += stick_x / length * speed * seconds;
+			pad_cursor_y += stick_y / length * speed * seconds;
+			int16_t dx = static_cast<int16_t>(pad_cursor_x);
+			int16_t dy = static_cast<int16_t>(pad_cursor_y);
+			pad_cursor_x -= dx;
+			pad_cursor_y -= dy;
+
+			int16_t x = std::clamp<int16_t>(at.x() + dx, 0, Constants::Constants::get().get_viewwidth() - 1);
+			int16_t y = std::clamp<int16_t>(at.y() + dy, 0, Constants::Constants::get().get_viewheight() - 1);
+			UI::get().send_cursor(Point<int16_t>(x, y));
+		}
+
+		// Pressing the right stick clicks where the cursor is.
+		if (click != pad_click)
+		{
+			pad_click = click;
+			UI::get().send_cursor(click);
+		}
 	}
 
 	void Window::begin() const
 	{
+		// The HD-2D effects follow the options menu's Graphics quality
+		// slider: below a third none, below two thirds only the color grade.
+		uint8_t quality = Setting<GraphicsQuality>::get().load();
+		PostProcess::Options effects;
+		effects.glow = quality >= 67 && Setting<HdGlow>::get().load();
+		effects.depth = quality >= 67 && Setting<HdDepthBlur>::get().load();
+		effects.grade = quality >= 34 && Setting<HdColorGrade>::get().load();
+		GraphicsGL::get().set_effects(effects);
+
 		GraphicsGL::get().clearscene();
 	}
 
 	void Window::end() const
 	{
 		GraphicsGL::get().flush(opacity);
+
+		if (touch_seen && UI::get().in_game() && !UI::get().in_mobile_panel())
+			draw_touch_controls();
+
 		SDL_GL_SwapWindow(glwnd);
 	}
 

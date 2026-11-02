@@ -26,6 +26,9 @@
 
 #include "../UIScale.h"
 
+#include "../../Graphics/ClassicStyle.h"
+#include "../../Graphics/Geometry.h"
+
 #include "../../Audio/Audio.h"
 #include "../../Constants.h"
 #include "../../Net/Packets/LoginPackets.h"
@@ -77,6 +80,13 @@ namespace ms
 
 		// EVENT balloon above an event-flagged world's plank
 		constexpr Point<int16_t> EVENT_PLANK_OFF(-1, -16);
+
+		// Panel the drawn channel grid sits on, under the world title (the
+		// newer scroll art has no parchment to lay it out against)
+		constexpr int16_t PANEL_X = 158;
+		constexpr int16_t PANEL_Y = 150;
+		constexpr int16_t PANEL_W = 364;
+		constexpr int16_t PANEL_H = 196;
 
 		// Population gauge over a channel button's bar area (the gauge art
 		// has origin (36,4); the stretch width encodes the load fraction).
@@ -219,8 +229,20 @@ namespace ms
 		// The divider sheet drawn on the open parchment
 		chback = Texture(world_select["chBackgrn"]);
 
+		drawn_channels = !Texture(channel_src["0"]["normal"]).is_valid()
+			|| !Texture(world_select["BtGoworld"]["normal"]["0"]).is_valid()
+			|| scroll_open_tex.width() < 480;
+
+		if (drawn_channels)
+		{
+			for (uint8_t i = 0; i < 20; ++i)
+				drawn_labels.emplace_back(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Ch. " + std::to_string(i + 1));
+
+			drawn_enter = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Enter");
+		}
+
 		// Channel buttons on the open parchment
-		for (uint8_t i = 0; i < 20; ++i)
+		for (uint8_t i = 0; i < 20 && !drawn_channels; ++i)
 		{
 			nl::node chnode = channel_src[std::to_string(i)];
 
@@ -273,8 +295,12 @@ namespace ms
 		// with the world title, channel grid and highlight / closing animation
 		DrawArgument scroll_args(lay(SCROLL_POS), ui_scale, ui_scale);
 
-		switch (scroll_state)
+		// Newer scroll art doesn't fit the v83 layout: only the drawn panel
+		// shows, once the world's scroll is open
+		switch (drawn_channels && scroll_state != SCROLL_OPEN ? -1 : scroll_state)
 		{
+		case -1:
+			break;
 		case SCROLL_OPENING:
 			scroll_opening.draw(scroll_args, alpha);
 			break;
@@ -283,17 +309,29 @@ namespace ms
 			break;
 		case SCROLL_OPEN:
 		{
-			scroll_open_tex.draw(scroll_args);
+			if (!drawn_channels)
+				scroll_open_tex.draw(scroll_args);
 
 			// divider sheet, world title above the line, EVENT balloon for
 			// event-flagged worlds
-			chback.draw(DrawArgument(
+			if (drawn_channels)
+			{
+				Point<int16_t> p = lay(PANEL_X, PANEL_Y);
+				int16_t w = static_cast<int16_t>(PANEL_W * ui_scale);
+				int16_t h = static_cast<int16_t>(PANEL_H * ui_scale);
+
+				classic::panel(p, w, h);
+			}
+
+			if (!drawn_channels)
+				chback.draw(DrawArgument(
 				lay(SCROLL_POS + CHBACK_OFF + chback.get_origin()), ui_scale, ui_scale));
 			// World name centered on the sheet, above the divider line
 			Point<int16_t> title_off(
 				static_cast<int16_t>(CHBACK_OFF.x() + (449 - world_title.width()) / 2),
 				TITLE_OFF.y());
-			world_title.draw(DrawArgument(lay(SCROLL_POS + title_off), ui_scale, ui_scale));
+			if (!drawn_channels)
+				world_title.draw(DrawArgument(lay(SCROLL_POS + title_off), ui_scale, ui_scale));
 
 			for (auto& w : worlds)
 				if (w.wid == worldid && w.flag == 1)
@@ -331,7 +369,10 @@ namespace ms
 
 		UIElement::draw_buttons(alpha);
 
-		if (scroll_state == SCROLL_OPEN)
+		if (scroll_state == SCROLL_OPEN && drawn_channels)
+			draw_drawn_channels();
+
+		if (scroll_state == SCROLL_OPEN && !drawn_channels)
 		{
 			// Population gauge over each channel's bar, filled by the channel
 			// load the server reported (relative to the busiest channel)
@@ -426,7 +467,7 @@ namespace ms
 					}
 				}
 
-				buttons[BT_ENTERWORLD]->set_active(true);
+				buttons[BT_ENTERWORLD]->set_active(!drawn_channels);
 				break;
 			}
 		}
@@ -436,6 +477,34 @@ namespace ms
 	{
 		Cursor::State ret = clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
 		auto drawpos = get_draw_position();
+
+		if (drawn_channels && world_selected && scroll_state == SCROLL_OPEN)
+		{
+			bool press = clicked && !drawn_pressed;
+			drawn_pressed = clicked;
+
+			if (drawn_enter_rect().contains(cursorpos))
+			{
+				if (press)
+				{
+					Sound(Sound::Name::BUTTONCLICK).play();
+					enter_world();
+				}
+
+				return Cursor::State::CANCLICK;
+			}
+
+			for (uint8_t i = 0; i < selected_channel_count(); ++i)
+			{
+				if (drawn_channel_rect(i).contains(cursorpos))
+				{
+					if (press)
+						button_pressed(BT_CHANNEL0 + i);
+
+					return Cursor::State::CANCLICK;
+				}
+			}
+		}
 
 		// Click outside the open scroll to roll it closed
 		if (world_selected && scroll_state == SCROLL_OPEN)
@@ -833,4 +902,58 @@ namespace ms
 		if (buttons.count(BT_ENTERWORLD))
 			buttons[BT_ENTERWORLD]->set_active(false);
 	}
+
+	uint8_t UIWorldSelect::selected_channel_count() const
+	{
+		for (auto& w : worlds)
+			if (w.wid == worldid)
+				return std::min<uint8_t>(w.channelcount, 20);
+
+		return 0;
+	}
+
+	Rectangle<int16_t> UIWorldSelect::drawn_channel_rect(uint8_t index) const
+	{
+		constexpr int16_t COLS = 5;
+		constexpr int16_t GAP = 6;
+		constexpr int16_t CELL_H = 24;
+
+		int16_t width = PANEL_W - 32;
+		int16_t cell_w = (width - GAP * (COLS - 1)) / COLS;
+		int16_t x = PANEL_X + 16 + (index % COLS) * (cell_w + GAP);
+		int16_t y = PANEL_Y + 46 + (index / COLS) * (CELL_H + GAP);
+
+		return Rectangle<int16_t>(lay(x, y), lay(x + cell_w, y + CELL_H));
+	}
+
+	Rectangle<int16_t> UIWorldSelect::drawn_enter_rect() const
+	{
+		constexpr int16_t W = 120;
+		constexpr int16_t H = 28;
+
+		int16_t x = PANEL_X + (PANEL_W - W) / 2;
+		int16_t y = PANEL_Y + PANEL_H - H - 14;
+
+		return Rectangle<int16_t>(lay(x, y), lay(x + W, y + H));
+	}
+
+	void UIWorldSelect::draw_drawn_channels() const
+	{
+		uint8_t count = selected_channel_count();
+
+		for (uint8_t i = 0; i < count; ++i)
+		{
+			Rectangle<int16_t> r = drawn_channel_rect(i);
+			bool lit = i == channelid;
+
+			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
+			drawn_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
+			drawn_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, r.top() + (r.height() - drawn_labels[i].height()) / 2));
+		}
+
+		Rectangle<int16_t> e = drawn_enter_rect();
+		classic::button(e.get_left_top(), e.width(), e.height());
+		drawn_enter.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (e.height() - drawn_enter.height()) / 2));
+	}
+
 }

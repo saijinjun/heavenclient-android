@@ -212,6 +212,28 @@ namespace ms
 		effects.update();
 		showhp.update();
 
+		if (pending_hits > 0)
+		{
+			if (pending_hp_ms > Constants::TIMESTEP)
+			{
+				pending_hp_ms -= Constants::TIMESTEP;
+			}
+			else
+			{
+				pending_hits = 0;
+
+				if (dying && stance != Stance::DIE)
+					apply_death();
+
+				if (pending_hppercent >= 0)
+				{
+					hppercent = pending_hppercent;
+					pending_hppercent = -1;
+					showhp.set_for(2000);
+				}
+			}
+		}
+
 		if (!dying)
 		{
 			// Stunned/frozen/webbed mobs can't move
@@ -470,7 +492,7 @@ namespace ms
 			{
 				namelabel.draw(absp);
 
-				if (!dying && hppercent > 0)
+				if ((!dying || pending_hits > 0) && hppercent > 0)
 					hpbar.draw(headpos, hppercent);
 			}
 		}
@@ -540,7 +562,10 @@ namespace ms
 		case 1:
 			dying = true;
 
-			apply_death();
+			// The server reports the kill as soon as it gets the attack; if
+			// our swing hasn't landed yet, the last hit plays the death.
+			if (pending_hits == 0)
+				apply_death();
 			break;
 		case 2:
 			fading = true;
@@ -598,8 +623,21 @@ namespace ms
 		else if (percent < 0)
 			percent = 0;
 
+		if (pending_hits > 0)
+		{
+			pending_hppercent = percent;
+			return;
+		}
+
 		hppercent = percent;
 		showhp.set_for(2000);
+	}
+
+	void Mob::add_pending_hit()
+	{
+		pending_hits++;
+		// Safety net in case a hit never lands (mob removed, effect dropped)
+		pending_hp_ms = 2000;
 	}
 
 	void Mob::show_effect(const Animation& animation, int8_t pos, int8_t z, bool f)
@@ -732,9 +770,27 @@ namespace ms
 	{
 		hitsound.play(get_position());
 
+		if (pending_hits > 0)
+		{
+			// Step the bar toward the server's value, one share per hit,
+			// so it lands on it with the last damage number.
+			if (pending_hppercent >= 0)
+			{
+				hppercent = static_cast<int8_t>(hppercent - (hppercent - pending_hppercent) / pending_hits);
+				showhp.set_for(2000);
+			}
+
+			if (--pending_hits == 0 && pending_hppercent >= 0)
+			{
+				hppercent = pending_hppercent;
+				pending_hppercent = -1;
+			}
+		}
+
 		if (dying && stance != Stance::DIE)
 		{
-			apply_death();
+			if (pending_hits == 0)
+				apply_death();
 		}
 		else if (control && is_alive() && damage >= knockback)
 		{

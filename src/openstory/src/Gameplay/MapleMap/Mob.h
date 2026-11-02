@@ -153,6 +153,8 @@ namespace ms
 		// Display the hp percentage above the mob
 		// Use the playerlevel to determine color of NameTag
 		void show_hp(int8_t percentage, uint16_t playerlevel);
+		// A hit whose damage number is still waiting for the swing to land.
+		void add_pending_hit();
 		// Show an effect at the mob's position
 		void show_effect(const Animation& animation, int8_t pos, int8_t z, bool flip);
 
@@ -271,6 +273,11 @@ namespace ms
 		FlyDirection flydirection;
 		float walkforce;
 		int8_t hppercent;
+		// The server reports HP as soon as it gets the attack, before the
+		// swing lands. Its value is held and stepped down hit by hit.
+		uint16_t pending_hits = 0;
+		int8_t pending_hppercent = -1;
+		uint16_t pending_hp_ms = 0;
 		bool fading;
 		bool fadein;
 		Linear<float> opacity;

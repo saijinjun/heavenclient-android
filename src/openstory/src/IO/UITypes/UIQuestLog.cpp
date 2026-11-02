@@ -403,15 +403,13 @@ namespace ms
 			buttons[id]->set_position(pos);
 	}
 
-	static std::string strip_quest_codes(const std::string& desc);
-
 	// Many v83 NX dumps are stitched from KMS/TMS/CMS sources; quests that
 	// only exist in the CJK regions come through with their original
 	// Chinese / Japanese / Korean strings. Filter them out of the list so
 	// the English UI doesn't show untranslated entries.
 	// UTF-8 lead bytes 0xE3..0xED cover U+3000..U+D7FF which is CJK ideographs,
 	// Hiragana/Katakana, Hangul syllables and CJK symbols.
-	static bool has_cjk(const std::string& s)
+	bool has_cjk(const std::string& s)
 	{
 		for (unsigned char c : s)
 		{
@@ -1227,7 +1225,7 @@ namespace ms
 		}
 	}
 
-	static std::string strip_quest_codes(const std::string& desc)
+	std::string strip_quest_codes(const std::string& desc)
 	{
 		std::string clean;
 		clean.reserve(desc.size());

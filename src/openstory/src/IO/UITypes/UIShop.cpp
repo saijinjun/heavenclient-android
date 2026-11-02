@@ -152,10 +152,19 @@ namespace ms
 		active = false;
 		dimension = bg_dimensions;
 		dragarea = Point<int16_t>(bg_dimensions.x(), 10);
+
+#ifdef __ANDROID__
+		init_mobile();
+#endif
 	}
 
 	void UIShop::draw(float alpha) const
 	{
+#ifdef __ANDROID__
+		draw_mobile(alpha);
+		return;
+#endif
+
 		UIElement::draw(alpha);
 
 		npc.draw(DrawArgument(position + Point<int16_t>(58, 85), true), alpha);
@@ -339,6 +348,10 @@ namespace ms
 
 	void UIShop::remove_cursor()
 	{
+#ifdef __ANDROID__
+		m_gesture.reset();
+#endif
+
 		UIDragElement::remove_cursor();
 
 		buyslider.remove_cursor();
@@ -347,6 +360,10 @@ namespace ms
 
 	Cursor::State UIShop::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		return send_cursor_mobile(clicked, cursorpos);
+#endif
+
 		Point<int16_t> cursoroffset = cursorpos - position;
 		lastcursorpos = cursoroffset;
 
@@ -477,6 +494,14 @@ namespace ms
 
 	void UIShop::send_scroll(double yoffset)
 	{
+#ifdef __ANDROID__
+		// A swipe moves the list one row at a time
+		m_gesture.cancel();
+		m_first += yoffset > 0 ? -1 : 1;
+		mobile_clamp();
+		return;
+#endif
+
 		int16_t xoff = lastcursorpos.x();
 		int16_t slider_width = 10;
 
@@ -491,6 +516,12 @@ namespace ms
 
 	void UIShop::rightclick(Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		// A long press is a right click; quick-selling by the desktop
+		// layout's positions would sell whatever sits there
+		return;
+#endif
+
 		if (rightclicksell)
 		{
 			Point<int16_t> cursoroffset = cursorpos - position;
@@ -674,8 +705,20 @@ namespace ms
 
 		changeselltab(InventoryType::Id::EQUIP);
 
+#ifdef __ANDROID__
+		m_sell = false;
+		m_first = 0;
+		m_shown = 0;
+		m_counts.clear();
+#endif
+
 		makeactive();
 		rightclicksell = Configuration::get().get_rightclicksell();
+
+#ifdef __ANDROID__
+		// Full screen on phones: above every other window, and every touch is the shop's
+		UI::get().bring_to_front(TYPE, true);
+#endif
 	}
 
 	void UIShop::modify(InventoryType::Id type)

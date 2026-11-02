@@ -19,6 +19,9 @@
 
 #include <vector>
 
+#include "../Configuration.h"
+#include "../Graphics/GraphicsGL.h"
+
 #include "UIStateCashShop.h"
 #include "UIStateGame.h"
 #include "UIStateLogin.h"
@@ -30,6 +33,10 @@
 #include <glfw3.h>
 #endif
 
+#include "UITypes/UIMobileInventory.h"
+#include "UITypes/UIMobileStats.h"
+#include "UITypes/UIMobileSkills.h"
+#include "UITypes/UIMobileQuests.h"
 #include "UITypes/UIAvatarBanner.h"
 #include "UITypes/UICashShop.h"
 #include "UITypes/UIChannel.h"
@@ -66,6 +73,11 @@ namespace ms
 
 	void UI::draw(float alpha) const
 	{
+#if defined(MS_PLATFORM_SDL)
+		// The HD-2D effects stop here: the UI is drawn sharp on top.
+		GraphicsGL::get().mark_ui();
+#endif
+
 		state->draw(alpha, cursor.get_position());
 
 		// The scrolling world notice stays out of the cash shop — it lands
@@ -125,10 +137,13 @@ namespace ms
 		// Cleared before the new state is built so that a constructor which
 		// focuses a field of its own is not clobbered.
 		focusedtextfield = {};
+		state_id = id;
 
 		switch (id)
 		{
 			case State::LOGIN:
+				fit_login_view(Setting<Width>::get().load(), Setting<Height>::get().load());
+				GraphicsGL::get().reinit();
 				state = std::make_unique<UIStateLogin>();
 				break;
 			case State::GAME:
@@ -263,6 +278,90 @@ namespace ms
 	{
 		Point<int16_t> pos = cursor.get_position();
 		state->rightclick(pos);
+	}
+
+	bool UI::in_game() const
+	{
+		return state_id == State::GAME;
+	}
+
+	bool UI::in_login() const
+	{
+		return state_id == State::LOGIN;
+	}
+
+	bool UI::in_cashshop() const
+	{
+		return state_id == State::CASHSHOP;
+	}
+
+	bool UI::in_mobile_panel() const
+	{
+		if (state_id != State::GAME)
+			return false;
+
+		UI& ui = const_cast<UI&>(*this);
+		auto inventory = ui.get_element<UIMobileInventory>();
+		auto stats = ui.get_element<UIMobileStats>();
+		auto skills = ui.get_element<UIMobileSkills>();
+		auto quests = ui.get_element<UIMobileQuests>();
+
+		if ((inventory && inventory->is_active()) || (stats && stats->is_active()) || (skills && skills->is_active())
+			|| (quests && quests->is_active()))
+			return true;
+
+#ifdef __ANDROID__
+		// The shop fills the screen on phones
+		auto shop = ui.get_element<UIShop>();
+
+		if (shop && shop->is_active())
+			return true;
+#endif
+
+		return false;
+	}
+
+	void UI::fit_login_view(int16_t screen_width, int16_t screen_height)
+	{
+#ifdef __ANDROID__
+		// The login screens are scenes drawn for 800x600, and a phone is much
+		// wider than that: show them whole at 4:3, with bars at the sides,
+		// like the original game. Entering the game switches back to the full
+		// screen (SetFieldHandler).
+		int16_t width = std::min<int16_t>(screen_width, static_cast<int16_t>(screen_height * 4 / 3));
+		Constants::Constants::get().set_ui_scale(Constants::ui_scale_for(width, screen_height));
+		Constants::Constants::get().set_viewwidth(width);
+		Constants::Constants::get().set_viewheight(screen_height);
+#else
+		(void)screen_width;
+		(void)screen_height;
+#endif
+	}
+
+	void UI::set_typing_on_top(bool on_top)
+	{
+		typing_on_top = on_top;
+	}
+
+	bool UI::is_typing_on_top() const
+	{
+		return typing_on_top;
+	}
+
+	void UI::send_action(KeyType::Id type, int32_t action, bool pressed)
+	{
+		if (enabled)
+			state->send_key(type, action, pressed, false);
+	}
+
+	Icon* UI::get_dragged_icon()
+	{
+		return state->get_dragged_icon();
+	}
+
+	void UI::cancel_drag()
+	{
+		state->cancel_drag();
 	}
 
 	void UI::doubleclick()
@@ -627,5 +726,10 @@ namespace ms
 		focusedtextfield = {};
 
 		state->remove(type);
+	}
+
+	void UI::bring_to_front(UIElement::Type type, bool focus)
+	{
+		state->bring_to_front(type, focus);
 	}
 }

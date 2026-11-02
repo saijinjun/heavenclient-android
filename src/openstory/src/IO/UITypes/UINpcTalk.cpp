@@ -786,6 +786,44 @@ namespace ms
 			}
 		}
 
+#ifdef __ANDROID__
+		// Touch: a tap anywhere on the dialog (off its buttons) finishes the
+		// text at once, and on a page with only Next or OK, turns it.
+		if (clicked && Rectangle<int16_t>(position, position + dimension).contains(cursorpos))
+		{
+			bool on_button = false;
+
+			for (auto& button : buttons)
+				if (button.second->is_active() && button.second->bounds(position).contains(cursorpos))
+					on_button = true;
+
+			if (!on_button)
+			{
+				if (draw_text)
+				{
+					draw_text = false;
+					text.change_text(formatted_text);
+
+					return Cursor::State::CLICKING;
+				}
+
+				if (type == TalkType::SENDNEXT)
+				{
+					button_pressed(Buttons::NEXT);
+
+					return Cursor::State::IDLE;
+				}
+
+				if (type == TalkType::SENDOK)
+				{
+					button_pressed(Buttons::OK);
+
+					return Cursor::State::IDLE;
+				}
+			}
+		}
+#endif
+
 		Cursor::State estate = UIElement::send_cursor(clicked, cursorpos);
 
 		if (estate == Cursor::State::CLICKING && clicked && draw_text)

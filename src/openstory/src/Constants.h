@@ -18,6 +18,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 
 #include "Template/Singleton.h"
 
@@ -36,9 +37,25 @@ namespace ms
 		// (1600x720) rather than a view too short for the 800x600 login art.
 		inline float ui_scale_for(int width, int height)
 		{
+#ifdef __ANDROID__
+			// Phones are held at arm's length and tapped with a thumb, so the
+			// game is drawn bigger: about 600 logical pixels high, the height
+			// the classic windows were made for. A whole-number scale keeps
+			// pixel art and text crisp, so it is used when it gives 600 to
+			// 720 (2x on a 1260-pixel-high phone: 630 high).
+			float scale = height / 600.0f;
+			float whole = std::floor(scale);
+
+			if (whole >= 1.0f && height / whole <= 720.0f)
+				scale = whole;
+
+			(void)width;
+			return std::clamp(scale, 1.0f, 4.0f);
+#else
 			float scale = std::min(width / 1280.0f, height / 720.0f);
 
 			return std::clamp(scale, 1.0f, 4.0f);
+#endif
 		}
 
 		class Constants : public Singleton<Constants>

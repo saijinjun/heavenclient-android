@@ -85,11 +85,25 @@ namespace ms
 
 	Optional<const Ladder> MapInfo::findladder(Point<int16_t> position, bool upwards) const
 	{
-		for (auto& ladder : ladders)
-			if (ladder.inrange(position, upwards))
-				return ladder;
+		// The closest one in reach.
+		const Ladder* closest = nullptr;
+		int32_t best = 0;
 
-		return nullptr;
+		for (auto& ladder : ladders)
+		{
+			if (!ladder.inrange(position, upwards))
+				continue;
+
+			int32_t distance = std::abs(ladder.get_x() - position.x());
+
+			if (!closest || distance < best)
+			{
+				closest = &ladder;
+				best = distance;
+			}
+		}
+
+		return closest;
 	}
 
 	Seat::Seat(nl::node src)
@@ -123,9 +137,16 @@ namespace ms
 		return ladder;
 	}
 
+	int16_t Ladder::reach = 10;
+
+	void Ladder::set_reach(int16_t pixels)
+	{
+		reach = pixels;
+	}
+
 	bool Ladder::inrange(Point<int16_t> position, bool upwards) const
 	{
-		auto hor = Range<int16_t>::symmetric(position.x(), 10);
+		auto hor = Range<int16_t>::symmetric(position.x(), reach);
 		auto ver = Range<int16_t>(y1, y2);
 
 		int16_t y = upwards ?

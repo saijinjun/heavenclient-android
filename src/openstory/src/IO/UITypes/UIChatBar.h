@@ -179,6 +179,8 @@ namespace ms
 		static constexpr time_t MESSAGE_COOLDOWN = 1000;
 
 		Textfield chatfield;
+		// Shown in the typing bar at the top while the chat field is empty.
+		Text typing_hint;
 		Texture chatspace[2];
 		Texture chattargets[NUM_TARGETS];
 		Texture chatenter;

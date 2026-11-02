@@ -38,6 +38,10 @@
 #include "UITypes/UIEquipInventory.h"
 #include "UITypes/UIEvent.h"
 #include "UITypes/UIItemInventory.h"
+#include "UITypes/UIMobileInventory.h"
+#include "UITypes/UIMobileStats.h"
+#include "UITypes/UIMobileSkills.h"
+#include "UITypes/UIMobileQuests.h"
 #include "UITypes/UIKeyConfig.h"
 #include "UITypes/UIMiniMap.h"
 #include "UITypes/UIPartyHUD.h"
@@ -176,6 +180,16 @@ namespace ms
 		return true;
 	}
 
+	Icon* UIStateGame::get_dragged_icon()
+	{
+		return draggedicon.get();
+	}
+
+	void UIStateGame::cancel_drag()
+	{
+		remove_icon();
+	}
+
 	void UIStateGame::remove_icon()
 	{
 		// The drop itself may have rebuilt the owner's icons (purge_icon then
@@ -293,25 +307,46 @@ namespace ms
 						{
 							case KeyAction::Id::EQUIPMENT:
 							{
+#ifdef __ANDROID__
+								// The mobile inventory, on its worn tab
+								emplace<UIMobileInventory>(
+									Stage::get().get_player().get_inventory(), true
+									);
+#else
 								emplace<UIEquipInventory>(
 									Stage::get().get_player().get_inventory()
 									);
+#endif
 
 								break;
 							}
 							case KeyAction::Id::ITEMS:
 							{
+#ifdef __ANDROID__
+								// A full-screen panel for touch; it has a
+								// button for the classic window
+								emplace<UIMobileInventory>(
+									Stage::get().get_player().get_inventory()
+									);
+#else
 								emplace<UIItemInventory>(
 									Stage::get().get_player().get_inventory()
 									);
+#endif
 
 								break;
 							}
 							case KeyAction::Id::STATS:
 							{
+#ifdef __ANDROID__
+								emplace<UIMobileStats>(
+									Stage::get().get_player().get_stats()
+									);
+#else
 								emplace<UIStatsInfo>(
 									Stage::get().get_player().get_stats()
 									);
+#endif
 
 								break;
 							}
@@ -322,10 +357,17 @@ namespace ms
 							}
 							case KeyAction::Id::SKILLS:
 							{
+#ifdef __ANDROID__
+								emplace<UIMobileSkills>(
+									Stage::get().get_player().get_stats(),
+									Stage::get().get_player().get_skills()
+									);
+#else
 								emplace<UISkillBook>(
 									Stage::get().get_player().get_stats(),
 									Stage::get().get_player().get_skills()
 									);
+#endif
 
 								break;
 							}
@@ -387,9 +429,15 @@ namespace ms
 							}
 							case KeyAction::Id::QUESTLOG:
 							{
+#ifdef __ANDROID__
+								emplace<UIMobileQuests>(
+									Stage::get().get_player().get_quests()
+									);
+#else
 								emplace<UIQuestLog>(
 									Stage::get().get_player().get_quests()
 									);
+#endif
 
 								break;
 							}
@@ -905,6 +953,20 @@ namespace ms
 
 			return elements.find(type);
 		}
+	}
+
+	void UIStateGame::bring_to_front(UIElement::Type type, bool focus)
+	{
+		auto& element = elements[type];
+
+		if (!element || !element->is_active())
+			return;
+
+		elementorder.remove(type);
+		elementorder.push_back(type);
+
+		if (focus)
+			focused = type;
 	}
 
 	void UIStateGame::remove(UIElement::Type type)

@@ -22,6 +22,10 @@
 #include "MiniRooms.h"
 
 #include "../Configuration.h"
+#include "../Graphics/GraphicsGL.h"
+#include "DayNight.h"
+
+#include <ctime>
 
 #include "../IO/UI.h"
 #include "../IO/UITypes/UISkillBook.h"
@@ -143,6 +147,16 @@ namespace ms
 		uint8_t gfx_quality = Setting<GraphicsQuality>::get().load();
 
 		backgrounds.drawbackgrounds(viewx, viewy, alpha);
+
+#if defined(MS_PLATFORM_SDL)
+		// Everything before here is the far background, which the HD-2D
+		// look blurs; the world after it is tinted by the time of day.
+		GraphicsGL::get().mark_world();
+
+		static const bool day_night = Setting<DayNightCycle>::get().load();
+		if (day_night)
+			GraphicsGL::get().set_tint(DayNight::tint(static_cast<int64_t>(std::time(nullptr))));
+#endif
 
 		for (auto id : Layer::IDs)
 		{

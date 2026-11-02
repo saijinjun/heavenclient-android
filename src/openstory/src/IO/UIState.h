@@ -48,6 +48,9 @@ namespace ms
 		// reference to it (inventory rebuilds mid-drag left a dangling pointer
 		// that crashed on the next drop)
 		virtual void purge_icon(const Icon* icon) {}
+		// The icon being dragged, if any, and dropping it without a target.
+		virtual Icon* get_dragged_icon() { return nullptr; }
+		virtual void cancel_drag() {}
 		virtual void clear_tooltip(Tooltip::Parent parent) = 0;
 		virtual void show_equip(Tooltip::Parent parent, int16_t slot) = 0;
 		virtual void show_item(Tooltip::Parent parent, int32_t itemid) = 0;
@@ -57,6 +60,9 @@ namespace ms
 
 		virtual Iterator pre_add(UIElement::Type type, bool toggled, bool focused) = 0;
 		virtual void remove(UIElement::Type type) = 0;
+		// Draws an open element above the others and, when `focus`, gives it
+		// every touch and key until it closes
+		virtual void bring_to_front(UIElement::Type type, bool focus) {}
 		virtual UIElement* get(UIElement::Type type) = 0;
 		virtual UIElement* get_front(std::list<UIElement::Type> types) = 0;
 		virtual UIElement* get_front(Point<int16_t> pos) = 0;

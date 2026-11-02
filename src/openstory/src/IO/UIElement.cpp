@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "UIElement.h"
 
+#include <algorithm>
+
 #include "../Audio/Audio.h"
 #include "UIScale.h"
 
@@ -145,6 +147,37 @@ namespace ms
 				break;
 			}
 		}
+
+#ifdef __ANDROID__
+		// Fingers are blunt: a tap just outside a small button (close boxes,
+		// arrows) still hits the nearest one.
+		if (!hit)
+		{
+			constexpr int16_t SLOP = 8;
+			int32_t best = SLOP * SLOP * 2 + 1;
+
+			for (auto& btit : buttons)
+			{
+				if (!btit.second->is_active())
+					continue;
+
+				Rectangle<int16_t> b = btit.second->bounds(drawpos);
+
+				if (b.width() <= 0 || b.height() <= 0)
+					continue;
+
+				int32_t dx = std::max({ b.left() - pos.x(), 0, pos.x() - b.right() });
+				int32_t dy = std::max({ b.top() - pos.y(), 0, pos.y() - b.bottom() });
+
+				if (dx <= SLOP && dy <= SLOP && dx * dx + dy * dy < best)
+				{
+					best = dx * dx + dy * dy;
+					hit = btit.second.get();
+					hitid = btit.first;
+				}
+			}
+		}
+#endif
 
 		for (auto& btit : buttons)
 		{

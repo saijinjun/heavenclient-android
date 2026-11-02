@@ -24,6 +24,8 @@
 #include "../Components/MapleButton.h"
 
 #include "../../Constants.h"
+#include "../../Graphics/ClassicStyle.h"
+#include "../../Graphics/Geometry.h"
 #include "../../Gameplay/Stage.h"
 
 #include "../../Net/Handlers/CashShopHandlers.h"
@@ -215,6 +217,104 @@ namespace ms
 		active_subpanel = SUBPANEL_NONE;
 
 		dimension = Texture(backgrnd).get_dimensions();
+
+		exit_label = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Exit");
+		buy_label = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE);
+		status_text = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE);
+
+		// Ask the server for the NX balances shown on the left
+		OutPacket(0xE4).dispatch();
+	}
+
+	namespace
+	{
+		std::string status_message;
+		bool status_error = false;
+		int32_t status_ticks = 0;
+	}
+
+	void UICashShop::show_status(const std::string& text, bool error)
+	{
+		status_message = text;
+		status_error = error;
+		status_ticks = 4000 / Constants::TIMESTEP;
+	}
+
+	Rectangle<int16_t> UICashShop::exit_rect() const
+	{
+		Point<int16_t> p = get_draw_position() + Point<int16_t>(906, 6);
+
+		return Rectangle<int16_t>(p, p + Point<int16_t>(110, 36));
+	}
+
+	Rectangle<int16_t> UICashShop::buy_rect() const
+	{
+		Point<int16_t> p = get_draw_position() + Point<int16_t>(682, 304);
+
+		return Rectangle<int16_t>(p, p + Point<int16_t>(300, 38));
+	}
+
+	void UICashShop::draw_touch_buttons() const
+	{
+		Rectangle<int16_t> e = exit_rect();
+		int16_t eh = e.height();
+
+		// A navy plate with the label and the round close button on its right
+		classic::panel(e.get_left_top(), e.width(), eh);
+
+		if (classic::close_button(Point<int16_t>(e.right() - eh, e.top()), eh))
+			exit_label.draw(Point<int16_t>(e.left() + (e.width() - eh) / 2, e.top() + (eh - exit_label.height()) / 2));
+		else
+			exit_label.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (eh - exit_label.height()) / 2));
+
+		if (selected_item >= 0 && selected_item < static_cast<int16_t>(items.size()))
+		{
+			const Item& sel = items[selected_item];
+			std::string label = buy_armed
+				? "Tap again to buy for " + std::to_string(sel.get_price()) + " NX"
+				: "Buy - " + std::to_string(sel.get_price()) + " NX";
+
+			if (buy_label.get_text() != label)
+				buy_label.change_text(label);
+
+			Rectangle<int16_t> b = buy_rect();
+			classic::button(b.get_left_top(), b.width(), b.height(), buy_armed);
+			buy_label.draw(Point<int16_t>(b.left() + b.width() / 2, b.top() + (b.height() - buy_label.height()) / 2));
+		}
+
+		if (status_ticks > 0 && !status_message.empty())
+		{
+			if (status_text.get_text() != status_message)
+				status_text.change_text(status_message);
+
+			int16_t w = std::max<int16_t>(status_text.width() + 40, 300);
+			Point<int16_t> p = get_draw_position() + Point<int16_t>((1024 - w) / 2, 330);
+			Rectangle<int16_t> r(p, p + Point<int16_t>(w, 40));
+
+			status_text.change_color(status_error ? Color::Name::TORCHRED : Color::Name::WHITE);
+			classic::panel(p, w, 40);
+			status_text.draw(Point<int16_t>(r.left() + w / 2, r.top() + (40 - status_text.height()) / 2));
+		}
+	}
+
+	void UICashShop::scroll_rows(int16_t rows)
+	{
+		int16_t shift = rows * GRID_COLS;
+		int16_t next = list_offset + shift;
+
+		if (next < 0 || next >= static_cast<int16_t>(items.size()))
+			return;
+
+		list_offset = next;
+		update_items();
+	}
+
+	void UICashShop::send_scroll(double yoffset)
+	{
+		if (yoffset > 0)
+			scroll_rows(-1);
+		else if (yoffset < 0)
+			scroll_rows(1);
 	}
 
 	void UICashShop::draw(float inter) const
@@ -290,6 +390,7 @@ namespace ms
 		list_slider.draw(position);
 
 		UIElement::draw_buttons(inter);
+		draw_touch_buttons();
 
 		// Draw active sub-panel (English popups only).
 		switch (active_subpanel)
@@ -360,6 +461,12 @@ namespace ms
 	{
 		UIElement::update();
 
+		if (status_ticks > 0)
+			status_ticks--;
+
+		if (exit_ticks > 0 && --exit_ticks == 0)
+			show_status("The server didn't answer. Tap Exit to try again.", true);
+
 		preview_look.update(Constants::TIMESTEP);
 
 		// Walk
@@ -421,33 +528,9 @@ namespace ms
 			preview_index = buttonid;
 			return Button::State::PRESSED;
 		case Buttons::BtExit:
-		{
-			uint16_t width = Setting<Width>::get().load();
-			uint16_t height = Setting<Height>::get().load();
-
-			// Restore the user's pre-cashshop UI scale (transition() forced
-			// it to 1.0 so the 1024x768 cash shop UI fit the window exactly).
-			Constants::Constants::get().set_ui_scale(get_pre_cashshop_ui_scale());
-			Constants::Constants::get().set_viewwidth(width);
-			Constants::Constants::get().set_viewheight(height);
-
-			float fadestep = 0.025f;
-
-			Window::get().fadeout(
-				fadestep,
-				[]()
-				{
-					GraphicsGL::get().clear();
-					ChangeMapPacket().dispatch();
-				}
-			);
-
-			GraphicsGL::get().lock();
-			Stage::get().clear();
-			Timer::get().start();
+			request_exit();
 
 			return Button::State::NORMAL;
-		}
 		case Buttons::BtNext:
 		{
 			size_t size = promotion_sprites.size() - 1;
@@ -510,6 +593,36 @@ namespace ms
 	{
 		Point<int16_t> cursor_relative = cursorpos - position;
 
+		if (exit_rect().contains(cursorpos))
+		{
+			if (clicked)
+				button_pressed(Buttons::BtExit);
+
+			return Cursor::State::CANCLICK;
+		}
+
+		if (selected_item >= 0 && selected_item < static_cast<int16_t>(items.size()) && buy_rect().contains(cursorpos))
+		{
+			if (clicked)
+			{
+				if (buy_armed)
+				{
+					BuyCashItemPacket(1, items[selected_item].sn).dispatch();
+					show_status("Buying " + items[selected_item].get_name() + "...", false);
+					buy_armed = false;
+				}
+				else
+				{
+					buy_armed = true;
+				}
+			}
+
+			return Cursor::State::CANCLICK;
+		}
+
+		if (clicked)
+			buy_armed = false;
+
 		if (list_slider.isenabled())
 		{
 			Cursor::State state = list_slider.send_cursor(cursor_relative, clicked);
@@ -562,8 +675,23 @@ namespace ms
 		return TYPE;
 	}
 
+	void UICashShop::request_exit()
+	{
+		// The shop stays up until the server sends the channel back, so the
+		// tap shows at once and a second tap doesn't send a second request.
+		if (exit_ticks > 0)
+			return;
+
+		exit_ticks = 8000 / Constants::TIMESTEP;
+		buy_armed = false;
+		show_status("Leaving the Cash Shop...", false);
+		ChangeMapPacket().dispatch();
+	}
+
 	void UICashShop::exit_cashshop()
 	{
+		exit_ticks = 0;
+
 		UI& ui = UI::get();
 
 		// Restore UI scale + physical window size that were overridden in
@@ -585,7 +713,11 @@ namespace ms
 
 		ui.change_state(UI::State::GAME);
 
+		// The shop's preview stage is still loaded; Stage::load only
+		// loads into a cleared stage.
+		GraphicsGL::get().clear();
 		Stage& stage = Stage::get();
+		stage.clear();
 		Player& player = stage.get_player();
 
 		PlayerLoginPacket(player.get_oid()).dispatch();

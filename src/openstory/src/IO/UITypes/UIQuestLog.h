@@ -28,6 +28,11 @@
 
 namespace ms
 {
+	// Quest text from the NX data with MapleStory's # format codes removed
+	std::string strip_quest_codes(const std::string& desc);
+	// Whether text is untranslated Chinese, Japanese or Korean
+	bool has_cjk(const std::string& s);
+
 	class UIQuestLog : public UIDragElement<PosQUEST>
 	{
 	public:

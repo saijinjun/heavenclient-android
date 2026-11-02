@@ -31,6 +31,11 @@ namespace ms
 		static constexpr bool FOCUSED = false;
 		static constexpr bool TOGGLED = true;
 
+		// Uses, equips or opens the item in a slot, as a double-click does.
+		// Also used by the mobile inventory.
+		static void use_item(const Inventory& inventory, InventoryType::Id tab, int16_t slot);
+		static bool can_wear(const Inventory& inventory, int16_t slot);
+
 		UIItemInventory(const Inventory& inventory);
 
 		void draw(float inter) const override;

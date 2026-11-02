@@ -30,6 +30,7 @@
 #include "../../Net/Packets/InventoryPackets.h"
 #include "../../Net/Packets/MessagingPackets.h"
 #include "../../Audio/Audio.h"
+#include "../../Graphics/ClassicStyle.h"
 #include "../../Constants.h"
 #include "../../Gameplay/Stage.h"
 #include "../../Character/Party.h"
@@ -142,6 +143,7 @@ namespace ms
 		// few pixels so the typed text sits centered in the input
 		// strip instead of jamming against its top edge.
 		chatfield = Textfield(Text::A12M, Text::LEFT, Color::Name::BLACK, Rectangle<int16_t>(Point<int16_t>(-435, -59), Point<int16_t>(-40, -39)), 0);
+		typing_hint = Text(Text::A12M, Text::LEFT, Color::Name::DUSTYGRAY, "Say something, then press Enter to send");
 
 		set_chat_open(chatopen);
 
@@ -273,7 +275,7 @@ namespace ms
 		int16_t w = EMOTE_COLS * EMOTE_CELL + EMOTE_PAD * 2;
 		int16_t h = rows * EMOTE_CELL + EMOTE_PAD * 2;
 
-		ColorBox(w, h, Color::Name::BLACK, 0.82f).draw(DrawArgument(pos));
+		classic::panel(pos, w, h);
 
 		Point<int16_t> grid = pos + Point<int16_t>(EMOTE_PAD, EMOTE_PAD);
 
@@ -284,7 +286,7 @@ namespace ms
 			Point<int16_t> cell = grid + Point<int16_t>(col * EMOTE_CELL, row * EMOTE_CELL);
 
 			if (i == emoticon_hover)
-				ColorBox(EMOTE_CELL - 2, EMOTE_CELL - 2, Color::Name::WHITE, 0.25f)
+				ColorBox(EMOTE_CELL - 2, EMOTE_CELL - 2, Color::Name::HUD_EXP, 0.5f)
 					.draw(DrawArgument(cell));
 
 			if (i < static_cast<int32_t>(emoticon_icons.size()) && emoticon_icons[i].is_valid())
@@ -465,6 +467,30 @@ namespace ms
 		else if (rowtexts.count(rowmax))
 		{
 			rowtexts.at(rowmax).draw(position + Point<int16_t>(-500, -60));
+		}
+
+		if (UI::get().is_typing_on_top() && chatfield.get_state() == Textfield::State::FOCUSED)
+		{
+			// A typing bar at the top of the screen, above the soft keyboard:
+			// a light field in a gold rim.
+			int16_t width = std::min<int16_t>(Constants::Constants::get().get_viewwidth() - 32, 460);
+			Point<int16_t> bar((Constants::Constants::get().get_viewwidth() - width) / 2, 10);
+
+			// A light input field in a gold rim
+			if (!classic::input(bar + Point<int16_t>(-14, -4), width + 20, 36))
+			{
+				classic::panel(bar + Point<int16_t>(-3, -3), width + 6, 34);
+				classic::box(bar.x(), bar.y(), width, 28, Color::Name::GALLERY, 0.97f);
+				classic::box(bar.x(), bar.y(), 4, 28, Color::Name::HUD_EXP);
+			}
+
+			// The field's bounds start at (-435, -59) from the bar's position.
+			Point<int16_t> text_pos = bar + Point<int16_t>(14, 5);
+
+			if (chatfield.empty())
+				typing_hint.draw(DrawArgument(text_pos));
+
+			chatfield.draw(text_pos + Point<int16_t>(435, 59));
 		}
 	}
 

@@ -95,6 +95,10 @@ namespace ms
 		Animation info_unroll[2];
 		Texture info_open_tex[2];
 		Texture info_sheet[2];
+		// Newer UI.nx files ship a different stat sheet the v83 label
+		// positions don't fit, so the info is drawn as a card instead.
+		bool drawn_info = false;
+		Text card_captions[7];
 		int8_t info_state;
 		bool info_tall;
 		OutlinedText level_label;

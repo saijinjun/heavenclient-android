@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "GraphicsGL.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 
@@ -80,6 +82,58 @@ extern const char* ios_font_path_bold();
 
 namespace ms
 {
+	namespace
+	{
+		// OpenGL ES only accepts uploads in the texture's own format, and the
+		// atlas is RGBA: a BGRA or single-channel upload into it fails with
+		// GL_INVALID_OPERATION and leaves the atlas empty, which on a phone
+		// is a black screen. So pixels are converted to RGBA first there.
+		void upload_bgra(GLint x, GLint y, GLsizei width, GLsizei height, const void* pixels)
+		{
+#if defined(PLATFORM_SDL)
+			static std::vector<uint8_t> rgba;
+			size_t count = static_cast<size_t>(width) * height;
+			rgba.resize(count * 4);
+			const uint8_t* src = static_cast<const uint8_t*>(pixels);
+
+			for (size_t i = 0; i < count; i++)
+			{
+				rgba[i * 4 + 0] = src[i * 4 + 2];
+				rgba[i * 4 + 1] = src[i * 4 + 1];
+				rgba[i * 4 + 2] = src[i * 4 + 0];
+				rgba[i * 4 + 3] = src[i * 4 + 3];
+			}
+
+			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+#else
+			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+#endif
+		}
+
+		// Glyph coverage; the shader reads it from the red channel.
+		void upload_gray(GLint x, GLint y, GLsizei width, GLsizei height, const uint8_t* pixels)
+		{
+#if defined(PLATFORM_SDL)
+			static std::vector<uint8_t> rgba;
+			size_t count = static_cast<size_t>(width) * height;
+			rgba.resize(count * 4);
+
+			for (size_t i = 0; i < count; i++)
+			{
+				uint8_t value = pixels[i];
+				rgba[i * 4 + 0] = value;
+				rgba[i * 4 + 1] = value;
+				rgba[i * 4 + 2] = value;
+				rgba[i * 4 + 3] = value;
+			}
+
+			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+#else
+			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_RED, GL_UNSIGNED_BYTE, pixels);
+#endif
+		}
+	}
+
 	GraphicsGL::GraphicsGL()
 	{
 		locked = false;
@@ -395,6 +449,9 @@ namespace ms
 		const char* FONT_BOLD_STR = FONT_BOLD.c_str();
 #endif
 
+		float ui_scale = Constants::Constants::get().get_ui_scale();
+		text_scale = static_cast<GLshort>(std::clamp(std::ceil(ui_scale - 0.05f), 1.0f, 3.0f));
+
 		addfont(FONT_NORMAL_STR, Text::Font::A11M, 0, 11);
 		addfont(FONT_BOLD_STR, Text::Font::A11B, 0, 11);
 		addfont(FONT_NORMAL_STR, Text::Font::A12M, 0, 12);
@@ -442,7 +499,7 @@ namespace ms
 					// are COLR/COLRv1 vector fonts with no bitmap strikes.
 					// Use FT_Set_Pixel_Sizes so FT_LOAD_COLOR can rasterize
 					// the colored layers into a BGRA bitmap.
-					emoji_strike_size = 16;
+					emoji_strike_size = 16 * text_scale;
 					if (FT_Set_Pixel_Sizes(emojiface, 0, emoji_strike_size) != 0)
 					{
 						FT_Done_Face(emojiface);
@@ -495,7 +552,7 @@ namespace ms
 		if (open_face(name, &face))
 			return false;
 
-		if (FT_Set_Pixel_Sizes(face, pixelw, pixelh))
+		if (FT_Set_Pixel_Sizes(face, pixelw * text_scale, pixelh * text_scale))
 			return false;
 
 		FT_GlyphSlot g = face->glyph;
@@ -508,62 +565,84 @@ namespace ms
 			if (FT_Load_Char(face, c, FT_LOAD_RENDER))
 				continue;
 
-			GLshort w = static_cast<GLshort>(g->bitmap.width);
-			GLshort h = static_cast<GLshort>(g->bitmap.rows);
-
-			width += w;
-
-			if (h > height)
-				height = h;
+			width += static_cast<GLshort>(g->bitmap.width);
+			height = std::max(height, static_cast<GLshort>(g->bitmap.rows));
 		}
 
-		if (fontborder.x() + width > ATLASW)
-		{
-			fontborder.set_x(0);
-			fontborder.set_y(fontymax);
-		}
-
-		GLshort x = fontborder.x();
-		GLshort y = fontborder.y();
-
-		fontborder.shift_x(width);
-
-		// fontymax is the absolute bottom of the font region, not the current row
-		// height: the shader treats every texel above it as a monochrome glyph.
-		if (fontborder.y() + height > fontymax)
-			fontymax = fontborder.y() + height;
-
-		fonts[id] = Font(width, height);
+		fonts[id] = Font((width + text_scale - 1) / text_scale, (height + text_scale - 1) / text_scale);
 		fonts[id].path = name;
 		fonts[id].pixelw = pixelw;
 		fonts[id].pixelh = pixelh;
-
-		GLshort ox = x;
-		GLshort oy = y;
 
 		for (uint8_t c = 32; c < 128; c++)
 		{
 			if (FT_Load_Char(face, c, FT_LOAD_RENDER))
 				continue;
 
-			GLshort ax = static_cast<GLshort>(g->advance.x >> 6);
-			GLshort ay = static_cast<GLshort>(g->advance.y >> 6);
-			GLshort l = static_cast<GLshort>(g->bitmap_left);
-			GLshort t = static_cast<GLshort>(g->bitmap_top);
-			GLshort w = static_cast<GLshort>(g->bitmap.width);
-			GLshort h = static_cast<GLshort>(g->bitmap.rows);
-
-			glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, w, h, GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
-
-			Offset offset = Offset(ox, oy, w, h);
-			Font::Char ch = { ax, ay, w, h, l, t, offset, false };
-			fonts[id].chars.emplace(static_cast<uint32_t>(c), ch);
-
-			ox += w;
+			store_mono_glyph(fonts[id], g, c);
 		}
 
 		FT_Done_Face(face);
 		return true;
+	}
+
+	void GraphicsGL::store_mono_glyph(Font& font, FT_GlyphSlot g, uint32_t codepoint)
+	{
+		const int s = text_scale;
+		const int w = static_cast<int>(g->bitmap.width);
+		const int h = static_cast<int>(g->bitmap.rows);
+		const int l = g->bitmap_left;
+		const int t = g->bitmap_top;
+
+		// Snap the bitmap's corner to a whole logical pixel and pad its size
+		// to a multiple of the scale, so the quad maps texels 1:1 onto it.
+		auto floordiv = [](int a, int b) { return a >= 0 ? a / b : -((-a + b - 1) / b); };
+		int bl = floordiv(l, s);
+		int bt = -floordiv(-t, s);
+		int pad_left = l - bl * s;
+		int pad_top = bt * s - t;
+		int pw = (w > 0 && h > 0) ? ((w + pad_left + s - 1) / s) * s : 0;
+		int ph = (w > 0 && h > 0) ? ((h + pad_top + s - 1) / s) * s : 0;
+
+		if (fontborder.x() + pw > ATLASW)
+		{
+			fontborder.set_x(0);
+			fontborder.set_y(fontymax);
+		}
+
+		GLshort ox = fontborder.x();
+		GLshort oy = fontborder.y();
+
+		fontborder.shift_x(static_cast<GLshort>(pw > 0 ? pw : 1));
+
+		// fontymax is the absolute bottom of the font region, not the current row
+		// height: the shader treats every texel above it as a monochrome glyph.
+		if (fontborder.y() + ph > fontymax)
+			fontymax = static_cast<GLshort>(fontborder.y() + ph);
+
+		if (pw > 0 && ph > 0)
+		{
+			std::vector<uint8_t> padded(static_cast<size_t>(pw) * ph, 0);
+
+			for (int row = 0; row < h; row++)
+			{
+				const uint8_t* src = g->bitmap.buffer + row * g->bitmap.pitch;
+				std::copy(src, src + w, padded.begin() + (row + pad_top) * pw + pad_left);
+			}
+
+			upload_gray(ox, oy, pw, ph, padded.data());
+		}
+
+		Font::Char ch;
+		ch.ax = static_cast<GLshort>(std::lround(g->advance.x / (64.0 * s)));
+		ch.ay = static_cast<GLshort>(std::lround(g->advance.y / (64.0 * s)));
+		ch.bw = static_cast<GLshort>(pw / s);
+		ch.bh = static_cast<GLshort>(ph / s);
+		ch.bl = static_cast<GLshort>(bl);
+		ch.bt = static_cast<GLshort>(bt);
+		ch.offset = Offset(ox, oy, static_cast<GLshort>(pw), static_cast<GLshort>(ph));
+		ch.color = false;
+		font.chars.emplace(codepoint, ch);
 	}
 
 	bool GraphicsGL::load_mono_glyph(Font& font, uint32_t codepoint)
@@ -601,7 +680,7 @@ namespace ms
 			}
 		}
 
-		if (FT_Set_Pixel_Sizes(face, font.pixelw, font.pixelh))
+		if (FT_Set_Pixel_Sizes(face, font.pixelw * text_scale, font.pixelh * text_scale))
 		{
 			FT_Done_Face(face);
 			return false;
@@ -614,36 +693,7 @@ namespace ms
 		}
 		(void)loaded_path;
 
-		FT_GlyphSlot g = face->glyph;
-		GLshort w = static_cast<GLshort>(g->bitmap.width);
-		GLshort h = static_cast<GLshort>(g->bitmap.rows);
-
-		if (fontborder.x() + w > ATLASW)
-		{
-			fontborder.set_x(0);
-			fontborder.set_y(fontymax);
-		}
-
-		GLshort ox = fontborder.x();
-		GLshort oy = fontborder.y();
-
-		fontborder.shift_x(w > 0 ? w : 1);
-
-		if (fontborder.y() + h > fontymax) fontymax = fontborder.y() + h;
-
-		if (w > 0 && h > 0)
-			glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, w, h, GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
-
-		Font::Char ch;
-		ch.ax = static_cast<GLshort>(g->advance.x >> 6);
-		ch.ay = static_cast<GLshort>(g->advance.y >> 6);
-		ch.bw = w;
-		ch.bh = h;
-		ch.bl = static_cast<GLshort>(g->bitmap_left);
-		ch.bt = static_cast<GLshort>(g->bitmap_top);
-		ch.offset = Offset(ox, oy, w, h);
-		ch.color = false;
-		font.chars.emplace(codepoint, ch);
+		store_mono_glyph(font, face->glyph, codepoint);
 
 		FT_Done_Face(face);
 		return true;
@@ -728,7 +778,7 @@ namespace ms
 				yrange = Range<int16_t>(gy + strike_h, strike_h);
 		}
 
-		glTexSubImage2D(GL_TEXTURE_2D, 0, gx, gy, strike_w, strike_h, GL_BGRA, GL_UNSIGNED_BYTE, src_pixels);
+		upload_bgra(gx, gy, strike_w, strike_h, src_pixels);
 
 		Font::Char ch;
 		ch.ax = target;
@@ -1130,7 +1180,7 @@ namespace ms
 			}
 		}
 
-		glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+		upload_bgra(x, y, width, height, pixels);
 
 		if (gfx_debug_enabled())
 		{
@@ -1615,7 +1665,8 @@ namespace ms
 
 						if (bottom_adjust < 10)
 						{
-							offset.bottom -= bottom_adjust;
+							// The offset is in texels; mono glyphs have text_scale per pixel.
+							offset.bottom -= ch.color ? bottom_adjust : bottom_adjust * text_scale;
 							char_bottom -= bottom_adjust;
 						}
 						else
@@ -1808,6 +1859,57 @@ namespace ms
 		}
 #endif
 
+#if defined(PLATFORM_SDL)
+		// The world goes through the HD-2D effects when they are on and this
+		// frame has a world at all; the UI is drawn sharp on top.
+		if (!post_tried)
+		{
+			post.init();
+			post_tried = true;
+		}
+
+		bool has_world = ui_mark != NO_MARK && ui_mark > 0 && ui_mark <= quads.size();
+
+		if (has_world && post.ready() && post.get_options().any())
+		{
+			GLint view[4];
+			glGetIntegerv(GL_VIEWPORT, view);
+			post.resize(view[2], view[3]);
+
+			size_t background_end = world_mark != NO_MARK && world_mark <= ui_mark ? world_mark : 0;
+
+			if (post.get_options().depth && background_end > 0)
+			{
+				post.begin_background();
+				bind_quad_state();
+				draw_quad_range(0, background_end);
+				post.begin_world(true);
+			}
+			else
+			{
+				post.begin_world(false);
+				background_end = 0;
+			}
+
+			bind_quad_state();
+			draw_quad_range(background_end, ui_mark);
+			post.present(0, view[0], view[1], view[2], view[3]);
+
+			glViewport(view[0], view[1], view[2], view[3]);
+			bind_quad_state();
+			draw_quad_range(ui_mark, quads.size());
+
+			glDisableVertexAttribArray(attribute_coord);
+			glDisableVertexAttribArray(attribute_color);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			if (coverscene)
+				quads.pop_back();
+
+			return;
+		}
+#endif
+
 		// One draw call for a run of `count` quads starting at quad `from`.
 		// Windows/Linux keep the legacy GL_QUADS primitive; macOS issues the
 		// same run as indexed triangles from the element buffer filled above.
@@ -1861,6 +1963,192 @@ namespace ms
 			quads.pop_back();
 	}
 
+#if defined(PLATFORM_SDL)
+	void GraphicsGL::mark_world()
+	{
+		world_mark = quads.size();
+	}
+
+	void GraphicsGL::mark_ui()
+	{
+		ui_mark = quads.size();
+	}
+
+	void GraphicsGL::set_effects(const PostProcess::Options& options)
+	{
+		// The tint is set separately, per frame.
+		PostProcess::Options merged = options;
+		std::copy(std::begin(post.get_options().tint), std::end(post.get_options().tint), merged.tint);
+		post.set_options(merged);
+	}
+
+	void GraphicsGL::set_tint(const std::array<float, 3>& tint)
+	{
+		PostProcess::Options options = post.get_options();
+		std::copy(tint.begin(), tint.end(), options.tint);
+		post.set_options(options);
+	}
+
+	void GraphicsGL::bind_quad_state()
+	{
+		glUseProgram(shaderProgram);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, atlas);
+		glUniform1i(uniform_texture, 0);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glEnableVertexAttribArray(attribute_coord);
+		glEnableVertexAttribArray(attribute_color);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+		glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	}
+
+	void GraphicsGL::draw_quad_range(size_t first, size_t last)
+	{
+		auto draw = [](size_t from, size_t to)
+		{
+			if (to > from)
+				glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((to - from) * 6), GL_UNSIGNED_INT, (const void*)(from * 6 * sizeof(GLuint)));
+		};
+
+		auto ranges = additive_ranges;
+		if (additive_active && quads.size() > additive_from)
+			ranges.emplace_back(additive_from, quads.size());
+
+		size_t cursor = first;
+
+		for (const auto& range : ranges)
+		{
+			size_t from = std::max(range.first, first);
+			size_t to = std::min(range.second, last);
+
+			if (from >= to)
+				continue;
+
+			draw(cursor, from);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+			draw(from, to);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			cursor = to;
+		}
+
+		draw(cursor, last);
+	}
+
+	void GraphicsGL::set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height)
+	{
+		if (!overlay)
+			glGenTextures(1, &overlay);
+
+		glBindTexture(GL_TEXTURE_2D, overlay);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+		glBindTexture(GL_TEXTURE_2D, atlas);
+
+		overlay_w = width;
+		overlay_h = height;
+	}
+
+	bool GraphicsGL::has_overlay_texture() const
+	{
+		return overlay != 0;
+	}
+
+	void GraphicsGL::draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
+		int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color)
+	{
+		Offset source(src_left, src_top, src_right - src_left, src_bottom - src_top);
+		screen_quads.emplace_back(left, right, top, bottom, source, color, 0.0f);
+		screen_from_overlay.push_back(true);
+	}
+
+	void GraphicsGL::draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color)
+	{
+		Offset offset = getoffset(bmp);
+
+		if (offset.right > offset.left)
+		{
+			screen_quads.emplace_back(left, right, top, bottom, offset, color, 0.0f);
+			screen_from_overlay.push_back(false);
+		}
+	}
+
+	void GraphicsGL::flush_screen(int16_t width, int16_t height)
+	{
+		if (screen_quads.empty())
+			return;
+
+		// Window pixels with the origin at the top left.
+		glUseProgram(shaderProgram);
+		glUniform2f(uniform_screensize, width, height);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		quad_indices.clear();
+		for (size_t i = 0; i < screen_quads.size(); i++)
+		{
+			GLuint base = static_cast<GLuint>(i * Quad::LENGTH);
+			quad_indices.insert(quad_indices.end(), { base, base + 1, base + 2, base, base + 2, base + 3 });
+		}
+
+		glEnableVertexAttribArray(attribute_coord);
+		glEnableVertexAttribArray(attribute_color);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, screen_quads.size() * sizeof(Quad), screen_quads.data(), GL_STREAM_DRAW);
+		glVertexAttribPointer(attribute_coord, 4, GL_SHORT, GL_FALSE, sizeof(Quad::Vertex), 0);
+		glVertexAttribPointer(attribute_color, 4, GL_FLOAT, GL_FALSE, sizeof(Quad::Vertex), (const void*)8);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, quad_indices.size() * sizeof(GLuint), quad_indices.data(), GL_STREAM_DRAW);
+
+		// One draw call per run of pieces from the same texture.
+		size_t first = 0;
+		while (first < screen_quads.size())
+		{
+			bool from_overlay = screen_from_overlay[first];
+			size_t last = first;
+			while (last < screen_quads.size() && screen_from_overlay[last] == from_overlay)
+				last++;
+
+			if (from_overlay)
+			{
+				// The overlay texture has no font region: sample it as RGBA.
+				glBindTexture(GL_TEXTURE_2D, overlay);
+				glUniform2f(uniform_atlassize, overlay_w, overlay_h);
+				glUniform1i(uniform_fontregion, -1);
+			}
+			else
+			{
+				glBindTexture(GL_TEXTURE_2D, atlas);
+				glUniform2f(uniform_atlassize, ATLASW, ATLASH);
+				glUniform1i(uniform_fontregion, fontymax);
+			}
+
+			if (!from_overlay || overlay)
+				glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((last - first) * 6), GL_UNSIGNED_INT, (const void*)(first * 6 * sizeof(GLuint)));
+
+			first = last;
+		}
+
+		glDisableVertexAttribArray(attribute_coord);
+		glDisableVertexAttribArray(attribute_color);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glBindTexture(GL_TEXTURE_2D, atlas);
+		glUniform2f(uniform_atlassize, ATLASW, ATLASH);
+		glUniform1i(uniform_fontregion, fontymax);
+		glUniform2f(uniform_screensize, VWIDTH, VHEIGHT);
+
+		screen_quads.clear();
+		screen_from_overlay.clear();
+	}
+#endif
+
 	void GraphicsGL::clearscene()
 	{
 		if (!locked)
@@ -1869,6 +2157,10 @@ namespace ms
 			additive_ranges.clear();
 			additive_active = false;
 			additive_from = 0;
+#if defined(PLATFORM_SDL)
+			world_mark = NO_MARK;
+			ui_mark = NO_MARK;
+#endif
 		}
 	}
 }

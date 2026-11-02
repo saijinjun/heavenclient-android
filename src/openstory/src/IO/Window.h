@@ -25,6 +25,7 @@
 
 #if defined(PLATFORM_SDL)
 	#include "../Graphics/GraphicsGL.h"
+	#include "TouchControls.h"
 	#include <SDL.h>
 #elif defined(PLATFORM_IOS)
 	#include <OpenGLES/ES3/gl.h>
@@ -81,6 +82,11 @@ namespace ms
 	private:
 		void handle_event(const SDL_Event& event);
 		void handle_finger(const SDL_TouchFingerEvent& finger, uint32_t type);
+		void send_touch_actions(const std::vector<TouchControls::Action>& actions);
+		void draw_touch_controls() const;
+		// The controller's extras on top of Gamepad's button mapping:
+		// quick slots on the bumpers and triggers, a cursor on the right stick.
+		void poll_pad();
 		void update_viewport();
 		void update_text_input();
 		Point<int16_t> to_view(int32_t x, int32_t y) const;
@@ -95,9 +101,29 @@ namespace ms
 		SDL_FingerID cursor_finger;
 		uint32_t finger_down_time;
 		Point<int16_t> finger_down_pos;
+		// Where the cursor finger last scrolled a list from
+		int16_t scroll_anchor_y = 0;
 		bool long_press_sent;
 		uint32_t last_tap_time;
 		Point<int16_t> last_tap_pos;
+		// On-screen controls, shown on the game screen once a touch is seen.
+		mutable TouchControls touch;
+		// Where the game is drawn in the window: all of it, unless the view
+		// has another shape (the cash shop's fixed 1024x768), which is then
+		// centered with black bars.
+		int32_t view_x = 0;
+		int32_t view_y = 0;
+		int32_t view_w = 1;
+		int32_t view_h = 1;
+		bool touch_seen;
+		bool touch_editing;
+		SDL_Haptic* haptic;
+		SDL_GameController* pad = nullptr;
+		bool pad_slots[4] = {};
+		bool pad_click = false;
+		uint32_t pad_tick = 0;
+		float pad_cursor_x = 0.0f;
+		float pad_cursor_y = 0.0f;
 #elif !defined(PLATFORM_IOS)
 		GLFWwindow* glwnd;
 		GLFWwindow* context;

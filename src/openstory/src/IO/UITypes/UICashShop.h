@@ -45,13 +45,32 @@ namespace ms
 		Button::State button_pressed(uint16_t buttonid);
 
 		Cursor::State send_cursor(bool clicked, Point<int16_t> cursorpos) override;
+		void send_scroll(double yoffset) override;
+
+		// A message over the shop (purchase results, errors), since the
+		// chat log isn't shown here
+		static void show_status(const std::string& text, bool error);
 
 		UIElement::Type get_type() const override;
 
+		// Asks the server to leave; exit_cashshop() runs on its answer
+		void request_exit();
 		void exit_cashshop();
 
 	private:
 		void update_items();
+		void scroll_rows(int16_t rows);
+
+		// Touch-sized Exit and Buy buttons, drawn over the shop art (which
+		// a newer UI.nx may not ship). Buy asks for a second tap.
+		Rectangle<int16_t> exit_rect() const;
+		Rectangle<int16_t> buy_rect() const;
+		void draw_touch_buttons() const;
+		bool buy_armed = false;
+		int32_t exit_ticks = 0;
+		mutable Text exit_label;
+		mutable Text buy_label;
+		mutable Text status_text;
 
 		// 5 columns x 3 rows of the classic card cells (119x184) in the
 		// center panel, clear of the baked right-column panels

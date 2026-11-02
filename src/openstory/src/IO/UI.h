@@ -43,6 +43,19 @@ namespace ms
 		void enable();
 		void disable();
 		void change_state(State state);
+		// Whether the game screen is showing (not login or the cash shop).
+		bool in_game() const;
+		bool in_login() const;
+		bool in_cashshop() const;
+		// A full-screen touch panel (the mobile inventory) is open: the
+		// touch controls step aside and a swipe scrolls it
+		bool in_mobile_panel() const;
+		// Sets the view for the login screens on a screen of this size.
+		void fit_login_view(int16_t screen_width, int16_t screen_height);
+		// Whether a soft keyboard covers the bottom of the screen, so text
+		// being typed has to be shown at the top instead.
+		void set_typing_on_top(bool on_top);
+		bool is_typing_on_top() const;
 
 		void quit();
 		bool not_quitted() const;
@@ -64,6 +77,11 @@ namespace ms
 		void rightclick();
 		void doubleclick();
 		void send_key(int32_t keycode, bool pressed);
+		// An action straight to the game, without a key behind it: the touch
+		// controls use this for moving, attacking and opening windows.
+		void send_action(KeyType::Id type, int32_t action, bool pressed);
+		Icon* get_dragged_icon();
+		void cancel_drag();
 		// One Unicode character produced by the OS keyboard layout / IME.
 		// This is the only route by which non-ASCII text (Hebrew, CJK) can be
 		// typed; send_key sees physical keys and cannot represent it.
@@ -112,6 +130,7 @@ namespace ms
 		}
 
 		void remove(UIElement::Type type);
+		void bring_to_front(UIElement::Type type, bool focus);
 
 	private:
 		std::unique_ptr<UIState> state;
@@ -123,6 +142,8 @@ namespace ms
 		std::unordered_map<int32_t, bool> is_key_down;
 
 		bool enabled;
+		State state_id = State::LOGIN;
+		bool typing_on_top = false;
 		bool quitted;
 		bool caps_lock_enabled = false;
 		bool mouse_held = false;

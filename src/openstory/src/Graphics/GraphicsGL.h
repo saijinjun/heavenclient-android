@@ -18,6 +18,9 @@
 #pragma once
 
 #include "Text.h"
+#if defined(MS_PLATFORM_SDL)
+#include "PostProcess.h"
+#endif
 
 #include "../Constants.h"
 #include "../Error.h"
@@ -106,6 +109,27 @@ namespace ms
 		void flush(float opacity);
 		// Clear the buffer contents
 		void clearscene();
+
+#if defined(PLATFORM_SDL)
+		// Screen overlays drawn after the scene in window pixels, such as the
+		// touch controls. Pieces come from a separate RGBA overlay texture or
+		// from game bitmaps, and are drawn in the order they were added.
+		void set_overlay_texture(const std::vector<uint8_t>& rgba, int16_t width, int16_t height);
+		bool has_overlay_texture() const;
+		void draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
+			int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color);
+		void draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
+		void flush_screen(int16_t width, int16_t height);
+
+		// Where the world starts (after the far background) and where the UI
+		// starts in this frame's drawing, so the HD-2D effects apply to the
+		// world only.
+		void mark_world();
+		void mark_ui();
+		void set_effects(const PostProcess::Options& options);
+		// Multiplies the world's colors, for the time of day.
+		void set_tint(const std::array<float, 3>& tint);
+#endif
 
 	private:
 		void clearinternal();
@@ -343,6 +367,14 @@ namespace ms
 		GLuint IBO;
 		// Scratch index storage, kept across frames so flush does not reallocate.
 		std::vector<GLuint> quad_indices;
+#if defined(PLATFORM_SDL)
+		// Screen overlay pieces and which texture each one samples.
+		std::vector<Quad> screen_quads;
+		std::vector<bool> screen_from_overlay;
+		GLuint overlay = 0;
+		GLshort overlay_w = 0;
+		GLshort overlay_h = 0;
+#endif
 		GLuint atlas;
 
 		GLint shaderProgram;
@@ -361,6 +393,17 @@ namespace ms
 		std::vector<std::pair<size_t, size_t>> additive_ranges;
 		bool additive_active = false;
 		size_t additive_from = 0;
+#if defined(MS_PLATFORM_SDL)
+		static constexpr size_t NO_MARK = static_cast<size_t>(-1);
+		size_t world_mark = NO_MARK;
+		size_t ui_mark = NO_MARK;
+		PostProcess post;
+		bool post_tried = false;
+
+		void bind_quad_state();
+		// Draws quads [first, last), with the additive ranges inside it.
+		void draw_quad_range(size_t first, size_t last);
+#endif
 
 		QuadTree<size_t, Leftover> leftovers;
 		size_t rlid;
@@ -391,11 +434,18 @@ namespace ms
 		bool load_mono_glyph(Font& font, uint32_t codepoint);
 		// Loads a single color emoji glyph into the general (RGBA) atlas area.
 		bool load_emoji_glyph(Font& font, uint32_t codepoint);
+		// Copies the glyph in `g` into the font region and records it. The
+		// bitmap is rasterized at text_scale times the font size and padded
+		// to whole logical pixels, so metrics stay in logical units.
+		void store_mono_glyph(Font& font, FT_GlyphSlot g, uint32_t codepoint);
 
 		FT_Library ftlibrary;
 		Font fonts[Text::Font::NUM_FONTS];
 		Point<GLshort> fontborder;
 		GLshort fontymax;
+		// Glyphs are rasterized this many times larger than their logical
+		// size so text stays sharp when the UI is scaled up (phones).
+		GLshort text_scale = 1;
 
 		// Opens a face from either a baked-in font (when `spec` names one, see
 		// EmbeddedFonts.h) or a file path. Baked-in fonts mean the client needs
