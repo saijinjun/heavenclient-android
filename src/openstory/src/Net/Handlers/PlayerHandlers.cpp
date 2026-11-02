@@ -18,6 +18,7 @@
 #include "PlayerHandlers.h"
 
 #include "Helpers/LoginParser.h"
+#include "../../IO/Haptics.h"
 
 #include "../../Gameplay/Stage.h"
 #include "../../IO/UI.h"
@@ -131,6 +132,7 @@ namespace ms
 			{
 				player.set_state(Char::State::DIED);
 				Sound(Sound::Name::TOMBSTONE).play();
+				Haptics::play(Haptics::Event::DEATH);
 
 
 				UI::get().emplace<UIDeathNotice>("You have died. Press OK to return to the nearest town.", [](bool ok) {

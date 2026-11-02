@@ -33,6 +33,7 @@ namespace ms
 		settings.emplace<Height>();
 		settings.emplace<VSync>();
 		settings.emplace<TouchVibration>();
+		settings.emplace<EventVibration>();
 		settings.emplace<TouchLayout>();
 		settings.emplace<RopeAssist>();
 		settings.emplace<HdGlow>();

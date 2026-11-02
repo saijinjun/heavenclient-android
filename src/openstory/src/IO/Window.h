@@ -79,6 +79,9 @@ namespace ms
 		// Android lifecycle: the app went to the background or came back.
 		void on_app_event(uint32_t type);
 
+		// Plays one vibration pulse if the device has a rumble motor.
+		void rumble(float strength, uint32_t ms) const;
+
 	private:
 		void handle_event(const SDL_Event& event);
 		void handle_finger(const SDL_TouchFingerEvent& finger, uint32_t type);

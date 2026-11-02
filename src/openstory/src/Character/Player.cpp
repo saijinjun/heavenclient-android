@@ -21,6 +21,7 @@
 #include "SkillId.h"
 
 #include "../Configuration.h"
+#include "../IO/Haptics.h"
 
 #include "../Audio/Audio.h"
 #include "../Data/WeaponData.h"
@@ -572,6 +573,9 @@ namespace ms
 		if (damage > 0)
 			Sound(Sound::Name::HURTDAMAGE).play();
 
+		if (Haptics::is_big_hit(damage, stats.get_total(EquipStat::Id::HP)))
+			Haptics::play(Haptics::Event::BIG_HIT);
+
 		bool fromleft = attack.origin.x() > phobj.get_x();
 
 		bool missed = damage <= 0;
@@ -641,6 +645,7 @@ namespace ms
 		{
 			show_effect_id(CharEffect::Id::LEVELUP);
 			Sound(Sound::Name::LEVELUP).play();
+			Haptics::play(Haptics::Event::LEVEL_UP);
 		}
 
 		stats.set_stat(MapleStat::Id::LEVEL, level);

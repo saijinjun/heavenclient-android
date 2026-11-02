@@ -337,7 +337,9 @@ namespace ms
 
 		touch.set_layout(Setting<TouchLayout>::get().load());
 
-		if (!haptic && Setting<TouchVibration>::get().load() &&
+		bool want_haptic = Setting<TouchVibration>::get().load() || Setting<EventVibration>::get().load();
+
+		if (!haptic && want_haptic &&
 			SDL_InitSubSystem(SDL_INIT_HAPTIC) == 0 && SDL_NumHaptics() > 0)
 		{
 			haptic = SDL_HapticOpen(0);
@@ -355,6 +357,12 @@ namespace ms
 		GraphicsGL::get().reinit();
 
 		return Error::Code::NONE;
+	}
+
+	void Window::rumble(float strength, uint32_t ms) const
+	{
+		if (haptic)
+			SDL_HapticRumblePlay(haptic, strength, ms);
 	}
 
 	void Window::update_viewport()
@@ -560,7 +568,7 @@ namespace ms
 				(action.id == KeyAction::Id::LEFT || action.id == KeyAction::Id::RIGHT ||
 				 action.id == KeyAction::Id::UP || action.id == KeyAction::Id::DOWN);
 
-			if (action.pressed && !walking && haptic)
+			if (action.pressed && !walking && haptic && Setting<TouchVibration>::get().load())
 				SDL_HapticRumblePlay(haptic, 0.35f, 12);
 
 			switch (action.output)

@@ -19,11 +19,14 @@
 
 #include "../UIDragElement.h"
 #include "../Components/Icon.h"
+#include "../Components/TapGesture.h"
 
 #include "../../Character/Inventory/Inventory.h"
 #include "../../Character/Inventory/InventoryType.h"
 #include "../../Graphics/Animation.h"
 
+#include <array>
+#include <map>
 #include <set>
 #include <vector>
 
@@ -54,6 +57,9 @@ namespace ms
 		void rightclick(Point<int16_t> cursorpos) override;
 		void doubleclick(Point<int16_t> cursorpos) override;
 		bool send_icon(const Icon& icon, Point<int16_t> cursorpos) override;
+#ifdef __ANDROID__
+		void remove_cursor() override;
+#endif
 
 		UIElement::Type get_type() const override;
 
@@ -230,5 +236,68 @@ namespace ms
 			BT_TAB_CASH,
 			NUM_BUTTONS
 		};
+
+#ifdef __ANDROID__
+	public:
+		static constexpr size_t MOBILE_TABS = 5;
+
+	private:
+		// Storage as a full-screen panel for touch (UIStorageMobile.cpp):
+		// Take out and Store modes, big tabs and rows, the selected item with
+		// a big button, and meso buttons. The lists above stay the model, so
+		// the packets and the partial take-out work as on desktop.
+		struct MobileLayout
+		{
+			Rectangle<int16_t> panel;
+			Rectangle<int16_t> close;
+			Rectangle<int16_t> sort;
+			Rectangle<int16_t> take_mode;
+			Rectangle<int16_t> store_mode;
+			std::array<Rectangle<int16_t>, MOBILE_TABS> tabs;
+			Rectangle<int16_t> list;
+			Rectangle<int16_t> detail;
+			Rectangle<int16_t> action;
+			Rectangle<int16_t> meso_in;
+			Rectangle<int16_t> meso_out;
+			int16_t rows;
+		};
+
+		void init_mobile();
+		MobileLayout mobile_layout() const;
+		int16_t mobile_count() const;
+		int32_t mobile_item(int16_t index) const;
+		int16_t mobile_item_count(int16_t index) const;
+		int16_t mobile_selection() const;
+		Rectangle<int16_t> mobile_row(const MobileLayout& l, int16_t index) const;
+		void mobile_clamp();
+		void mobile_act(int16_t index);
+		void draw_mobile(float alpha) const;
+		Cursor::State send_cursor_mobile(bool clicked, Point<int16_t> cursorpos);
+		const Text& mobile_name(int32_t itemid) const;
+		void mobile_draw_icon(int32_t itemid, Rectangle<int16_t> box) const;
+
+		bool m_store_mode = false;
+		int16_t m_first = 0;
+		int16_t m_selected = -1;
+		TapGesture m_gesture;
+		Text m_title;
+		Text m_close;
+		Text m_sort_label;
+		Text m_meso_in;
+		Text m_meso_out;
+		mutable Text m_take_label;
+		mutable Text m_store_label;
+		mutable std::array<Text, MOBILE_TABS> m_tabs;
+		Text m_hint;
+		Text m_empty;
+		mutable Text m_action;
+		mutable Text m_detail_name;
+		mutable Text m_detail_desc;
+		mutable Text m_detail_count;
+		mutable Text m_footer;
+		mutable int32_t m_shown = 0;
+		mutable std::map<int32_t, Text> m_names;
+		mutable std::map<int16_t, std::pair<int16_t, Text>> m_counts;
+#endif
 	};
 }

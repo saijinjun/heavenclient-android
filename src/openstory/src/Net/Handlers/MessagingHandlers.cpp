@@ -34,6 +34,7 @@
 #include "../../IO/UITypes/UIStatusMessenger.h"
 #include "../../IO/UITypes/UIWhisper.h"
 #include "../../Configuration.h"
+#include "../../IO/Haptics.h"
 
 #ifdef USE_NX
 #include <nlnx/nx.hpp>
@@ -528,6 +529,11 @@ namespace ms
 		{
 			if (auto chatbar = UI::get().get_element<UIChatBar>())
 				chatbar->display_message(message, UIChatBar::LineType::RED);
+
+			if (success)
+				Haptics::play(Haptics::Event::SCROLL_SUCCESS);
+			else if (destroyed)
+				Haptics::play(Haptics::Event::SCROLL_DESTROYED);
 
 			UI::get().enable();
 		}
