@@ -86,7 +86,7 @@ namespace ms
 
 		Optional<Char> character = Stage::get().get_character(cid);
 		if (character)
-			character->set_expression(expression);
+			character->set_emote(expression);
 	}
 
 	void GiveForeignBuffHandler::handle(InPacket& recv) const

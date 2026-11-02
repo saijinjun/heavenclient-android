@@ -301,6 +301,22 @@ namespace ms
 		}
 	}
 
+	void UIChatBar::make_face(const std::string& name)
+	{
+		for (auto iter : Expression::names)
+		{
+			if (iter.second != name)
+				continue;
+
+			int32_t emote = Expression::toemote(iter.first);
+
+			if (emote >= 1 && emote <= 7)
+				Stage::get().get_player().send_emote(emote);
+
+			return;
+		}
+	}
+
 	void UIChatBar::toggle_emoticons()
 	{
 		emoticons_open = !emoticons_open;
@@ -719,6 +735,10 @@ namespace ms
 					focus_chatfield();
 					chatfield.add_string("#e" + std::to_string(hovered) + "#");
 					emoticons_open = false;
+
+					// The seven F1-F7 faces also play on the character, so touch
+					// players (who have no F keys) can make faces too.
+					make_face(Text::emoticon_name(hovered));
 					emoticon_hover = -1;
 				}
 

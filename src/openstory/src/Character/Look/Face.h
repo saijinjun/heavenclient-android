@@ -56,6 +56,11 @@ namespace ms
 		};
 
 		static Id byaction(size_t action);
+		// Maps a v83 wire emote (FACIAL_EXPRESSION / FACE_EXPRESSION int) to an
+		// expression. 1-7 are the F1-F7 faces, 8+ the cash-shop emote items.
+		static Id byemote(int32_t emote);
+		// The wire emote for an expression, or 0 if v83 has none for it.
+		static int32_t toemote(Id expression);
 
 		static const EnumMap<Id, std::string> names;
 	};

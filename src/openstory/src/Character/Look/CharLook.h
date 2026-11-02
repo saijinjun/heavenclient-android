@@ -53,7 +53,8 @@ namespace ms
 		// cancelling that action first. Used for death, which must override
 		// whatever the character was doing when HP hit 0.
 		void set_stance_forced(Stance::Id stance);
-		void set_expression(Expression::Id expression);
+		// Returns false while the previous expression is still on cooldown.
+		bool set_expression(Expression::Id expression);
 		void set_action(const std::string& action);
 		void set_direction(bool mirrored);
 		void set_alerted(int64_t millis);

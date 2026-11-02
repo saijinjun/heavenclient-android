@@ -386,6 +386,16 @@ namespace ms
 		look.set_expression(expression);
 	}
 
+	bool Char::set_emote(int32_t emote)
+	{
+		Expression::Id expression = Expression::byemote(emote);
+
+		if (expression == Expression::Id::DEFAULT)
+			return false;
+
+		return look.set_expression(expression);
+	}
+
 	void Char::attack(const std::string& action)
 	{
 		look.set_action(action);

@@ -639,7 +639,7 @@ namespace ms
 		return drawinfo.nextframe(st, fr);
 	}
 
-	void CharLook::set_expression(Expression::Id newexpression)
+	bool CharLook::set_expression(Expression::Id newexpression)
 	{
 		if (expression != newexpression && !expcooldown)
 		{
@@ -648,7 +648,11 @@ namespace ms
 
 			expelapsed = 0;
 			expcooldown.set_for(5000);
+
+			return true;
 		}
+
+		return false;
 	}
 
 	void CharLook::set_action(const std::string& acstr)

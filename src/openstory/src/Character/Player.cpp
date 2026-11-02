@@ -159,6 +159,16 @@ namespace ms
 		refresh_ring_effect();
 	}
 
+	void Player::send_emote(int32_t emote)
+	{
+		// The server accepts 1-7 freely; 8+ needs the cash emote item.
+		if (emote < 1 || emote > 7)
+			return;
+
+		if (set_emote(emote))
+			FaceExpressionPacket(emote).dispatch();
+	}
+
 	void Player::use_item(int32_t itemid)
 	{
 		InventoryType::Id type = InventoryType::by_item_id(itemid);

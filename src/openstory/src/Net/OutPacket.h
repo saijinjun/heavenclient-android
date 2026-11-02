@@ -65,6 +65,7 @@ namespace ms
 			RANGED_ATTACK = 45,
 			MAGIC_ATTACK = 46,
 			TAKE_DAMAGE = 48,
+			FACE_EXPRESSION = 51, // 0x33
 
 			/// Messaging
 			GENERAL_CHAT = 49,

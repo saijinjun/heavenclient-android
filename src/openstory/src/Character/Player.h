@@ -64,6 +64,9 @@ namespace ms
 		void change_equip(int16_t slot);
 		// Use the item from the player's inventory with the given id
 		void use_item(int32_t itemid);
+		// Make a face (v83 wire emote 1-7) and tell the server, so other
+		// players on the map see it too.
+		void send_emote(int32_t emote);
 
 		// Return if the player is attacking
 		bool is_attacking() const;
