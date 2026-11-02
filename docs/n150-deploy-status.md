@@ -6,11 +6,12 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `5f58618` | ok |
+| server | `fbc2d6b` | ok |
 | client | `7732617` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-03 01:17 · server · ✅ deployed `fbc2d6b` - online, 8484 open
 - 2026-11-02 23:24 · server · ✅ deployed `5f58618` - online, 8484 open
 - 2026-10-31 06:47 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: Connection timed out
 fatal: Could not read from remote repository.
