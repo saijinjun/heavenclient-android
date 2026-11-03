@@ -201,6 +201,10 @@ namespace ms
 		numfield = Textfield(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::LIGHTGREY, Rectangle<int16_t>(24, 232, belowtext, belowtext + 20), 10);
 		numfield.change_text(std::to_string(quantity));
 
+		// Typing replaces the starting quantity: with the caret after it,
+		// entering 2 in a shop's "How many" box bought 12
+		numfield.select_all();
+
 		numfield.set_enter_callback(
 			[&](std::string numstr)
 			{
