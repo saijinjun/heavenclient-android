@@ -56,6 +56,8 @@ namespace ms
 
 	void Stage::load(int32_t mapid, int8_t portalid)
 	{
+		portal_armed = false;
+
 		switch (state)
 		{
 			case State::INACTIVE:
@@ -275,7 +277,12 @@ namespace ms
 			if (player.is_key_down(KeyAction::Id::UP) && !player.is_key_down(KeyAction::Id::DOWN))
 				check_ladders(true);
 
-			if (player.is_key_down(KeyAction::Id::UP))
+			// Up held through a map change has to be let go once before it
+			// enters a portal again. Otherwise arriving on a portal, like the
+			// Free Market exit, would send the player straight back.
+			if (!player.is_key_down(KeyAction::Id::UP))
+				portal_armed = true;
+			else if (portal_armed)
 				check_portals();
 
 			if (player.is_key_down(KeyAction::Id::DOWN))
@@ -330,9 +337,14 @@ namespace ms
 		{
 			ChangeMapPacket(false, -1, warpinfo.name, false).dispatch();
 
-			CharStats& stats = Stage::get().get_player().get_stats();
+			// A scripted portal has no target map here; the server says where
+			// the player lands.
+			if (warpinfo.has_target_map())
+			{
+				CharStats& stats = Stage::get().get_player().get_stats();
 
-			stats.set_mapid(warpinfo.mapid);
+				stats.set_mapid(warpinfo.mapid);
+			}
 
 			Sound(Sound::Name::PORTAL).play();
 		}

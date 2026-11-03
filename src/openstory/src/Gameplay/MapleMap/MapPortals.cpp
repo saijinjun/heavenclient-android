@@ -42,7 +42,14 @@ namespace ms
 			int32_t target_id = sub["tm"];
 			Point<int16_t> position = { sub["x"], sub["y"] };
 
-			const Animation* animation = &animations[type];
+			// Scripted portals look like their plain counterparts.
+			Portal::Type look = type;
+			if (type == Portal::SCRIPTED)
+				look = Portal::REGULAR;
+			else if (type == Portal::SCRIPTED_HIDDEN)
+				look = Portal::HIDDEN;
+
+			const Animation* animation = &animations[look];
 			bool intramap = target_id == mapid;
 
 			portals_by_id.emplace(
@@ -73,6 +80,7 @@ namespace ms
 			switch (portal.get_type())
 			{
 			case Portal::HIDDEN:
+			case Portal::SCRIPTED_HIDDEN:
 			case Portal::TOUCH:
 				portal.update(playerpos);
 				break;
@@ -119,14 +127,22 @@ namespace ms
 	{
 		if (cooldown == 0)
 		{
-			cooldown = WARPCD;
-
 			for (auto& iter : portals_by_id)
 			{
 				const Portal& portal = iter.second;
 
-				if (portal.bounds().contains(playerpos))
-					return portal.getwarpinfo();
+				if (!portal.bounds().contains(playerpos))
+					continue;
+
+				// Skip spawn points and other portals that lead nowhere, so
+				// one overlapping a real portal can't hide it.
+				Portal::WarpInfo warpinfo = portal.getwarpinfo();
+
+				if (warpinfo.intramap || warpinfo.valid)
+				{
+					cooldown = WARPCD;
+					return warpinfo;
+				}
 			}
 		}
 

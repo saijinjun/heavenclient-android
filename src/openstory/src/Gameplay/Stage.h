@@ -163,6 +163,8 @@ namespace ms
 
 		Optional<Playable> playable;
 		State state;
+		// False from a map change until up is let go (see Stage::update).
+		bool portal_armed = false;
 		int32_t mapid;
 
 		MapInfo mapinfo;
