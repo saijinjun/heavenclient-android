@@ -45,9 +45,9 @@ android {
         }
     }
 
-    // Two apps from the same project: "journey" is the current client
-    // (src/client); "openstory" is the OpenStory-based client (src/openstory),
-    // installed beside it under its own id while it is being tested.
+    // Two apps from the same project: "openstory" (src/openstory) is the
+    // phone client we test; "journey" (src/client) is the older client,
+    // installed beside it under its own id.
     flavorDimensions = ["client"]
     productFlavors {
         journey {

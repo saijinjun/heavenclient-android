@@ -1,25 +1,34 @@
 # Android build
 
-The Android app runs the same C++ client as the browser build. SDL2 provides
-the window, touch and keyboard input, and audio. Rendering uses OpenGL ES 3,
-the same renderer path as WebGL 2. A desktop SDL build exists for quick checks
-on Linux.
+The phone client is **OpenStory** (`src/openstory`), installed as
+`com.saijinjun.heavenclient.openstory`. It is a native C++ client: SDL2
+provides the window, touch and keyboard input, and audio, and rendering uses
+OpenGL ES 3. The older Journey client (`src/client`, the same code as the
+browser build) is still in the project as the `journey` build flavor, but it
+is not what we test on phones. See [Journey (older client)](#journey-older-client).
 
 ## Getting an APK
 
-Every push and pull request to `main` builds a release APK in the
-`android-build` workflow. Download the `heavenclient-apk` artifact from the run
-and install it on the phone (allow installing from unknown sources).
+The n150 checks every pull request to `main` (and stacked PRs) and posts the
+result as the `n150/ci` commit status: native tests, the wasm build, and a
+desktop build of OpenStory and Journey. A green `n150/ci` is the gate for
+merging. When a commit goes green, the n150 builds the OpenStory APK (arm64,
+pointed at the n150 server) and sends it to the project's Telegram, so nobody
+needs to build or upload APKs by hand.
+
+Each PR description has a **Phone test** checklist: what to tap and what you
+should see. Test from it and report back on the PR's thread.
 
 To build locally you need the Android SDK with NDK 27.2.12479018:
 
 ```bash
 ./android/fetch-deps.sh          # downloads SDL2 and FreeType sources
-cd android && ./gradlew assembleRelease
+cd android && ./gradlew assembleOpenstoryRelease
 ```
 
-The APK is written to `android/app/build/outputs/apk/release/`. It is signed
-with the debug key, which is fine for sideloading but not for a store.
+The APK is written to `android/app/build/outputs/apk/openstory/release/`. It
+is signed with the debug key, which is fine for sideloading but not for a
+store.
 
 ## First start
 
@@ -42,21 +51,20 @@ addresses are not in this public repo; they are set at build time:
 - Gradle properties: `./gradlew assembleRelease -PserverIp=<address> -PassetsUrl=<url>`,
   or put `serverIp=` and `assetsUrl=` in `~/.gradle/gradle.properties`.
 - Or environment variables `HEAVEN_SERVER_IP` and `HEAVEN_ASSETS_URL`.
-- CI (`android-build.yml`) passes the repository variables `HEAVEN_SERVER_IP`
-  and `HEAVEN_ASSETS_URL` (Settings > Secrets and variables > Actions > Variables).
+- The GitHub `android-build.yml` workflow reads the repository variables
+  `HEAVEN_SERVER_IP` and `HEAVEN_ASSETS_URL`; the n150 sets its own.
 
 With neither set, the APK connects to `127.0.0.1` and streaming is off. The
 game's own `AssetsUrl` setting can point it elsewhere later.
 
-The files land in `Android/data/com.saijinjun.heavenclient/files/`. A
+The files land in `Android/data/com.saijinjun.heavenclient.openstory/files/`. A
 streamed file is kept as `<name>.cache` plus a small `<name>.lazy` map of the
 pieces it has; once every piece is there it becomes a normal `<name>`.
 Copying whole files there over USB also works. To start over, clear the
 app's storage in Android settings.
 
-Streaming is on by default for Android builds (`JOURNEY_STREAM_ASSETS`). It
-reuses the browser build's lazy NX loading (`NX_LAZY_FILES`) with a native
-HTTP Range backend (`src/client/LazyFS/LazyFileBackendNative.cpp`).
+Streaming is on by default for Android builds (`OPENSTORY_STREAM_ASSETS`,
+which turns on lazy NX loading with `NX_LAZY_FILES`).
 
 ## Controls
 
@@ -72,8 +80,9 @@ the black bars beside the game:
   through a platform (down + jump), the upper one is a jump attack.
 - **Right, around attack:** six quick slots. They are the Shift, Insert,
   Home, Page Up, Delete and End keys, and show the icon of the skill or item
-  on that key. To set one, open the skill or item window and drag a skill,
-  potion or chair onto a slot; it is saved to your key setup on the server.
+  on that key. To set one, open the skills or inventory panel, tap a skill
+  or a Use, Set-up or Cash item, and tap **Quick slot 1–6** (dragging onto
+  a slot also works). It is saved to your key setup on the server.
   Empty slots show a faint **+** and ignore touches. Potions show how many
   are left, and a skill's slot darkens while it cools down.
 
@@ -94,7 +103,24 @@ control smaller or bigger, steps all controls through solid, 75%, 50% and 30%
 opacity, resets the default layout, and the green check closes the editor.
 The layout is saved in the `TouchLayout` setting.
 
-## Screen and graphics
+## Phone panels
+
+On a phone, the inventory, stats, skills, quests, NPC shop and Cash Shop
+open as full-screen touch panels instead of the classic windows: big rows,
+tabs, a detail pane, and buttons in place of drag and drop. The skills panel
+also has a **Classic view** button for the old skill book. The **Trade** button on the status bar opens the Maple Guide
+(the server's `@guide` menu) instead of the MTS, since typing commands on a
+phone is awkward.
+
+The control artwork is drawn at startup from simple shapes
+(`src/openstory/platform/sdl/TouchSprites.cpp`), so it stays sharp on any
+screen.
+
+## Journey (older client)
+
+Build it with `./gradlew assembleJourneyRelease`; it installs as
+`com.saijinjun.heavenclient` beside OpenStory. These options exist only in
+Journey:
 
 While playing on a wide phone the game fills the screen (`FillScreen`): the
 view widens to the screen's shape and is sized so each game pixel is a whole
@@ -118,10 +144,7 @@ color grade, 0 none. `MaxFps` (default 60, 0 for no limit) caps how many
 frames are drawn per second, which matters on 90 and 120 Hz screens; the game
 runs at the same speed either way.
 
-The control artwork is drawn at startup from simple shapes
-(`src/client/IO/TouchSprites.cpp`), so it stays sharp on any screen.
-
-## Desktop SDL build
+## Desktop SDL build (Journey)
 
 ```bash
 sudo apt-get install libsdl2-dev libfreetype-dev libgles-dev zlib1g-dev
