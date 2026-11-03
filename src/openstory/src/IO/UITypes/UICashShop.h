@@ -22,10 +22,16 @@
 #include "../Components/Charset.h"
 #include "../Components/Gauge.h"
 #include "../Components/Slider.h"
+#include "../Components/TapGesture.h"
 
 #include "../../Character/Look/CharLook.h"
 #include "../../Data/ItemData.h"
+#include "../../Graphics/Animation.h"
 #include "../../Graphics/Text.h"
+
+#include <array>
+#include <map>
+#include <vector>
 
 namespace ms
 {
@@ -188,6 +194,12 @@ namespace ms
 
 		int16_t selected_item;
 		CharLook preview_look;
+		// What the stage shows for an item you can't wear: a pet's
+		// standing animation, or the item's own icon drawn large
+		Animation preview_pet;
+		bool preview_has_pet = false;
+		bool m_was_down = false;
+		int32_t preview_icon_id = 0;
 
 		// Controllable stage character
 		float char_x = 820.0f;
@@ -249,5 +261,69 @@ namespace ms
 			SUBPANEL_PURCHASE
 		};
 		SubPanel active_subpanel;
+
+		// Commodity "Gender": 0 male, 1 female, 2 or missing for both
+		std::vector<int8_t> item_gender;
+
+#ifdef __ANDROID__
+		// The shop as a full-screen touch layout (end of UICashShop.cpp):
+		// categories down the left, big item cards, and the selected item
+		// on the right with your character trying it on and a Buy button.
+		// "My items" lists what was bought, with Move to inventory.
+		static constexpr size_t MOBILE_CATEGORIES = 12;
+
+		struct MobileLayout
+		{
+			Rectangle<int16_t> panel;
+			Rectangle<int16_t> exit;
+			Rectangle<int16_t> shop_mode;
+			Rectangle<int16_t> mine_mode;
+			std::array<Rectangle<int16_t>, MOBILE_CATEGORIES> categories;
+			Rectangle<int16_t> grid;
+			Rectangle<int16_t> detail;
+			Rectangle<int16_t> stage;
+			Rectangle<int16_t> action;
+			int16_t card;
+			int16_t cols;
+			int16_t rows;
+		};
+
+		void init_mobile();
+		MobileLayout mobile_layout() const;
+		void mobile_filter();
+		int16_t mobile_count() const;
+		int32_t mobile_itemid(int16_t index) const;
+		Rectangle<int16_t> mobile_card(const MobileLayout& l, int16_t index) const;
+		void mobile_clamp();
+		void mobile_select(int16_t index);
+		void mobile_draw_icon(int32_t itemid, Rectangle<int16_t> box) const;
+		Text& mobile_name(int32_t itemid, int16_t width) const;
+		void draw_mobile(float inter) const;
+		Cursor::State send_cursor_mobile(bool clicked, Point<int16_t> cursorpos);
+
+		bool m_mine = false;
+		size_t m_category = 0;
+		std::vector<int16_t> m_view;
+		int16_t m_first = 0;
+		int16_t m_selected = -1;
+		TapGesture m_gesture;
+		mutable size_t m_storage_seen = 0;
+		Text m_title;
+		Text m_exit;
+		mutable Text m_shop_label;
+		mutable Text m_mine_label;
+		mutable std::array<Text, MOBILE_CATEGORIES> m_category_labels;
+		mutable Text m_nx;
+		mutable Text m_detail_name;
+		mutable Text m_detail_price;
+		mutable Text m_detail_desc;
+		mutable Text m_action;
+		mutable Text m_status;
+		Text m_hint;
+		Text m_empty;
+		mutable int32_t m_shown = 0;
+		mutable std::map<std::pair<int32_t, int16_t>, Text> m_names;
+		mutable std::map<int32_t, Text> m_prices;
+#endif
 	};
 }

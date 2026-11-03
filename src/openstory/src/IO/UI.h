@@ -50,6 +50,9 @@ namespace ms
 		// A full-screen touch panel (the mobile inventory) is open: the
 		// touch controls step aside and a swipe scrolls it
 		bool in_mobile_panel() const;
+		// A window (not the HUD) is under this point, so a touch there is
+		// for the window and not for the touch controls drawn under it
+		bool window_at(Point<int16_t> pos);
 		// Sets the view for the login screens on a screen of this size.
 		void fit_login_view(int16_t screen_width, int16_t screen_height);
 		// Whether a soft keyboard covers the bottom of the screen, so text

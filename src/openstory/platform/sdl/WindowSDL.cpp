@@ -474,7 +474,12 @@ namespace ms
 				}
 			}
 
-			if (controls && touch.finger_down(finger.fingerId, px, py, actions))
+			// An open window (the channel list, a dialog) sits over the
+			// controls: a touch on it is for the window, or its buttons
+			// could never be pressed where a control lies underneath
+			bool on_window = controls && !touch.is_editing() && UI::get().window_at(pos);
+
+			if (controls && !on_window && touch.finger_down(finger.fingerId, px, py, actions))
 				break;
 
 			if (cursor_finger_down)

@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "Stage.h"
 
+#include "../IO/TargetFrame.h"
+
 #include "MapleTVBroadcast.h"
 #include "HiredMerchants.h"
 #include "MiniRooms.h"
@@ -57,6 +59,8 @@ namespace ms
 	void Stage::load(int32_t mapid, int8_t portalid)
 	{
 		portal_armed = false;
+		// A new map: the old target card no longer applies
+		TargetFrame::get().clear();
 
 		switch (state)
 		{

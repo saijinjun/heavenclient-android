@@ -56,6 +56,7 @@ namespace ms
 			Rectangle<int16_t> detail;
 			Rectangle<int16_t> action;
 			Rectangle<int16_t> drop;
+			std::array<Rectangle<int16_t>, 6> quick;
 			int16_t cell;
 			int16_t cols;
 			int16_t rows;
@@ -78,6 +79,18 @@ namespace ms
 		void use_selected();
 		void drop_selected();
 		void open_classic();
+		bool can_quick_slot() const;
+		// The touch quick slot that holds this item, or -1
+		int16_t bound_quick_slot(int32_t itemid) const;
+		void bind_quick_slot(size_t slot, int32_t itemid) const;
+		// An equip's type, requirements and stats for the details
+		void build_equip_lines() const;
+		// Scrolls for equipment go on a worn item: the action button picks
+		// the scroll, then a tap on a worn item applies it
+		static bool is_equip_scroll(int32_t itemid);
+		void start_scrolling();
+		void apply_scroll(int16_t worn_slot);
+		void stop_scrolling();
 
 		void draw_icon(int32_t itemid, Rectangle<int16_t> box) const;
 		void draw_label(const Text& text, Rectangle<int16_t> box) const;
@@ -102,5 +115,13 @@ namespace ms
 		std::vector<Text> worn_labels;
 		mutable std::map<int16_t, std::pair<int16_t, Text>> counts;
 		mutable int32_t shown_item = 0;
+		mutable int16_t shown_slot = 0;
+		mutable size_t shown_tab = 0;
+		mutable std::vector<Text> equip_lines;
+		Text quick_hint;
+		Text scroll_hint;
+		int16_t scroll_slot = 0;
+		int32_t scroll_id = 0;
+		std::array<Text, 6> quick_labels;
 	};
 }
