@@ -23,6 +23,7 @@
 
 #include "../Gameplay/Movement.h"
 
+#include <deque>
 #include <queue>
 #include <vector>
 
@@ -56,11 +57,34 @@ namespace ms
 		int32_t get_skilllevel(int32_t skillid) const override;
 
 	private:
+		// One step of a received movement path: where the character is at the
+		// end of the step, the stance it shows during it and how long it takes.
+		struct Waypoint
+		{
+			double x;
+			double y;
+			bool haspos;
+			uint8_t state;
+			double duration;
+		};
+
+		// Drop everything still queued and stand at the given position.
+		void snap_to(double x, double y);
+		// Total time still queued, in milliseconds.
+		double backlog() const;
+
 		uint16_t level;
 		int16_t job;
-		std::queue<Movement> movements;
+		std::deque<Waypoint> path;
+		// Where the step being played started, and how far into it we are.
+		double seg_x;
+		double seg_y;
+		double seg_elapsed;
+		// Where the last queued step ends, so the next packet can be checked
+		// against it.
+		double tail_x;
+		double tail_y;
 		Movement lastmove;
-		uint16_t timer;
 
 		std::unordered_map<int32_t, uint8_t> skilllevels;
 		uint8_t attackspeed;

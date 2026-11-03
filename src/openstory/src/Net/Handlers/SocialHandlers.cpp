@@ -1415,11 +1415,14 @@ namespace ms
 
 			UI::get().emplace<UIAlarmInvite>(
 				from + " has invited you to a Messenger conversation.",
-				[from](bool yes)
+				[from, messenger_id](bool yes)
 				{
 					if (yes)
 					{
-						MessengerOpenPacket().dispatch();
+						MessengerOpenPacket(messenger_id).dispatch();
+
+						if (!UIMessenger::is_open())
+							UI::get().emplace<UIMessenger>();
 					}
 					else
 					{

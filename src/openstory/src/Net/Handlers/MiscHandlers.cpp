@@ -408,12 +408,19 @@ namespace ms
 		bool can_use = recv.read_byte() != 0;
 		bool success = recv.read_byte() != 0;
 
+		// The server shows the result to everyone on the map; only our
+		// own book is news to us
+		if (cid != Stage::get().get_player().get_oid())
+			return;
+
 		if (auto messenger = UI::get().get_element<UIStatusMessenger>())
 		{
-			if (success)
-				messenger->show_status(Color::Name::WHITE, "Skill book used successfully!");
+			if (!can_use)
+				messenger->show_status(Color::Name::RED, "You can't use this book yet.");
+			else if (success)
+				messenger->show_status(Color::Name::WHITE, "The book worked! The skill's master level went up.");
 			else
-				messenger->show_status(Color::Name::RED, "Skill book usage failed.");
+				messenger->show_status(Color::Name::RED, "The book lit up, but nothing happened.");
 		}
 	}
 

@@ -212,6 +212,13 @@ namespace ms
 		chatfield.change_text("");
 	}
 
+	bool UIMessenger::is_open()
+	{
+		auto messenger = UI::get().get_element<UIMessenger>();
+
+		return messenger && messenger->is_active();
+	}
+
 	UIElement::Type UIMessenger::get_type() const
 	{
 		return TYPE;

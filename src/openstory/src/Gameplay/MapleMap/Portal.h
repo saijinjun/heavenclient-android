@@ -56,12 +56,23 @@ namespace ms
 			bool intramap;
 			bool valid;
 
-			WarpInfo(int32_t m, bool i, std::string tn, std::string n) : mapid(m), intramap(i), toname(tn), name(n)
+			WarpInfo(int32_t m, Type type, bool i, std::string tn, std::string n) : mapid(m), intramap(i), toname(tn), name(n)
 			{
-				valid = mapid < 999999999;
+				// Scripted portals (the Free Market entrances, for one) have no
+				// target map in the data: the server's portal script picks it.
+				// They still have to reach the server, so they count as valid.
+				bool scripted = type == SCRIPTED || type == SCRIPTED_INVISIBLE ||
+					type == SCRIPTED_TOUCH || type == SCRIPTED_HIDDEN;
+
+				valid = has_target_map() || scripted;
 			}
 
-			WarpInfo() : WarpInfo(999999999, false, {}, {}) {}
+			WarpInfo() : WarpInfo(999999999, SPAWN, false, {}, {}) {}
+
+			bool has_target_map() const
+			{
+				return mapid >= 0 && mapid < 999999999;
+			}
 		};
 
 		Portal(const Animation* animation, Type type, std::string name, bool intramap, Point<int16_t> position, int32_t tomap, std::string toname);
