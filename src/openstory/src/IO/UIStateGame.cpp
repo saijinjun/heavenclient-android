@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "UIStateGame.h"
 
+#include "TargetFrame.h"
+
 
 #include "UI.h"
 #include "../Constants.h"
@@ -109,6 +111,11 @@ namespace ms
 
 	void UIStateGame::draw(float inter, Point<int16_t> cursor) const
 	{
+#ifdef __ANDROID__
+		// Under every window, so open panels cover it
+		TargetFrame::get().draw();
+#endif
+
 		for (auto& type : elementorder)
 		{
 			// AVATARBANNER is drawn explicitly by UI::draw after the
@@ -137,6 +144,10 @@ namespace ms
 		graveyard.clear();
 
 		UIChannel::update_pending();
+
+#ifdef __ANDROID__
+		TargetFrame::get().update();
+#endif
 
 		bool update_screen = false;
 		int16_t new_width = Constants::Constants::get().get_viewwidth();
