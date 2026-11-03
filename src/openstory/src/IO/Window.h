@@ -79,6 +79,11 @@ namespace ms
 		// Android lifecycle: the app went to the background or came back.
 		void on_app_event(uint32_t type);
 
+		// True while Android has the app in the background: there is no
+		// surface to draw on, but the game keeps running so it can answer
+		// the server's pings and stay logged in.
+		bool is_backgrounded() const;
+
 		// Plays one vibration pulse if the device has a rumble motor.
 		void rumble(float strength, uint32_t ms) const;
 
@@ -120,6 +125,7 @@ namespace ms
 		int32_t view_h = 1;
 		bool touch_seen;
 		bool touch_editing;
+		bool backgrounded = false;
 		SDL_Haptic* haptic;
 		SDL_GameController* pad = nullptr;
 		bool pad_slots[4] = {};

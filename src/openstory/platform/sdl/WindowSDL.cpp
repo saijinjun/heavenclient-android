@@ -257,6 +257,11 @@ namespace ms
 		// Touches are read as finger events; SDL's emulated mouse would send
 		// every touch twice.
 		SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+		// Keep the game loop running while another app is in front. With
+		// SDL's default the loop froze, nothing answered the server's ping,
+		// and the server dropped the character after about 45 seconds of
+		// checking a message. The loop skips drawing while in the background.
+		SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
 
 		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER) != 0)
 		{
@@ -674,6 +679,7 @@ namespace ms
 		switch (type)
 		{
 		case SDL_APP_WILLENTERBACKGROUND:
+			backgrounded = true;
 			// Let go of anything held so the character doesn't keep walking,
 			// and save settings: Android may end the app without warning.
 			UI::get().release_held_keys();
@@ -686,6 +692,7 @@ namespace ms
 			Configuration::get().save();
 			break;
 		case SDL_APP_DIDENTERFOREGROUND:
+			backgrounded = false;
 			UI::get().send_focus(1);
 			break;
 		case SDL_APP_LOWMEMORY:
@@ -857,6 +864,11 @@ namespace ms
 		default:
 			break;
 		}
+	}
+
+	bool Window::is_backgrounded() const
+	{
+		return backgrounded;
 	}
 
 	bool Window::not_closed() const
