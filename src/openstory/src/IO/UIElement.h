@@ -136,6 +136,7 @@ namespace ms
 			MOBILESTATS,
 			MOBILESKILLS,
 			MOBILEQUESTS,
+			DUEY,
 			NUM_TYPES
 		};
 

@@ -207,10 +207,19 @@ namespace ms
 		// interactive buttons or slots) can be grabbed to move the UI.
 		dragarea = Point<int16_t>(min_width, 30);
 		active = false;
+
+#ifdef __ANDROID__
+		init_mobile();
+#endif
 	}
 
 	void UIStorage::draw(float alpha) const
 	{
+#ifdef __ANDROID__
+		draw_mobile(alpha);
+		return;
+#endif
+
 		UIElement::draw(alpha);
 
 		// Animated storage-keeper NPC portrait pinned above the grid.
@@ -318,6 +327,11 @@ namespace ms
 
 	bool UIStorage::is_in_range(Point<int16_t> cursorpos) const
 	{
+#ifdef __ANDROID__
+		// Full screen on phones: every touch is the storage's
+		return true;
+#endif
+
 		auto drawpos = get_draw_position();
 		auto bounds = Rectangle<int16_t>(drawpos, drawpos + dimension);
 		return bounds.contains(cursorpos);
@@ -325,6 +339,10 @@ namespace ms
 
 	Cursor::State UIStorage::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		return send_cursor_mobile(clicked, cursorpos);
+#endif
+
 		Point<int16_t> cursoroffset = cursorpos - position;
 		lastcursorpos = cursoroffset;
 
@@ -403,8 +421,22 @@ namespace ms
 		return UIDragElement::send_cursor(clicked, cursorpos);
 	}
 
+#ifdef __ANDROID__
+	void UIStorage::remove_cursor()
+	{
+		m_gesture.reset();
+		UIDragElement::remove_cursor();
+	}
+#endif
+
 	bool UIStorage::send_icon(const Icon& icon, Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		// Nothing is dragged onto the phone layout; dropping by the desktop
+		// grid's positions would store or take out whatever sits there
+		return true;
+#endif
+
 		Point<int16_t> cursoroffset = cursorpos - position;
 
 		// Cross-panel: storage → inventory = take out
@@ -489,10 +521,23 @@ namespace ms
 
 	void UIStorage::send_scroll(double yoffset)
 	{
+#ifdef __ANDROID__
+		// A swipe moves the list one row at a time
+		m_gesture.cancel();
+		m_first += yoffset > 0 ? -1 : 1;
+		mobile_clamp();
+#else
+		(void)yoffset;
+#endif
 	}
 
 	void UIStorage::doubleclick(Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		// Taps are handled by send_cursor_mobile; the desktop grid isn't drawn
+		return;
+#endif
+
 		Point<int16_t> cursoroffset = cursorpos - position;
 
 		// Double-click on a storage item:
@@ -543,6 +588,11 @@ namespace ms
 
 	void UIStorage::rightclick(Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		// A long press is a right click; the desktop grid isn't drawn
+		return;
+#endif
+
 		Point<int16_t> cursoroffset = cursorpos - position;
 
 		// Right-click on a storage item toggles the multi-retrieve
@@ -759,6 +809,18 @@ namespace ms
 
 		refresh_inventory_tab();
 		makeactive();
+
+#ifdef __ANDROID__
+		m_store_mode = false;
+		m_first = 0;
+		m_selected = -1;
+		m_shown = 0;
+		m_counts.clear();
+		m_gesture.reset();
+
+		// Full screen on phones: above every other window
+		UI::get().bring_to_front(TYPE, true);
+#endif
 	}
 
 	void UIStorage::close()
@@ -792,6 +854,11 @@ namespace ms
 			refresh_storage_icons();
 			refresh_inventory_tab();
 		}
+
+#ifdef __ANDROID__
+		m_counts.clear();
+		mobile_clamp();
+#endif
 	}
 
 	void UIStorage::set_slots(uint8_t value)
@@ -844,6 +911,11 @@ namespace ms
 
 		if (type == current_tab)
 			refresh_inventory_tab();
+
+#ifdef __ANDROID__
+		m_counts.clear();
+		mobile_clamp();
+#endif
 	}
 
 	void UIStorage::clear_tooltip()

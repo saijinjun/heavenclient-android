@@ -157,6 +157,7 @@ namespace ms
 		// Emoticon picker. Sprites are v83's own: socialChat/BtImoticon for the
 		// button and socialChat/ImoticonFrame for the panel.
 		void toggle_emoticons();
+		void make_face(const std::string& name);
 		void draw_emoticons(Point<int16_t> position) const;
 		// Grid cell under the cursor, or -1. Shared by hover and click so the
 		// highlight can never disagree with what a click inserts.

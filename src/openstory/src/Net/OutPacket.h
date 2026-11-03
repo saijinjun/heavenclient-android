@@ -65,6 +65,7 @@ namespace ms
 			RANGED_ATTACK = 45,
 			MAGIC_ATTACK = 46,
 			TAKE_DAMAGE = 48,
+			FACE_EXPRESSION = 51, // 0x33
 
 			/// Messaging
 			GENERAL_CHAT = 49,
@@ -75,6 +76,7 @@ namespace ms
 			NPC_TALK_MORE = 60,
 			NPC_SHOP_ACTION = 61,
 			STORAGE_ACTION = 62,
+			DUEY_ACTION = 65,
 			// Echoed sync of server-side NPC animation/movement.
 			// Server-authoritative engines (Cosmic / HeavenMS) ignore
 			// this packet, but v83 GMS clients send it on every inbound

@@ -21,6 +21,7 @@
 #include "SkillId.h"
 
 #include "../Configuration.h"
+#include "../IO/Haptics.h"
 
 #include "../Audio/Audio.h"
 #include "../Data/WeaponData.h"
@@ -156,6 +157,16 @@ namespace ms
 
 		// An effect ring's aura loops while it's worn.
 		refresh_ring_effect();
+	}
+
+	void Player::send_emote(int32_t emote)
+	{
+		// The server accepts 1-7 freely; 8+ needs the cash emote item.
+		if (emote < 1 || emote > 7)
+			return;
+
+		if (set_emote(emote))
+			FaceExpressionPacket(emote).dispatch();
 	}
 
 	void Player::use_item(int32_t itemid)
@@ -578,6 +589,9 @@ namespace ms
 		if (damage > 0)
 			Sound(Sound::Name::HURTDAMAGE).play();
 
+		if (Haptics::is_big_hit(damage, stats.get_total(EquipStat::Id::HP)))
+			Haptics::play(Haptics::Event::BIG_HIT);
+
 		bool fromleft = attack.origin.x() > phobj.get_x();
 
 		bool missed = damage <= 0;
@@ -647,6 +661,7 @@ namespace ms
 		{
 			show_effect_id(CharEffect::Id::LEVELUP);
 			Sound(Sound::Name::LEVELUP).play();
+			Haptics::play(Haptics::Event::LEVEL_UP);
 		}
 
 		stats.set_stat(MapleStat::Id::LEVEL, level);

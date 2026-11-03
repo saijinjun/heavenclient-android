@@ -323,6 +323,13 @@ namespace ms
 		AutoPickup() : BoolEntry("AutoPickup", "true") {}
 	};
 
+	// Phone vibration on game events: level up, death, a big hit, a scroll
+	// that works or destroys the item (see IO/Haptics.h).
+	struct EventVibration : public Configuration::BoolEntry
+	{
+		EventVibration() : BoolEntry("EventVibration", "true") {}
+	};
+
 	struct TouchLayout : public Configuration::StringEntry
 	{
 		TouchLayout() : StringEntry("TouchLayout", "") {}

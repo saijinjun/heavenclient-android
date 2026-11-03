@@ -423,7 +423,9 @@ namespace ms
 					player.use_item(action);
 				break;
 			case KeyType::Id::FACE:
-				player.set_expression(action);
+				// FACE1-FACE7 (100-106) are v83 emotes 1-7.
+				if (down)
+					player.send_emote(action - KeyAction::Id::FACE1 + 1);
 				break;
 		}
 	}

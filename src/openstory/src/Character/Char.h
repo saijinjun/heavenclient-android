@@ -152,6 +152,9 @@ namespace ms
 		void set_state(uint8_t statebyte);
 		// Change the character's face expression by id
 		void set_expression(int32_t expression);
+		// Show a v83 wire emote (as the server broadcasts it). Returns false
+		// while the previous expression is still on cooldown.
+		bool set_emote(int32_t emote);
 
 		// Add a pet with the specified stats
 		void add_pet(uint8_t index, int32_t iid, const std::string& name, int32_t uniqueid, Point<int16_t> pos, uint8_t stance, int32_t fhid);

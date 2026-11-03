@@ -36,6 +36,56 @@ namespace ms
 		return Expression::Id::DEFAULT;
 	}
 
+	namespace
+	{
+		// v83's own emotion order (index = wire emote). DEFAULT stands in for
+		// the ones this client has no frames for.
+		const Expression::Id EMOTES[] = {
+			Expression::Id::DEFAULT,    // 0 default
+			Expression::Id::HIT,        // 1
+			Expression::Id::SMILE,      // 2
+			Expression::Id::TROUBLED,   // 3
+			Expression::Id::CRY,        // 4
+			Expression::Id::ANGRY,      // 5
+			Expression::Id::BEWILDERED, // 6
+			Expression::Id::STUNNED,    // 7
+			Expression::Id::VOMIT,      // 8
+			Expression::Id::OOPS,       // 9
+			Expression::Id::CHEERS,     // 10
+			Expression::Id::CHU,        // 11
+			Expression::Id::WINK,       // 12
+			Expression::Id::PAIN,       // 13
+			Expression::Id::GLITTER,    // 14
+			Expression::Id::DESPAIR,    // 15
+			Expression::Id::LOVE,       // 16
+			Expression::Id::SHINE,      // 17
+			Expression::Id::BLAZE,      // 18
+			Expression::Id::HUM,        // 19
+			Expression::Id::BOWING,     // 20
+			Expression::Id::HOT,        // 21
+			Expression::Id::DAM         // 22
+		};
+
+		constexpr int32_t EMOTE_COUNT = static_cast<int32_t>(sizeof(EMOTES) / sizeof(EMOTES[0]));
+	}
+
+	Expression::Id Expression::byemote(int32_t emote)
+	{
+		if (emote <= 0 || emote >= EMOTE_COUNT)
+			return Expression::Id::DEFAULT;
+
+		return EMOTES[emote];
+	}
+
+	int32_t Expression::toemote(Id expression)
+	{
+		for (int32_t i = 1; i < EMOTE_COUNT; i++)
+			if (EMOTES[i] == expression)
+				return i;
+
+		return 0;
+	}
+
 	const EnumMap<Expression::Id, std::string> Expression::names =
 	{
 		"default",

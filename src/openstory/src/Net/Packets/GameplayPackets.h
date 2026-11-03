@@ -58,6 +58,17 @@ namespace ms
 		EnterCashShopPacket() : OutPacket(OutPacket::Opcode::ENTER_CASHSHOP) {}
 	};
 
+	// Shows a face expression to the other players on the map.
+	// Opcode: FACE_EXPRESSION(51)
+	class FaceExpressionPacket : public OutPacket
+	{
+	public:
+		FaceExpressionPacket(int32_t emote) : OutPacket(OutPacket::Opcode::FACE_EXPRESSION)
+		{
+			write_int(emote);
+		}
+	};
+
 	// Opcode: MOVE_PLAYER(41)
 	class MovePlayerPacket : public MovementPacket
 	{

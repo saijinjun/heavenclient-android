@@ -34,6 +34,7 @@ namespace ms
 		settings.emplace<VSync>();
 		settings.emplace<TouchVibration>();
 		settings.emplace<AutoPickup>();
+		settings.emplace<EventVibration>();
 		settings.emplace<TouchLayout>();
 		settings.emplace<RopeAssist>();
 		settings.emplace<HdGlow>();
