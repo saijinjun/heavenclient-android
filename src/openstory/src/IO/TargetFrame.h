@@ -54,6 +54,7 @@ namespace ms
 
 			hp = next;
 			percent_text.change_text(std::to_string(hp) + "%");
+			percent_shadow.change_text(std::to_string(hp) + "%");
 			ms_left = hp > 0 ? SHOW_MS : DEAD_MS;
 		}
 
@@ -115,25 +116,29 @@ namespace ms
 			int16_t gx = x + left;
 			int16_t gy = y + h - 19;
 			int16_t gw = w - left - 18;
-			int16_t gh = 13;
+			int16_t gh = 14;
 			int16_t fill_w = static_cast<int16_t>(gw * hp / 100);
 			int16_t trail_w = static_cast<int16_t>(gw * trail / 100.0f);
 
 			if (classic::Art::valid(frame_art, 3) && classic::Art::valid(fill_art, 3))
 			{
-				constexpr int16_t INSET = 2;
-				int16_t iw = gw - INSET * 2;
-				int16_t ih = gh - INSET * 2;
+				// The fill is a pill that sits exactly in the frame's
+				// rounded opening (rows 10-38 of the 48 px art)
+				int16_t inset_y = static_cast<int16_t>(gh * 10 / 48.0f + 0.5f);
+				int16_t ih = static_cast<int16_t>(gh * 28 / 48.0f + 0.5f);
+				int16_t inset_x = inset_y;
+				int16_t iw = gw - inset_x * 2;
 				fill_w = static_cast<int16_t>(iw * hp / 100);
 				trail_w = static_cast<int16_t>(iw * trail / 100.0f);
 
 				slice(frame_art, gx, gy, gw, gh, alpha);
 
+				// The HP just lost shows as a faded copy of the fill
 				if (trail_w > fill_w)
-					classic::box(gx + INSET + fill_w, gy + INSET, trail_w - fill_w, ih, Color::Name::WHITE, 0.5f * alpha);
+					slice(fill_art, gx + inset_x, gy + inset_y, trail_w, ih, 0.35f * alpha);
 
 				if (fill_w > 0)
-					slice(fill_art, gx + INSET, gy + INSET, fill_w, ih, alpha);
+					slice(fill_art, gx + inset_x, gy + inset_y, fill_w, ih, alpha);
 			}
 			else
 			{
@@ -149,6 +154,8 @@ namespace ms
 				}
 			}
 
+			// A dark copy under the label keeps it readable over red and dark
+			percent_shadow.draw(DrawArgument(Point<int16_t>(gx + gw / 2 + 1, gy), 0.8f * alpha));
 			percent_text.draw(DrawArgument(Point<int16_t>(gx + gw / 2, gy - 1), alpha));
 		}
 
@@ -179,6 +186,7 @@ namespace ms
 		Text label;
 		Text level_text;
 		Text percent_text = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, "");
+		Text percent_shadow = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::BLACK, "");
 		Texture frame_art[3];
 		Texture fill_art[3];
 		bool art_loaded = false;
