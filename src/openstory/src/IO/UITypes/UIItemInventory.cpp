@@ -431,7 +431,11 @@ namespace ms
 				// use (the server only shows it to other players, so do it here
 				// for ourselves). Persistent auras come from equipped rings, not
 				// from consumables.
-				if (nl::nx::effect["ItemEff.img"][std::to_string(item_id)])
+				// (Use items only when the tap really sends them: a star or a
+				// scroll does nothing on a tap and must not look used.)
+				bool has_effect = static_cast<bool>(nl::nx::effect["ItemEff.img"][std::to_string(item_id)]);
+
+				if (has_effect && tab != InventoryType::Id::USE)
 					Stage::get().get_player().show_item_use_effect(item_id);
 
 				switch (tab)
@@ -455,6 +459,9 @@ namespace ms
 						}
 						else if (opcode == OutPacket::Opcode::USE_ITEM)
 						{
+							if (has_effect)
+								Stage::get().get_player().show_item_use_effect(item_id);
+
 							UseItemPacket(slot, item_id).dispatch();
 						}
 						else if (opcode != 0)
