@@ -102,8 +102,16 @@ namespace jrc
             std::max<int16_t>(0, Constants::viewheight() - dimension.y())));
     }
 
-    void UIWindow::update_screen(int16_t, int16_t)
+    void UIWindow::update_screen(int16_t width, int16_t)
     {
+        // Default positions are laid out for the classic 800-wide view; on
+        // a wider view they move right by half the difference, so windows
+        // open around the middle. A window the player moved stays put.
+        int16_t shift = static_cast<int16_t>(std::max(0, (width - Constants::VIEWWIDTH) / 2));
+        if (!manually_positioned && !anchored_left)
+            position.shift_x(shift - wide_shift);
+        wide_shift = shift;
+
         keep_on_screen();
         position_changed();
     }

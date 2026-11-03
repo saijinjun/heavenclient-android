@@ -49,7 +49,14 @@ namespace jrc
         bool felloff(int16_t y, bool downwards) const;
         int16_t get_x() const;
 
+        // How far to the side of a rope or ladder, in pixels, the player can
+        // be and still grab it. Touch screens use more than the classic 10,
+        // since a thumb on a stick is less exact than arrow keys.
+        static void set_reach(int16_t pixels);
+
     private:
+        static int16_t reach;
+
         int16_t x;
         int16_t y1;
         int16_t y2;
@@ -70,7 +77,8 @@ namespace jrc
 
         // Find a setat the player's position.
         Optional<const Seat> findseat(Point<int16_t> position) const;
-        // Find a ladder at the player's position. upwards = false implies downwards.
+        // Find the closest ladder in reach of the player's position.
+        // upwards = false implies downwards.
         Optional<const Ladder> findladder(Point<int16_t> position, bool upwards) const;
 
     private:

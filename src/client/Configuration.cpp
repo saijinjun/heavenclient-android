@@ -24,8 +24,19 @@ namespace jrc
     Configuration::Configuration()
     {
         settings.emplace<MapleStoryServerIp>();
+        settings.emplace<AssetsUrl>();
         settings.emplace<AssetsServerProtocol>();
         settings.emplace<Fullscreen>();
+        settings.emplace<FillScreen>();
+        settings.emplace<TouchVibration>();
+        settings.emplace<TouchLayout>();
+        settings.emplace<RopeAssist>();
+        settings.emplace<HdUpscale>();
+        settings.emplace<HdGlow>();
+        settings.emplace<HdDepthBlur>();
+        settings.emplace<HdColorGrade>();
+        settings.emplace<EffectsQuality>();
+        settings.emplace<MaxFps>();
         settings.emplace<VSync>();
         settings.emplace<FontPathNormal>();
         settings.emplace<FontPathBold>();

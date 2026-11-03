@@ -26,7 +26,7 @@
 #include <sstream>
 #include <iostream>
 
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
 #include <LazyFS/LazyFileLoader.h>
 #endif
 
@@ -42,7 +42,7 @@ namespace nl {
     }
 
     // Helper accessors for LazyFS on WASM
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
     
     // Access primitive type at offset
     template<typename T>
@@ -88,13 +88,13 @@ namespace nl {
 #endif
 
     node::node(node const & o) :
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         m_offset(o.m_offset), m_file(o.m_file) {}
 #else
         m_data(o.m_data), m_file(o.m_file) {}
 #endif
 
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
     // Constructor matching node.hpp signature but using offset internally? 
     // Wait, signature in node.hpp says (data const *, ...). 
     // We should change the constructor signature in node.hpp or assume 'd' is reused as offset on WASM?
@@ -118,7 +118,7 @@ namespace nl {
 #endif
 
     node node::begin() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         if (!m_offset)
             return {reinterpret_cast<data const*>(0), m_file};
         auto d = DATA_PTR;
@@ -133,7 +133,7 @@ namespace nl {
 #endif
     }
     node node::end() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         if (!m_offset)
             return {reinterpret_cast<data const*>(0), m_file};
         auto d = DATA_PTR;
@@ -151,7 +151,7 @@ namespace nl {
         return *this;
     }
     node & node::operator++() {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         m_offset += sizeof(data);
 #else
         ++m_data;
@@ -159,7 +159,7 @@ namespace nl {
         return *this;
     }
     node node::operator++(int) {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         auto temp = *this;
         m_offset += sizeof(data);
         return temp;
@@ -168,21 +168,21 @@ namespace nl {
 #endif
     }
     bool node::operator==(node const & o) const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         return m_offset == o.m_offset;
 #else
         return m_data == o.m_data;
 #endif
     }
     bool node::operator!=(node const & o) const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         return m_offset != o.m_offset;
 #else
         return m_data != o.m_data;
 #endif
     }
     bool node::operator<(node const & o) const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         return m_offset < o.m_offset;
 #else
         return m_data < o.m_data;
@@ -279,7 +279,7 @@ namespace nl {
         return get_audio();
     }
     node::operator bool() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         return m_offset != 0;
 #else
         return m_data ? true : false;
@@ -352,7 +352,7 @@ namespace nl {
         return def;
     }
     bitmap node::get_bitmap() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         auto d = DATA_PTR;
         // Note: Some NX files report bitmap_count=0 in their header but still
         // have valid bitmap nodes. On WASM we skip the bitmap_count check and
@@ -367,7 +367,7 @@ namespace nl {
 #endif
     }
     audio node::get_audio() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         auto d = DATA_PTR;
         auto header_ptr = get_data<file::header>(m_file, m_file->header);
         if (d && d->type == type::audio && header_ptr && header_ptr->audio_count)
@@ -399,7 +399,7 @@ namespace nl {
         auto d = DATA_PTR;
         if (!d)
             return {};
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         return get_string_from_table(m_file, d->name);
 #else
         auto const s = reinterpret_cast<char const *>(m_file->base)
@@ -420,7 +420,7 @@ namespace nl {
         if (!d)
             return {reinterpret_cast<data const*>(0), m_file};
 
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         // WASM Implementation using offsets
         auto n = d->num;
         // Start offset of child nodes
@@ -530,7 +530,7 @@ namespace nl {
     std::string node::to_string() const {
         auto d = DATA_PTR;
         if (!d) return {};
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         return get_string_from_table(m_file, d->string);
 #else
         auto const s = reinterpret_cast<char const *>(m_file->base)
@@ -545,7 +545,7 @@ namespace nl {
     bitmap node::to_bitmap() const {
         auto d = DATA_PTR;
         if (!d) return {nullptr, 0, 0, 0};
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         size_t bm_table_entry = m_file->bitmap_table + d->bitmap.index * sizeof(uint64_t);
         auto offset_ptr = get_data<uint64_t>(m_file, bm_table_entry);
         uint64_t bitmap_offset = offset_ptr ? *offset_ptr : 0;
@@ -560,7 +560,7 @@ namespace nl {
     audio node::to_audio() const {
         auto d = DATA_PTR;
         if (!d) return {nullptr, 0, 0};
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         size_t au_table_entry = m_file->audio_table + d->audio.index * sizeof(uint64_t);
         auto offset_ptr = get_data<uint64_t>(m_file, au_table_entry);
         uint64_t audio_offset = offset_ptr ? *offset_ptr : 0;
@@ -574,7 +574,7 @@ namespace nl {
 #endif
     }
     node node::root() const {
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         // m_file->node_table is offset of root node
          return {reinterpret_cast<data const*>(static_cast<uintptr_t>(m_file->node_table)), m_file};
 #else

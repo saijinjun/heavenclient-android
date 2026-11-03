@@ -43,6 +43,11 @@ namespace jrc
     private:
         uint64_t sock;
         int8_t buffer[MAX_PACKET_LENGTH];
+#ifdef MS_PLATFORM_SDL
+        // Bytes received from the stream that do not yet form a whole packet.
+        int8_t pending[MAX_PACKET_LENGTH];
+        size_t pending_length = 0;
+#endif
     };
 }
 #endif

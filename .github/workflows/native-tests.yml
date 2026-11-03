@@ -2,9 +2,9 @@ name: native-tests
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
   push:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: native-tests-${{ github.event.pull_request.number || github.ref }}
@@ -23,7 +23,7 @@ jobs:
           - os: ubuntu-latest
             mode: debug
             flags: ''
-          - os: macos-latest
+          - os: ubuntu-latest
             mode: release
             flags: --release
           - os: ubuntu-latest

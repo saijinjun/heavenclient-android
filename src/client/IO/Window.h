@@ -18,9 +18,17 @@
 #pragma once
 #include "../Error.h"
 #include "../Template/Singleton.h"
+#include "../Template/Point.h"
 
-#include <GL/glew.h>
+#include "../Graphics/GLHeaders.h"
+
+#ifdef MS_PLATFORM_SDL
+#include "TouchControls.h"
+
+#include <SDL.h>
+#else
 #include <GLFW/glfw3.h>
+#endif
 
 #include <string>
 #include <functional>
@@ -49,8 +57,41 @@ namespace jrc
     private:
         void updateopc();
 
+#ifdef MS_PLATFORM_SDL
+        void handle_event(const SDL_Event& event);
+        void update_viewport();
+        void update_text_input();
+        Point<int16_t> to_view(int32_t x, int32_t y) const;
+        void handle_finger(const SDL_TouchFingerEvent& finger, Uint32 type);
+        void send_touch_actions(const std::vector<TouchControls::Action>& actions);
+        Point<int16_t> finger_to_view(float x, float y) const;
+
+        SDL_Window* glwnd;
+        SDL_GLContext context;
+        bool closed;
+        bool text_input;
+        // Where the fixed-size game view is drawn inside the window, in pixels.
+        int32_t view_x;
+        int32_t view_y;
+        int32_t view_w;
+        int32_t view_h;
+        // Mutable because the slot icons it shows are refreshed while drawing.
+        mutable TouchControls touch;
+        // Touch input is handled from finger events so several fingers work at
+        // once. The first finger that is not on a control acts as the mouse.
+        bool touch_seen;
+        bool cursor_finger_down;
+        SDL_FingerID cursor_finger;
+        Uint32 last_tap_time;
+        Point<int16_t> last_tap_pos;
+        // FillScreen setting, and whether the view is widened right now.
+        bool fill_screen;
+        bool wide_view;
+        SDL_Haptic* haptic;
+#else
         GLFWwindow* glwnd;
         GLFWwindow* context;
+#endif
         bool fullscreen;
         bool f11_down;
         float opacity;

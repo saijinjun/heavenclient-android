@@ -36,7 +36,7 @@ namespace nl {
 #pragma pack(pop)
     struct _file_data {
         void const * base = nullptr;
-#ifdef MS_PLATFORM_WASM
+#ifdef NX_LAZY_FILES
         // On WASM, we use offsets into the file instead of pointers
         // because we can't map the whole file into contiguous memory.
         // We resolve these offsets on-demand via LazyFileLoader.

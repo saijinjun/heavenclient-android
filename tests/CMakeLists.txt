@@ -70,6 +70,8 @@ add_library(test_core STATIC
     "${CLIENT}/Character/Job.cpp"
     "${CLIENT}/IO/UIWindow.cpp"
     "${CLIENT}/IO/Components/NpcMenu.cpp"
+    "${CLIENT}/IO/TouchControls.cpp"
+    "${CLIENT}/IO/TouchSprites.cpp"
 )
 target_link_libraries(test_core PUBLIC test_options)
 
@@ -91,6 +93,16 @@ client_test(cash_shop_test unit)
 client_test(ui_window_test unit)
 client_test(job_requirements_test unit)
 client_test(npc_menu_test unit)
+client_test(touch_controls_test unit)
+
+# On-demand .nx streaming used by the Android build, against a local server.
+add_library(test_lazy_stream STATIC
+    "${CLIENT}/LazyFS/HttpRange.cpp"
+    "${CLIENT}/LazyFS/LazyFileBackendNative.cpp")
+target_include_directories(test_lazy_stream PUBLIC "${CLIENT}")
+target_link_libraries(test_lazy_stream PUBLIC test_options)
+find_package(Threads REQUIRED)
+client_test(lazy_stream_test unit test_lazy_stream Threads::Threads)
 
 if(TEST_ASSETS)
     foreach(asset Character Etc Item Npc Quest String UI UI_83)

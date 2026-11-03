@@ -16,6 +16,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.    //
 //////////////////////////////////////////////////////////////////////////////
 #include "Window.h"
+// SDL builds use WindowSDL.cpp.
+#ifndef MS_PLATFORM_SDL
 
 #ifdef MS_PLATFORM_WASM
 #include <emscripten.h>
@@ -423,3 +425,4 @@ namespace jrc
         return text ? text : "";
     }
 }
+#endif

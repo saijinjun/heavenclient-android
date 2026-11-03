@@ -51,6 +51,7 @@ namespace jrc
         void enable();
         void disable();
         void change_state(State state);
+        bool in_game() const;
 
         void quit();
         bool not_quitted() const;
@@ -65,13 +66,22 @@ namespace jrc
         void rightclick();
         void doubleclick();
         void send_key(int32_t keycode, bool pressed);
+        // Presses or releases a game action directly, whatever key it is
+        // bound to. On-screen touch controls use this.
+        void send_action(int32_t action, bool pressed);
         void send_menu(KeyAction::Id action);
 
         void set_scrollnotice(const std::string& notice);
         void focus_textfield(Textfield* textfield);
         void blur_textfield(Textfield* textfield);
         void remove_textfield();
+        // Whether a text field currently has keyboard focus.
+        bool has_focused_textfield() const;
         void drag_icon(Icon* icon);
+        const Icon* get_dragged_icon() const;
+        // Puts a skill or item on a key (a KeyConfig key number) and saves
+        // it to the server, like the key config window does.
+        void bind_key(uint8_t key, uint8_t type, int32_t action);
         Keyboard& get_keyboard();
         uint64_t get_cursor_press_id() const;
 
@@ -94,6 +104,7 @@ namespace jrc
 
     private:
         std::unique_ptr<UIState> state;
+        State state_id;
         Keyboard keyboard;
         Cursor cursor;
         ScrollingNotice scrollingnotice;

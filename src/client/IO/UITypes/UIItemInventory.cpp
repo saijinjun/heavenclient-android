@@ -556,4 +556,15 @@ namespace jrc
                 keyconfig->stage_mapping(cursorposition, mapping);
         }
     }
+
+    bool UIItemInventory::ItemIcon::get_binding(uint8_t& type, int32_t& action) const
+    {
+        // Like the key config, only potions and chairs go on keys.
+        if (sourcetab != InventoryType::USE && sourcetab != InventoryType::SETUP)
+            return false;
+
+        type = KeyType::ITEM;
+        action = item_id;
+        return true;
+    }
 }
