@@ -6,11 +6,12 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `706c5b3` | ok |
+| server | `c577aa7` | ok |
 | client | `7732617` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-03 19:04 · server · ✅ deployed `c577aa7` - online, 8484 open
 - 2026-11-03 17:59 · server · ✅ deployed `706c5b3` - online, 8484 open
 - 2026-11-03 01:17 · server · ✅ deployed `fbc2d6b` - online, 8484 open
 - 2026-11-02 23:24 · server · ✅ deployed `5f58618` - online, 8484 open
