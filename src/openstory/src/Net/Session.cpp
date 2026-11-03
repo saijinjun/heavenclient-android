@@ -70,7 +70,16 @@ namespace ms
 		// when the server already dropped the connection; open anyway, or a
 		// lost connection could never be replaced.
 		socket.close();
-		init(address, port);
+
+		if (init(address, port))
+			failed_target.clear();
+		else
+			failed_target = std::string(address) + ":" + port;
+	}
+
+	const std::string& Session::get_failed_target() const
+	{
+		return failed_target;
 	}
 
 	void Session::process(const int8_t* bytes, size_t available)

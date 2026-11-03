@@ -38,6 +38,18 @@ namespace ms
 	};
 
 	// Opcode: COUPON_CODE(216)
+	// Moves an item from the cash inventory into the character's inventory
+	// (Cosmic's CashOperationHandler action 0x0D, found by cash id)
+	class TakeFromCashInventoryPacket : public OutPacket
+	{
+	public:
+		TakeFromCashInventoryPacket(int32_t cashid) : OutPacket(OutPacket::Opcode::BUY_CS_ITEM)
+		{
+			write_byte(0x0D);
+			write_int(cashid);
+		}
+	};
+
 	class CouponCodePacket : public OutPacket
 	{
 	public:

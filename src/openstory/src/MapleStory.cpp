@@ -330,6 +330,14 @@ namespace ms
 
 		std::string message = "Lost the connection to the game server.";
 
+		// A channel change or Cash Shop exit moves to another server port;
+		// say which one, since that port may be closed when login works
+		const std::string& failed = Session::get().get_failed_target();
+
+		if (!failed.empty())
+			message = "Couldn't reach the channel server at " + failed
+				+ ".\n\nThe server may not be letting phones in on that port.";
+
 		while (sdl::ask_reconnect(message))
 		{
 			Session::get().reconnect();

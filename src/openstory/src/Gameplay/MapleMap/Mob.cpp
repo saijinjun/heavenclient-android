@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "Mob.h"
 
+#include "../../IO/TargetFrame.h"
+
 #include "../../Util/Misc.h"
 
 #include "../../Net/Packets/GameplayPackets.h"
@@ -622,6 +624,11 @@ namespace ms
 			percent = 100;
 		else if (percent < 0)
 			percent = 0;
+
+#ifdef __ANDROID__
+		Color::Name danger = leveldelta >= 20 ? Color::Name::RED : (leveldelta >= 5 ? Color::Name::YELLOW : Color::Name::WHITE);
+		TargetFrame::get().hit(get_oid(), name, level, percent, danger);
+#endif
 
 		if (pending_hits > 0)
 		{

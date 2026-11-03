@@ -28,6 +28,7 @@
 
 #include "../../IO/UITypes/UIBuffList.h"
 #include "../../IO/UITypes/UICashShop.h"
+#include "../../IO/UITypes/UIChannel.h"
 #include "../../IO/UITypes/UIMonsterBook.h"
 #include "../../IO/UITypes/UINotice.h"
 #include "../../IO/UITypes/UISkillBook.h"
@@ -48,6 +49,8 @@ namespace ms
 	void ChangeChannelHandler::handle(InPacket& recv) const
 	{
 		LoginParser::parse_login(recv);
+
+		UIChannel::change_succeeded();
 
 		auto cashshop = UI::get().get_element<UICashShop>();
 
