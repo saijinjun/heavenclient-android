@@ -11,6 +11,7 @@
 
 ## Recent events (newest first)
 
+- 2026-11-03 21:45 · client · **HELD for Onyx review** `7732617..d374641` - sensitive: web/server.py, web/ws_proxy.py
 - 2026-11-03 20:16 · server · ✅ deployed `25fa1cd` - online, 8484 open
 - 2026-11-03 20:14 · server · Onyx approved `25fa1cd` (docker-compose.override.yml)
 - 2026-11-03 20:04 · server · **HELD for Onyx review** `c577aa7..25fa1cd` - sensitive: docker-compose.override.yml
