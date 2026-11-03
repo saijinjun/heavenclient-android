@@ -236,7 +236,7 @@ namespace ms
 
 	void UIMobileInventory::draw_label(const Text& text, Rectangle<int16_t> box) const
 	{
-		text.draw(Point<int16_t>(box.left() + box.width() / 2, box.top() + (box.height() - text.height()) / 2));
+		text.draw(Point<int16_t>(box.left() + box.width() / 2, classic::text_y(text, box.top() + box.height() / 2)));
 	}
 
 	void UIMobileInventory::draw(float inter) const
@@ -274,7 +274,7 @@ namespace ms
 
 			if (TAB_ICONS[i] && total <= l.tabs[i].width() - 6
 				&& classic::icon(TAB_ICONS[i], Point<int16_t>(ix, l.tabs[i].top() + 6), icon))
-				tab_labels[i].draw(Point<int16_t>(ix + icon + 4 + text_w / 2, l.tabs[i].top() + (l.tabs[i].height() - tab_labels[i].height()) / 2));
+				tab_labels[i].draw(Point<int16_t>(ix + icon + 4 + text_w / 2, classic::text_y(tab_labels[i], l.tabs[i].top() + l.tabs[i].height() / 2)));
 			else
 				draw_label(tab_labels[i], l.tabs[i]);
 		}

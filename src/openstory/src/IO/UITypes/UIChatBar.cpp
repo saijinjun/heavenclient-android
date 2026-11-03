@@ -359,7 +359,7 @@ namespace ms
 					bool lit = chattarget == chip_targets[i];
 					classic::tab(r.get_left_top(), r.width(), r.height(), lit);
 					chip_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
-					chip_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, r.top() + (r.height() - chip_labels[i].height()) / 2));
+					chip_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(chip_labels[i], r.top() + r.height() / 2)));
 				}
 			}
 #else

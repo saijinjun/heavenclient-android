@@ -268,9 +268,9 @@ namespace ms
 		classic::panel(e.get_left_top(), e.width(), eh);
 
 		if (classic::close_button(Point<int16_t>(e.right() - eh, e.top()), eh))
-			exit_label.draw(Point<int16_t>(e.left() + (e.width() - eh) / 2, e.top() + (eh - exit_label.height()) / 2));
+			exit_label.draw(Point<int16_t>(e.left() + (e.width() - eh) / 2, classic::text_y(exit_label, e.top() + eh / 2)));
 		else
-			exit_label.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (eh - exit_label.height()) / 2));
+			exit_label.draw(Point<int16_t>(e.left() + e.width() / 2, classic::text_y(exit_label, e.top() + eh / 2)));
 
 		if (selected_item >= 0 && selected_item < static_cast<int16_t>(items.size()))
 		{
@@ -284,7 +284,7 @@ namespace ms
 
 			Rectangle<int16_t> b = buy_rect();
 			classic::button(b.get_left_top(), b.width(), b.height(), buy_armed);
-			buy_label.draw(Point<int16_t>(b.left() + b.width() / 2, b.top() + (b.height() - buy_label.height()) / 2));
+			buy_label.draw(Point<int16_t>(b.left() + b.width() / 2, classic::text_y(buy_label, b.top() + b.height() / 2)));
 		}
 
 		if (status_ticks > 0 && !status_message.empty())
@@ -298,7 +298,7 @@ namespace ms
 
 			status_text.change_color(status_error ? Color::Name::TORCHRED : Color::Name::WHITE);
 			classic::panel(p, w, 40);
-			status_text.draw(Point<int16_t>(r.left() + w / 2, r.top() + (40 - status_text.height()) / 2));
+			status_text.draw(Point<int16_t>(r.left() + w / 2, classic::text_y(status_text, r.top() + 40 / 2)));
 		}
 	}
 
@@ -859,7 +859,7 @@ namespace ms
 
 		void m_centered(const Text& text, Rectangle<int16_t> box)
 		{
-			text.draw(Point<int16_t>(box.left() + box.width() / 2, box.top() + (box.height() - text.height()) / 2));
+			text.draw(Point<int16_t>(box.left() + box.width() / 2, classic::text_y(text, box.top() + box.height() / 2)));
 		}
 
 		std::string with_commas(int64_t value)
@@ -1114,7 +1114,7 @@ namespace ms
 		if (m_nx.get_text() != nx)
 			m_nx.change_text(nx);
 
-		m_nx.draw(Point<int16_t>(l.exit.left() - 16 - m_nx.width(), l.exit.top() + (l.exit.height() - m_nx.height()) / 2));
+		m_nx.draw(Point<int16_t>(l.exit.left() - 16 - m_nx.width(), classic::text_y(m_nx, l.exit.top() + l.exit.height() / 2)));
 
 		classic::button(l.exit.get_left_top(), l.exit.width(), l.exit.height());
 		m_centered(m_exit, l.exit);
@@ -1287,7 +1287,7 @@ namespace ms
 
 			m_status.change_color(status_error ? Color::Name::TORCHRED : Color::Name::WHITE);
 			classic::panel(p, w, 40);
-			m_status.draw(Point<int16_t>(p.x() + w / 2, p.y() + (40 - m_status.height()) / 2));
+			m_status.draw(Point<int16_t>(p.x() + w / 2, classic::text_y(m_status, p.y() + 40 / 2)));
 		}
 	}
 

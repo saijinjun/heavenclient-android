@@ -451,7 +451,7 @@ namespace ms
 
 	void UIMobileQuests::draw_label(const Text& text, Rectangle<int16_t> box) const
 	{
-		text.draw(Point<int16_t>(box.left() + box.width() / 2, box.top() + (box.height() - text.height()) / 2));
+		text.draw(Point<int16_t>(box.left() + box.width() / 2, classic::text_y(text, box.top() + box.height() / 2)));
 	}
 
 	void UIMobileQuests::draw(float inter) const
@@ -486,7 +486,7 @@ namespace ms
 			int16_t ix = t.left() + (t.width() - icon - 6 - text_w) / 2;
 
 			if (icon + 6 + text_w <= t.width() - 6 && classic::icon(TAB_ICONS[i], Point<int16_t>(ix, t.top() + 5), icon))
-				tab_labels[i].draw(Point<int16_t>(ix + icon + 6 + text_w / 2, t.top() + (t.height() - tab_labels[i].height()) / 2));
+				tab_labels[i].draw(Point<int16_t>(ix + icon + 6 + text_w / 2, classic::text_y(tab_labels[i], t.top() + t.height() / 2)));
 			else
 				draw_label(tab_labels[i], t);
 		}
@@ -513,12 +513,12 @@ namespace ms
 				name_x += badge + 8;
 
 			entry.name.change_color(classic::row_text(lit, tab == DONE ? Color::Name::SILVERCHALICE : Color::Name::WHITE));
-			entry.name.draw(Point<int16_t>(name_x, r.top() + (r.height() - entry.name.height()) / 2));
+			entry.name.draw(Point<int16_t>(name_x, classic::text_y(entry.name, r.top() + r.height() / 2)));
 
 			if (!entry.note.get_text().empty())
 			{
 				entry.note.change_color(classic::row_text(lit, Color::Name::SILVERCHALICE));
-				entry.note.draw(Point<int16_t>(r.right() - 8, r.top() + (r.height() - entry.note.height()) / 2));
+				entry.note.draw(Point<int16_t>(r.right() - 8, classic::text_y(entry.note, r.top() + r.height() / 2)));
 			}
 		}
 

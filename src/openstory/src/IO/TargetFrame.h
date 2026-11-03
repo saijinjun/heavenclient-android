@@ -40,6 +40,7 @@ namespace ms
 				target = oid;
 				label = Text(Text::Font::A12B, Text::Alignment::LEFT, Color::Name::WHITE, name);
 				level_text = Text(Text::Font::A11B, Text::Alignment::RIGHT, Color::Name::HUD_EXP, "Lv. " + std::to_string(level));
+				fit_name(name);
 			}
 
 			label.change_color(danger);
@@ -54,7 +55,6 @@ namespace ms
 
 			hp = next;
 			percent_text.change_text(std::to_string(hp) + "%");
-			percent_shadow.change_text(std::to_string(hp) + "%");
 			ms_left = hp > 0 ? SHOW_MS : DEAD_MS;
 		}
 
@@ -107,14 +107,16 @@ namespace ms
 				classic::box(x + 1, y + 1, w - 2, 1, Color::Name::WHITE, 0.18f * alpha);
 			}
 
-			label.draw(DrawArgument(Point<int16_t>(x + left, y + 4), alpha));
-			level_text.draw(DrawArgument(Point<int16_t>(x + w - 18, y + 5), alpha));
+			// Name and level share the top row, centered on it
+			int16_t row = y + 13;
+			classic::shadowed(label, Point<int16_t>(x + left, classic::text_y(label, row)), alpha);
+			classic::shadowed(level_text, Point<int16_t>(x + w - 18, classic::text_y(level_text, row)), alpha);
 
 			// HP gauge: the same metal frame and glossy red fill as the
 			// player's own HP bar, with a pale trail where the last hit
 			// took HP away
 			int16_t gx = x + left;
-			int16_t gy = y + h - 19;
+			int16_t gy = y + h - 20;
 			int16_t gw = w - left - 18;
 			int16_t gh = 14;
 			int16_t fill_w = static_cast<int16_t>(gw * hp / 100);
@@ -154,9 +156,7 @@ namespace ms
 				}
 			}
 
-			// A dark copy under the label keeps it readable over red and dark
-			percent_shadow.draw(DrawArgument(Point<int16_t>(gx + gw / 2 + 1, gy), 0.8f * alpha));
-			percent_text.draw(DrawArgument(Point<int16_t>(gx + gw / 2, gy - 1), alpha));
+			classic::shadowed(percent_text, Point<int16_t>(gx + gw / 2, classic::text_y(percent_text, gy + gh / 2)), alpha);
 		}
 
 		// The target left the map or the player changed maps
@@ -186,10 +186,38 @@ namespace ms
 		Text label;
 		Text level_text;
 		Text percent_text = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, "");
-		Text percent_shadow = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::BLACK, "");
 		Texture frame_art[3];
 		Texture fill_art[3];
 		bool art_loaded = false;
+
+		// Long names drop to the smaller font, then get cut with "..."
+		// so they never run into the level or past the plate
+		void fit_name(const std::string& name)
+		{
+			int16_t room = WIDTH - (HEIGHT + 4) - 18 - level_text.width() - 8;
+
+			if (label.width() > room)
+				label = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::WHITE, name);
+
+			std::string value = name;
+
+			while (label.width() > room && value.size() > 4)
+			{
+				value.resize(value.size() - 1);
+
+				// Never cut a UTF-8 character in half
+				while (!value.empty() && (static_cast<unsigned char>(value.back()) & 0xC0) == 0x80)
+					value.pop_back();
+
+				if (!value.empty() && static_cast<unsigned char>(value.back()) >= 0xC0)
+					value.pop_back();
+
+				while (!value.empty() && value.back() == ' ')
+					value.pop_back();
+
+				label.change_text(value + "...");
+			}
+		}
 
 		void load_art()
 		{

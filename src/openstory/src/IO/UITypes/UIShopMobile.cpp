@@ -56,7 +56,7 @@ namespace ms
 
 		void draw_centered(const Text& text, Rectangle<int16_t> box)
 		{
-			text.draw(Point<int16_t>(box.left() + box.width() / 2, box.top() + (box.height() - text.height()) / 2));
+			text.draw(Point<int16_t>(box.left() + box.width() / 2, classic::text_y(text, box.top() + box.height() / 2)));
 		}
 	}
 
@@ -271,7 +271,7 @@ namespace ms
 			int16_t ix = r.left() + (r.width() - size - 6 - text_w) / 2;
 
 			if (size + 6 + text_w <= r.width() - 6 && classic::icon(icon, Point<int16_t>(ix, r.top() + 6), size))
-				label.draw(Point<int16_t>(ix + size + 6 + text_w / 2, r.top() + (r.height() - label.height()) / 2));
+				label.draw(Point<int16_t>(ix + size + 6 + text_w / 2, classic::text_y(label, r.top() + r.height() / 2)));
 			else
 				draw_centered(label, r);
 		};
@@ -338,7 +338,7 @@ namespace ms
 				}
 
 				entry.second.change_color(classic::row_text(lit, Color::Name::WHITE));
-				entry.second.draw(Point<int16_t>(r.right() - 10, r.top() + (r.height() - entry.second.height()) / 2));
+				entry.second.draw(Point<int16_t>(r.right() - 10, classic::text_y(entry.second, r.top() + r.height() / 2)));
 			}
 		}
 

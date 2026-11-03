@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Geometry.h"
+#include "Text.h"
 #include "Texture.h"
 
 #include <algorithm>
@@ -94,6 +95,24 @@ namespace ms
 		{
 			static Art loaded;
 			return loaded;
+		}
+
+		// GraphicsGL puts a line's baseline a whole linespace below the draw
+		// point, so the letters start about half a line lower than the
+		// point. This gives the draw y that centers a one-line text's
+		// capitals on cy, so labels sit inside the art they belong to.
+		inline int16_t text_y(const Text& text, int16_t cy)
+		{
+			int16_t line = text.height();
+			return static_cast<int16_t>(cy + line / 2 / 2 - line);
+		}
+
+		// Draws a label with a dark copy one pixel down-right, so it reads
+		// over bright fills
+		inline void shadowed(const Text& text, Point<int16_t> pos, float alpha = 1.0f)
+		{
+			text.draw(DrawArgument(pos + Point<int16_t>(1, 1), Color(0.0f, 0.0f, 0.0f, 0.75f * alpha)));
+			text.draw(DrawArgument(pos, alpha));
 		}
 
 		inline void box(int16_t x, int16_t y, int16_t w, int16_t h, Color::Name color, float alpha = 1.0f)

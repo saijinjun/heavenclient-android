@@ -164,20 +164,20 @@ namespace ms
 		{
 			const Rectangle<int16_t>& r = l.info[i];
 			classic::row(r.get_left_top(), r.width(), r.height(), false);
-			info_names[i].draw(Point<int16_t>(r.left() + 10, r.top() + (r.height() - info_names[i].height()) / 2));
-			info_values[i].draw(Point<int16_t>(r.right() - 10, r.top() + (r.height() - info_values[i].height()) / 2));
+			info_names[i].draw(Point<int16_t>(r.left() + 10, classic::text_y(info_names[i], r.top() + r.height() / 2)));
+			info_values[i].draw(Point<int16_t>(r.right() - 10, classic::text_y(info_values[i], r.top() + r.height() / 2)));
 		}
 
 		bool has_ap = stats.get_stat(MapleStat::Id::AP) > 0;
 
-		ap_text.draw(Point<int16_t>(l.ap.left() + 4, l.ap.top() + (l.ap.height() - ap_text.height()) / 2));
+		ap_text.draw(Point<int16_t>(l.ap.left() + 4, classic::text_y(ap_text, l.ap.top() + l.ap.height() / 2)));
 
 		for (size_t i = 0; i < NUM_MAIN; i++)
 		{
 			const Rectangle<int16_t>& r = l.main[i];
 			classic::row(r.get_left_top(), r.width(), r.height(), false);
-			main_names[i].draw(Point<int16_t>(r.left() + 10, r.top() + (r.height() - main_names[i].height()) / 2));
-			main_values[i].draw(Point<int16_t>(r.right() - 10, r.top() + (r.height() - main_values[i].height()) / 2));
+			main_names[i].draw(Point<int16_t>(r.left() + 10, classic::text_y(main_names[i], r.top() + r.height() / 2)));
+			main_values[i].draw(Point<int16_t>(r.right() - 10, classic::text_y(main_values[i], r.top() + r.height() / 2)));
 
 			if (has_ap)
 			{
@@ -187,7 +187,7 @@ namespace ms
 				if (!classic::plus_button(Point<int16_t>(p.left() + (p.width() - size) / 2, p.top() + (p.height() - size) / 2), size))
 				{
 					classic::button(p.get_left_top(), p.width(), p.height(), true);
-					plus_label.draw(Point<int16_t>(p.left() + p.width() / 2, p.top() + (p.height() - plus_label.height()) / 2));
+					plus_label.draw(Point<int16_t>(p.left() + p.width() / 2, classic::text_y(plus_label, p.top() + p.height() / 2)));
 				}
 			}
 		}
@@ -196,7 +196,7 @@ namespace ms
 		{
 			const Rectangle<int16_t>& a = l.autoassign;
 			classic::button(a.get_left_top(), a.width(), a.height());
-			auto_label.draw(Point<int16_t>(a.left() + a.width() / 2, a.top() + (a.height() - auto_label.height()) / 2));
+			auto_label.draw(Point<int16_t>(a.left() + a.width() / 2, classic::text_y(auto_label, a.top() + a.height() / 2)));
 		}
 
 		UIElement::draw(inter);

@@ -311,7 +311,7 @@ namespace ms
 
 	void UIMobileSkills::draw_label(const Text& text, Rectangle<int16_t> box) const
 	{
-		text.draw(Point<int16_t>(box.left() + box.width() / 2, box.top() + (box.height() - text.height()) / 2));
+		text.draw(Point<int16_t>(box.left() + box.width() / 2, classic::text_y(text, box.top() + box.height() / 2)));
 	}
 
 	Text& UIMobileSkills::row_name(int32_t skill_id) const

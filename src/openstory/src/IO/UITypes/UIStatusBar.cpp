@@ -16,6 +16,7 @@
 //	along with this program.  If not, see <https://www.gnu.org/licenses/>.		//
 //////////////////////////////////////////////////////////////////////////////////
 #include "UIStatusBar.h"
+#include "../../Graphics/ClassicStyle.h"
 
 #include <algorithm>
 #include <cmath>
@@ -2284,15 +2285,16 @@ namespace ms
 			int16_t bw = HUD_BADGE + 2;
 			int16_t bh = static_cast<int16_t>(bw * hud_badge.height() / std::max<int16_t>(hud_badge.width(), 1));
 			hud_badge.draw(DrawArgument(Point<int16_t>(bx - 1, by + HUD_BADGE + 1 - bh), Point<int16_t>(bw, bh)));
-			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 8));
-			hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 18));
+			// "LV" over the number, both inside the badge's square
+			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, classic::text_y(hud_level_caption, by + 12)));
+			classic::shadowed(hud_level, Point<int16_t>(bx + HUD_BADGE / 2, classic::text_y(hud_level, by + 25)));
 		}
 		else
 		{
 			soft_box(bx, by, HUD_BADGE, HUD_BADGE, Color::Name::HUD_EXP, 0.95f);
 			soft_box(bx + 2, by + 2, HUD_BADGE - 4, HUD_BADGE - 4, Color::Name::HUD_PANEL, 1.0f);
-			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 2));
-			hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 14));
+			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, classic::text_y(hud_level_caption, by + 10)));
+			hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, classic::text_y(hud_level, by + 24)));
 		}
 
 		if (stats.get_stat(MapleStat::Id::AP) > 0 || stats.get_stat(MapleStat::Id::SP) > 0)
@@ -2301,9 +2303,11 @@ namespace ms
 		// Name, job and EXP on the first row.
 		int16_t cx = bx + HUD_BADGE + 8;
 		int16_t cw = x0 + w - 20 - cx;
-		hud_name.draw(Point<int16_t>(cx, y0 + 4));
-		hud_job.draw(Point<int16_t>(cx + hud_name.width() + 6, y0 + 5));
-		hud_exp.draw(Point<int16_t>(cx + cw, y0 + 5));
+		// Each label's letters are centered on the row, above the gauges.
+		int16_t row = y0 + 13;
+		hud_name.draw(Point<int16_t>(cx, classic::text_y(hud_name, row)));
+		hud_job.draw(Point<int16_t>(cx + hud_name.width() + 6, classic::text_y(hud_job, row)));
+		hud_exp.draw(Point<int16_t>(cx + cw, classic::text_y(hud_exp, row)));
 
 		// HP and MP gauges side by side on the second row.
 		int16_t gy = y0 + 24;
@@ -2359,7 +2363,8 @@ namespace ms
 				ColorBox(1, HUD_GAUGE_H, Color::Name::RED, a).draw(DrawArgument(Point<int16_t>(gx + gw, gy)));
 			}
 
-			label.draw(Point<int16_t>(gx + gw / 2, gy + 1));
+			// Centered on the gauge, with a shadow to read over the fill
+			classic::shadowed(label, Point<int16_t>(gx + gw / 2, classic::text_y(label, gy + HUD_GAUGE_H / 2)));
 		};
 
 		gauge(cx, hud_hp_shown, hud_hp_trail, Color::Name::HUD_HP, hud_fill[0], hud_hp, gethppercent() < hp_warn);
