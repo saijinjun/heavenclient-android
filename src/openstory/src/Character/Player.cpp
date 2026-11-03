@@ -166,13 +166,14 @@ namespace ms
 		{
 			if (type == InventoryType::Id::USE)
 			{
-				// Only potions, food, return scrolls and cures go through
-				// the server's use handler; anything else made it fail and
-				// still take the item
-				int32_t prefix = itemid / 10000;
+				// Each kind of use item goes to its own server handler;
+				// scrolls, stars and arrows have no use from a key
+				int16_t opcode = UseItemByTypePacket::opcode_for(itemid);
 
-				if (prefix <= 203 || prefix == 205)
+				if (opcode == OutPacket::Opcode::USE_ITEM)
 					UseItemPacket(slot, itemid).dispatch();
+				else if (opcode != 0)
+					UseItemByTypePacket(opcode, slot, itemid).dispatch();
 			}
 			else if (type == InventoryType::Id::SETUP && itemid / 10000 == 301)
 			{

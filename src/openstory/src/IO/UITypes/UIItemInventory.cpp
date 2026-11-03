@@ -447,24 +447,29 @@ namespace ms
 					{
 						int32_t prefix = item_id / 10000;
 
+						int16_t opcode = UseItemByTypePacket::opcode_for(item_id);
+
 						if (prefix == 212)
 						{
 							PetFoodPacket(slot, item_id).dispatch();
 						}
-						else if (prefix <= 203 || prefix == 205)
+						else if (opcode == OutPacket::Opcode::USE_ITEM)
 						{
-							// Potions, food, return scrolls and cures: the
-							// only items the server's use handler knows
 							UseItemPacket(slot, item_id).dispatch();
+						}
+						else if (opcode != 0)
+						{
+							// Summon bags, skill/mastery books and scripted
+							// items each have their own server handler
+							UseItemByTypePacket(opcode, slot, item_id).dispatch();
 						}
 						else if (prefix == 204)
 						{
 							UI::get().emplace<UIOk>("Put this scroll on the item you're wearing to use it.", [](bool) {});
 						}
 
-						// Anything else (stars, arrows, summon bags, skill
-						// books) has its own use or none; sending it as a
-						// potion made the server fail and eat the item
+						// Anything else (stars, arrows) has no use by a
+						// tap; sending it as a potion made the server fail
 
 						break;
 					}
@@ -536,8 +541,7 @@ namespace ms
 
 						// Cash megaphones/speakers: prompt for message text,
 						// then dispatch USE_CASH_ITEM with the appropriate
-						// sub-type payload. Non-megaphone cash items fall
-						// through to a generic USE_ITEM dispatch.
+						// sub-type payload.
 						int32_t category = item_id / 10000;
 						if (category == 507)
 						{
@@ -581,9 +585,34 @@ namespace ms
 								break;
 							}
 						}
+						else if (category == 537 || category == 512 || category == 508)
+						{
+							// Chalkboard, weather effect, kite: one line
+							const char* prompt = category == 537 ? "Write on your chalkboard:"
+								: category == 512 ? "Message to show with the effect:"
+								: "Message for the kite:";
+
+							UI::get().emplace<UIEnterText>(
+								prompt,
+								[slot, item_id](const std::string& text)
+								{
+									if (!text.empty())
+										UseSimpleCashItemPacket(slot, item_id, text).dispatch();
+								},
+								category == 537 ? 40 : 60
+							);
+						}
+						else if (category == 510 || category == 520 || category == 530 || category == 533)
+						{
+							// Jukebox, meso sack, morph, Duey quick
+							// delivery: nothing else to enter
+							UseSimpleCashItemPacket(slot, item_id).dispatch();
+						}
 						else
 						{
-							UseItemPacket(slot, item_id).dispatch();
+							// Not on the server's USE_ITEM path: sending it
+							// there did nothing
+							UI::get().emplace<UIOk>("This item can't be used from the inventory yet.", [](bool) {});
 						}
 						break;
 					}

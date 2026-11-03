@@ -35,13 +35,16 @@ namespace ms
 
 	// --- Messenger Packets ---
 
-	// Open messenger
+	// Open a messenger (id 0) or join the one you were invited to.
+	// The server always reads the id; without it the request failed and
+	// no messenger was made, so invites said it was unavailable.
 	class MessengerOpenPacket : public OutPacket
 	{
 	public:
-		MessengerOpenPacket() : OutPacket(OutPacket::Opcode::MESSENGER)
+		MessengerOpenPacket(int32_t messenger_id = 0) : OutPacket(OutPacket::Opcode::MESSENGER)
 		{
 			write_byte(0);  // OPEN
+			write_int(messenger_id);
 		}
 	};
 
@@ -177,9 +180,10 @@ namespace ms
 		MessengerDeclinePacket(const std::string& inviter_name, const std::string& text)
 			: OutPacket(OutPacket::Opcode::MESSENGER)
 		{
+			// The server reads one name: the inviter to tell
 			write_byte(5);  // NOTE (decline message)
-			write_string(text);
 			write_string(inviter_name);
+			write_string(text);
 			write_byte(0);
 		}
 	};
@@ -267,7 +271,7 @@ namespace ms
 	public:
 		MinigameMovePacket(int32_t move_data) : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
 		{
-			write_byte(42);  // GAME_MOVE
+			write_byte(0x40);  // MOVE_OMOK
 			write_int(move_data);
 		}
 	};
@@ -278,7 +282,7 @@ namespace ms
 	public:
 		MinigameReadyPacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
 		{
-			write_byte(40);  // READY
+			write_byte(0x3A);  // READY
 		}
 	};
 
@@ -288,7 +292,7 @@ namespace ms
 	public:
 		MinigameStartPacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
 		{
-			write_byte(41);  // START
+			write_byte(0x3D);  // START
 		}
 	};
 
@@ -298,7 +302,7 @@ namespace ms
 	public:
 		MinigameForfeitPacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
 		{
-			write_byte(44);  // GIVE_UP
+			write_byte(0x34);  // GIVE_UP
 		}
 	};
 
@@ -318,7 +322,7 @@ namespace ms
 	public:
 		MinigameDrawPacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
 		{
-			write_byte(45);  // REQUEST_TIE
+			write_byte(0x32);  // REQUEST_TIE
 		}
 	};
 
@@ -328,7 +332,7 @@ namespace ms
 	public:
 		MinigameSkipPacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
 		{
-			write_byte(43);  // SKIP
+			write_byte(0x3F);  // SKIP
 		}
 	};
 

@@ -28,6 +28,7 @@
 #include "../../IO/UITypes/UIMonsterBook.h"
 #include "../../IO/UITypes/UIQuestLog.h"
 #include "../../IO/UITypes/UIMessenger.h"
+#include "../Packets/SocialPackets.h"
 #include "../../IO/UITypes/UIPartySearch.h"
 #include "../../IO/UITypes/UIComboCounter.h"
 
@@ -65,6 +66,9 @@ namespace ms
 			UI::get().emplace<UIWorldMap>();
 			break;
 		case 0x05: // Messenger
+			if (!UIMessenger::is_open())
+				MessengerOpenPacket().dispatch(); // make a messenger to invite into
+
 			UI::get().emplace<UIMessenger>();
 			break;
 		case 0x09: // Quest log

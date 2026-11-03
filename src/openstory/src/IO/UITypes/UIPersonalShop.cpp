@@ -548,13 +548,25 @@ namespace ms
 				chatbar->send_line(owner_name + "'s Shop - " + std::to_string(item_count) + " item(s)", UIChatBar::YELLOW);
 			break;
 		case Buttons::BT_COIN:
-			ShopTakeMesoPacket().dispatch();
+			// A player shop pays its sales straight to the owner
+			if (auto chatbar = UI::get().get_element<UIChatBar>())
+				chatbar->send_line("Sales go straight to your mesos.", UIChatBar::YELLOW);
 			break;
 		case Buttons::BT_BAN:
-			ShopBanVisitorPacket().dispatch();
+			UI::get().emplace<UIEnterText>(
+				"Name of the visitor to ban:",
+				[](const std::string& name)
+				{
+					if (!name.empty())
+						ShopBanVisitorPacket(name).dispatch();
+				},
+				12
+			);
 			break;
 		case Buttons::BT_BLACKLIST:
-			ShopBlacklistPacket().dispatch();
+			// Cosmic keeps a blacklist only for hired merchants
+			if (auto chatbar = UI::get().get_element<UIChatBar>())
+				chatbar->send_line("Player shops have no blacklist. Use Ban to remove a visitor.", UIChatBar::YELLOW);
 			break;
 		default:
 			break;
