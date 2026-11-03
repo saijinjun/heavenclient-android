@@ -43,6 +43,7 @@
 
 #include "../../Net/Packets/SocialPackets.h"
 #include "../../Net/Packets/PlayerPackets.h"
+#include "../../Net/Packets/MessagingPackets.h"
 #include "../../Data/SkillData.h"
 #include "../../Data/ItemData.h"
 #include "../Keyboard.h"
@@ -1506,8 +1507,16 @@ namespace ms
 
 		case BT_TRADE:
 		{
+#ifdef __ANDROID__
+			// On phones this is the Maple Guide: the server's @guide command
+			// opens an NPC with what players would otherwise type (unstuck,
+			// rates, who's online, a paid cab to visited towns). The chat
+			// line is not shown.
+			GeneralChatPacket("@guide", false).dispatch();
+#else
 			// Enter Maple Trading System
 			OutPacket(OutPacket::Opcode::ENTER_MTS).dispatch();
+#endif
 			return Button::State::NORMAL;
 		}
 
