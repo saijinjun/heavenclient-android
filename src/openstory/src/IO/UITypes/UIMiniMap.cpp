@@ -685,6 +685,19 @@ namespace ms
 			}
 		}
 
+#ifdef __ANDROID__
+		// Phones: the touch menu (bag, equips, stats...) sits under the
+		// minimap at about 155 view pixels down on any phone, so keep the
+		// window above it. A tall map at the default 1.5 zoom used to cover
+		// those buttons. Dragging the edge still zooms, up to this height.
+		{
+			int16_t max_map_h = static_cast<int16_t>(100 - (type == Type::MAX ? MAX_ADJ : 0));
+
+			if (map_dimensions.y() > 0 && map_dimensions.y() * zoom_scale > max_map_h)
+				zoom_scale = std::max(0.5f, static_cast<float>(max_map_h) / map_dimensions.y());
+		}
+#endif
+
 		// Apply zoom scale to get the effective display size of the map
 		int16_t zoomed_w = static_cast<int16_t>(map_dimensions.x() * zoom_scale);
 		int16_t zoomed_h = static_cast<int16_t>(map_dimensions.y() * zoom_scale);

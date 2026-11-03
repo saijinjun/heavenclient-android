@@ -22,10 +22,14 @@
 
 #include "../UI.h"
 
+#include "../Components/ClassicButton.h"
 #include "../Components/MapleButton.h"
 
 #include "../../Audio/Audio.h"
 #include "../../Constants.h"
+#include "../../Graphics/ClassicStyle.h"
+
+#include <algorithm>
 
 #ifdef USE_NX
 #include <nlnx/nx.hpp>
@@ -67,14 +71,134 @@ namespace ms
 		// popup to drift left and up each time it was reopened.
 		dragarea = Point<int16_t>(dimension.x(), 20);
 
+		if (touch())
+			touch_layout(message);
+
 		if (type != NoticeType::ENTERNUMBER)
 			Sound(Sound::Name::DLGNOTICE).play();
+	}
+
+	namespace
+	{
+		// The touch layout, in view pixels (about 1.8 screen pixels each on
+		// a 1080-high phone, so a 40-high button is about 13 mm)
+		constexpr int16_t TOUCH_WIDTH = 420;
+		constexpr int16_t TOUCH_PAD = 22;
+		constexpr int16_t TOUCH_MSG_Y = 40;
+		constexpr int16_t TOUCH_FIELD_H = 38;
+		constexpr int16_t TOUCH_BUTTON_W = 132;
+		constexpr int16_t TOUCH_BUTTON_H = 42;
+		constexpr int16_t TOUCH_BUTTON_GAP = 18;
+	}
+
+	bool UINotice::touch()
+	{
+#ifdef __ANDROID__
+		return true;
+#else
+		return false;
+#endif
+	}
+
+	void UINotice::touch_layout(const std::string& message)
+	{
+		int16_t vw = Constants::Constants::get().get_viewwidth();
+		int16_t vh = Constants::Constants::get().get_viewheight();
+		int16_t width = std::min<int16_t>(TOUCH_WIDTH, vw - 32);
+		uint16_t text_width = static_cast<uint16_t>(width - TOUCH_PAD * 2);
+
+		// Left-aligned questions (long NPC-style prompts) stay left-aligned
+		Text::Alignment align = type == NoticeType::YESNO && alignment == Text::Alignment::LEFT
+			? Text::Alignment::LEFT : Text::Alignment::CENTER;
+
+		question = Text(Text::Font::A13M, align, Color::Name::WHITE, message, text_width);
+		height = question.height();
+
+		const char* title = "Notice";
+
+		if (type == NoticeType::YESNO)
+			title = "Confirm";
+		else if (type == NoticeType::ENTERNUMBER)
+			title = "Enter an amount";
+
+		touch_title_text = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, title);
+
+		bool field = type == NoticeType::ENTERNUMBER;
+		int16_t text_h = std::max<int16_t>(height, 22);
+
+		touch_msg_y = TOUCH_MSG_Y;
+		touch_field_y = touch_msg_y + text_h + 14;
+		touch_buttons_y = field ? touch_field_y + TOUCH_FIELD_H + 18 : touch_msg_y + text_h + 20;
+
+		dimension = Point<int16_t>(width, touch_buttons_y + TOUCH_BUTTON_H + 20);
+
+		// Fixed spot, not dragged: centred, or at the top for a text field,
+		// so the phone keyboard (bottom half) leaves the box and OK visible
+		int16_t y = field ? 10 : (vh - dimension.y()) / 2 - 30;
+		position = Point<int16_t>((vw - width) / 2, std::max<int16_t>(y, 10));
+		dragarea = Point<int16_t>(0, 0);
+	}
+
+	Rectangle<int16_t> UINotice::touch_field() const
+	{
+		return Rectangle<int16_t>(
+			Point<int16_t>(TOUCH_PAD, touch_field_y),
+			Point<int16_t>(dimension.x() - TOUCH_PAD, touch_field_y + TOUCH_FIELD_H));
+	}
+
+	Point<int16_t> UINotice::touch_button(size_t index, size_t count) const
+	{
+		int16_t n = static_cast<int16_t>(count);
+		int16_t row = n * TOUCH_BUTTON_W + (n - 1) * TOUCH_BUTTON_GAP;
+		int16_t x = (dimension.x() - row) / 2 + static_cast<int16_t>(index) * (TOUCH_BUTTON_W + TOUCH_BUTTON_GAP);
+
+		return Point<int16_t>(x, touch_buttons_y);
+	}
+
+	Point<int16_t> UINotice::touch_button_size()
+	{
+		return Point<int16_t>(TOUCH_BUTTON_W, TOUCH_BUTTON_H);
+	}
+
+	void UINotice::set_touch_title(const std::string& title)
+	{
+		touch_title_text.change_text(title);
+	}
+
+	void UINotice::touch_without_buttons()
+	{
+		if (touch())
+			dimension = Point<int16_t>(dimension.x(), touch_buttons_y);
 	}
 
 	UINotice::UINotice(std::string message, NoticeType t) : UINotice(message, t, Text::Alignment::CENTER) {}
 
 	void UINotice::draw(bool textfield) const
 	{
+		if (touch())
+		{
+			classic::panel(position, dimension.x(), dimension.y());
+			touch_title_text.draw(position + Point<int16_t>(dimension.x() / 2, 6));
+
+			int16_t text_x = question_left_aligned() ? TOUCH_PAD : dimension.x() / 2;
+			question.draw(position + Point<int16_t>(text_x, touch_msg_y));
+
+			if (textfield)
+			{
+				Rectangle<int16_t> f = touch_field();
+				Point<int16_t> tl = position + f.get_left_top();
+
+				// A light field in a gold rim, like the chat line
+				if (!classic::input(tl, f.width(), f.height()))
+				{
+					classic::box(tl.x(), tl.y(), f.width(), f.height(), Color::Name::GALLERY, 0.97f);
+					classic::frame(tl.x(), tl.y(), f.width(), f.height(), Color::Name::HUD_EXP);
+				}
+			}
+
+			return;
+		}
+
 		Point<int16_t> start = position;
 
 		top.draw(start);
@@ -113,6 +237,11 @@ namespace ms
 		bottombox.draw(start);
 	}
 
+	bool UINotice::question_left_aligned() const
+	{
+		return type == NoticeType::YESNO && alignment == Text::Alignment::LEFT;
+	}
+
 	int16_t UINotice::box2offset(bool textfield) const
 	{
 		int16_t offset = top.height() + centerbox.height() + box.height() + height - (textfield ? 0 : 16);
@@ -132,6 +261,13 @@ namespace ms
 		int16_t belowtext = box2offset(false) + button_y_offset;
 
 		nl::node src = nl::nx::ui["Basic.img"];
+
+		if (touch())
+		{
+			buttons[Buttons::YES] = std::make_unique<ClassicButton>("OK", touch_button(0, 2), touch_button_size());
+			buttons[Buttons::NO] = std::make_unique<ClassicButton>("Cancel", touch_button(1, 2), touch_button_size());
+			return;
+		}
 
 		buttons[Buttons::YES] = std::make_unique<MapleButton>(src["BtOK4"], Point<int16_t>(156 + button_x_offset, belowtext));
 		buttons[Buttons::NO] = std::make_unique<MapleButton>(src["BtCancel4"], Point<int16_t>(198 + button_x_offset, belowtext));
@@ -195,10 +331,24 @@ namespace ms
 
 		nl::node src = nl::nx::ui["Basic.img"];
 
-		buttons[Buttons::OK] = std::make_unique<MapleButton>(src["BtOK4"], 156 + button_x_offset, pos_y);
-		buttons[Buttons::CANCEL] = std::make_unique<MapleButton>(src["BtCancel4"], 198 + button_x_offset, pos_y);
+		if (touch())
+		{
+			buttons[Buttons::OK] = std::make_unique<ClassicButton>("OK", touch_button(0, 2), touch_button_size());
+			buttons[Buttons::CANCEL] = std::make_unique<ClassicButton>("Cancel", touch_button(1, 2), touch_button_size());
 
-		numfield = Textfield(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::LIGHTGREY, Rectangle<int16_t>(24, 232, belowtext, belowtext + 20), 10);
+			Rectangle<int16_t> f = touch_field();
+			int16_t top = static_cast<int16_t>(f.top() + (f.height() - 20) / 2);
+			numfield = Textfield(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::BLACK,
+				Rectangle<int16_t>(static_cast<int16_t>(f.left() + 30), static_cast<int16_t>(f.right() - 12), top, static_cast<int16_t>(top + 20)), 10);
+		}
+		else
+		{
+			buttons[Buttons::OK] = std::make_unique<MapleButton>(src["BtOK4"], 156 + button_x_offset, pos_y);
+			buttons[Buttons::CANCEL] = std::make_unique<MapleButton>(src["BtCancel4"], 198 + button_x_offset, pos_y);
+
+			numfield = Textfield(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::LIGHTGREY, Rectangle<int16_t>(24, 232, belowtext, belowtext + 20), 10);
+		}
+
 		numfield.change_text(std::to_string(quantity));
 
 		numfield.set_enter_callback(
@@ -330,10 +480,25 @@ namespace ms
 
 		nl::node src = nl::nx::ui["Basic.img"];
 
-		buttons[Buttons::OK]     = std::make_unique<MapleButton>(src["BtOK4"],     156 + button_x_offset, pos_y);
-		buttons[Buttons::CANCEL] = std::make_unique<MapleButton>(src["BtCancel4"], 198 + button_x_offset, pos_y);
+		if (touch())
+		{
+			set_touch_title("Enter text");
 
-		textfield = Textfield(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::LIGHTGREY, Rectangle<int16_t>(24, 232, belowtext, belowtext + 20), maxlength);
+			buttons[Buttons::OK] = std::make_unique<ClassicButton>("OK", touch_button(0, 2), touch_button_size());
+			buttons[Buttons::CANCEL] = std::make_unique<ClassicButton>("Cancel", touch_button(1, 2), touch_button_size());
+
+			Rectangle<int16_t> f = touch_field();
+			int16_t top = static_cast<int16_t>(f.top() + (f.height() - 20) / 2);
+			textfield = Textfield(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::BLACK,
+				Rectangle<int16_t>(static_cast<int16_t>(f.left() + 30), static_cast<int16_t>(f.right() - 12), top, static_cast<int16_t>(top + 20)), maxlength);
+		}
+		else
+		{
+			buttons[Buttons::OK]     = std::make_unique<MapleButton>(src["BtOK4"],     156 + button_x_offset, pos_y);
+			buttons[Buttons::CANCEL] = std::make_unique<MapleButton>(src["BtCancel4"], 198 + button_x_offset, pos_y);
+
+			textfield = Textfield(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::LIGHTGREY, Rectangle<int16_t>(24, 232, belowtext, belowtext + 20), maxlength);
+		}
 
 		textfield.set_enter_callback(
 			[&](std::string str)
@@ -424,6 +589,8 @@ namespace ms
 	{
 		// No buttons — purely informational. The trade/quest handler
 		// will UI::remove() us when the pending state resolves.
+		set_touch_title("Please wait");
+		touch_without_buttons();
 	}
 
 	void UIWaitNotice::draw(float alpha) const
@@ -441,7 +608,10 @@ namespace ms
 
 		nl::node src = nl::nx::ui["Basic.img"];
 
-		buttons[Buttons::OK] = std::make_unique<MapleButton>(src["BtOK4"], 197, box2offset(false));
+		if (touch())
+			buttons[Buttons::OK] = std::make_unique<ClassicButton>("OK", touch_button(0, 1), touch_button_size());
+		else
+			buttons[Buttons::OK] = std::make_unique<MapleButton>(src["BtOK4"], 197, box2offset(false));
 	}
 
 	void UIOk::draw(float alpha) const

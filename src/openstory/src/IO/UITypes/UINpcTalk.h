@@ -82,6 +82,12 @@ namespace ms
 		Button::State button_pressed(uint16_t buttonid) override;
 
 	private:
+		// Phones get finger-sized buttons in a strip under the dialog
+		static bool touch();
+		static constexpr int16_t TOUCH_BUTTON_W = 104;
+		static constexpr int16_t TOUCH_BUTTON_H = 40;
+		static constexpr int16_t TOUCH_STRIP_GAP = 4;
+
 		bool is_valid_type(int8_t value);
 		std::string format_text(const std::string& tx, const int32_t& npcid);
 		std::string parse_simple_selections(const std::string& tx);

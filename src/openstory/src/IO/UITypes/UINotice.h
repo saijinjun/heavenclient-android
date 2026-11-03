@@ -45,6 +45,27 @@ namespace ms
 
 		int16_t box2offset(bool textfield) const;
 
+		// Phones draw these dialogs in the navy+gold skin, sized for a
+		// finger, instead of the small desktop Notice6 frame (see touch()).
+		static bool touch();
+		// Where the touch layout puts its text field and its row of
+		// buttons, relative to the dialog's top-left
+		Rectangle<int16_t> touch_field() const;
+		Point<int16_t> touch_button(size_t index, size_t count) const;
+		static Point<int16_t> touch_button_size();
+		void set_touch_title(const std::string& title);
+		// For dialogs with no buttons: drop the empty button row
+		void touch_without_buttons();
+
+	private:
+		void touch_layout(const std::string& message);
+		bool question_left_aligned() const;
+
+		Text touch_title_text;
+		int16_t touch_msg_y = 0;
+		int16_t touch_field_y = 0;
+		int16_t touch_buttons_y = 0;
+
 	private:
 		Texture top;
 		Texture center;
