@@ -148,6 +148,7 @@ namespace ms
 		void check_seats();
 		void check_ladders(bool up);
 		void check_drops();
+		void touch_drops();
 
 		enum State
 		{
@@ -188,6 +189,12 @@ namespace ms
 		Combat combat;
 
 		std::chrono::time_point<std::chrono::steady_clock> start;
+
+		// Walk-over looting (AutoPickup): the last drop asked for and when,
+		// so standing on a drop the server refuses (someone else's, or a full
+		// inventory) doesn't send a pickup every frame.
+		int32_t touch_oid = 0;
+		std::chrono::steady_clock::time_point touch_at;
 		uint16_t levelBefore;
 		int64_t expBefore;
 

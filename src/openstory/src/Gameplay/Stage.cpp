@@ -300,6 +300,8 @@ namespace ms
 
 			if (player.is_key_down(KeyAction::Id::PICKUP))
 				check_drops();
+			else if (Setting<AutoPickup>::get().load())
+				touch_drops();
 		}
 
 		// A server-approved hidden GM takes no touch damage or knockback.
@@ -379,6 +381,28 @@ namespace ms
 
 		if (loot.first)
 			PickupItemPacket(loot.first, loot.second).dispatch();
+	}
+
+	void Stage::touch_drops()
+	{
+		auto now = std::chrono::steady_clock::now();
+
+		// At most ~6 pickups a second, and the same drop again only after a
+		// second (the server answers a refused pickup with nothing).
+		if (now - touch_at < std::chrono::milliseconds(150))
+			return;
+
+		MapDrops::Loot loot = drops.find_loot_at(player.get_position());
+
+		if (!loot.first)
+			return;
+
+		if (loot.first == touch_oid && now - touch_at < std::chrono::seconds(1))
+			return;
+
+		touch_oid = loot.first;
+		touch_at = now;
+		PickupItemPacket(loot.first, loot.second).dispatch();
 	}
 
 	void Stage::send_key(KeyType::Id type, int32_t action, bool down)
