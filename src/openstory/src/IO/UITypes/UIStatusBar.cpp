@@ -16,6 +16,7 @@
 //	along with this program.  If not, see <https://www.gnu.org/licenses/>.		//
 //////////////////////////////////////////////////////////////////////////////////
 #include "UIStatusBar.h"
+#include "../../Graphics/ClassicStyle.h"
 
 #include <algorithm>
 #include <cmath>
@@ -2134,19 +2135,21 @@ namespace ms
 		}
 
 		// Left cap, stretched middle and right cap, scaled to height h.
-		void three_slice(const Texture* parts, int16_t x, int16_t y, int16_t w, int16_t h)
+		void three_slice(const Texture* parts, int16_t x, int16_t y, int16_t w, int16_t h, float alpha = 1.0f)
 		{
 			int16_t cap = static_cast<int16_t>(parts[0].width() * h / std::max<int16_t>(parts[0].height(), 1));
 
-			if (w < cap * 2)
+			// A short bar squeezes its round caps instead of going square.
+			cap = std::min<int16_t>(cap, w / 2);
+			auto at = [&](const Texture& t, int16_t px, int16_t pw)
 			{
-				parts[1].draw(DrawArgument(Point<int16_t>(x, y), Point<int16_t>(w, h)));
-				return;
-			}
+				Point<int16_t> pos(px, y);
+				t.draw(DrawArgument(pos, pos, Point<int16_t>(pw, h), 1.0f, 1.0f, alpha, 0.0f));
+			};
 
-			parts[0].draw(DrawArgument(Point<int16_t>(x, y), Point<int16_t>(cap, h)));
-			parts[1].draw(DrawArgument(Point<int16_t>(x + cap, y), Point<int16_t>(w - cap * 2, h)));
-			parts[2].draw(DrawArgument(Point<int16_t>(x + w - cap, y), Point<int16_t>(cap, h)));
+			at(parts[0], x, cap);
+			at(parts[1], x + cap, w - cap * 2);
+			at(parts[2], x + w - cap, cap);
 		}
 
 		void ease(float& shown, float& trail, float target)
@@ -2282,15 +2285,16 @@ namespace ms
 			int16_t bw = HUD_BADGE + 2;
 			int16_t bh = static_cast<int16_t>(bw * hud_badge.height() / std::max<int16_t>(hud_badge.width(), 1));
 			hud_badge.draw(DrawArgument(Point<int16_t>(bx - 1, by + HUD_BADGE + 1 - bh), Point<int16_t>(bw, bh)));
-			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 8));
-			hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 18));
+			// "LV" over the number, both inside the badge's square
+			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, classic::text_y(hud_level_caption, by + 12)));
+			classic::shadowed(hud_level, Point<int16_t>(bx + HUD_BADGE / 2, classic::text_y(hud_level, by + 25)));
 		}
 		else
 		{
 			soft_box(bx, by, HUD_BADGE, HUD_BADGE, Color::Name::HUD_EXP, 0.95f);
 			soft_box(bx + 2, by + 2, HUD_BADGE - 4, HUD_BADGE - 4, Color::Name::HUD_PANEL, 1.0f);
-			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 2));
-			hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, by + 14));
+			hud_level_caption.draw(Point<int16_t>(bx + HUD_BADGE / 2, classic::text_y(hud_level_caption, by + 10)));
+			hud_level.draw(Point<int16_t>(bx + HUD_BADGE / 2, classic::text_y(hud_level, by + 24)));
 		}
 
 		if (stats.get_stat(MapleStat::Id::AP) > 0 || stats.get_stat(MapleStat::Id::SP) > 0)
@@ -2299,9 +2303,11 @@ namespace ms
 		// Name, job and EXP on the first row.
 		int16_t cx = bx + HUD_BADGE + 8;
 		int16_t cw = x0 + w - 20 - cx;
-		hud_name.draw(Point<int16_t>(cx, y0 + 4));
-		hud_job.draw(Point<int16_t>(cx + hud_name.width() + 6, y0 + 5));
-		hud_exp.draw(Point<int16_t>(cx + cw, y0 + 5));
+		// Each label's letters are centered on the row, above the gauges.
+		int16_t row = y0 + 13;
+		hud_name.draw(Point<int16_t>(cx, classic::text_y(hud_name, row)));
+		hud_job.draw(Point<int16_t>(cx + hud_name.width() + 6, classic::text_y(hud_job, row)));
+		hud_exp.draw(Point<int16_t>(cx + cw, classic::text_y(hud_exp, row)));
 
 		// HP and MP gauges side by side on the second row.
 		int16_t gy = y0 + 24;
@@ -2314,18 +2320,19 @@ namespace ms
 		{
 			if (art)
 			{
-				// The fill sits inside the frame's metal rim.
-				constexpr int16_t INSET = 2;
+				// The fill is a pill that sits exactly in the frame's
+				// rounded opening (rows 10-38 of the 48 px art).
+				constexpr int16_t INSET = static_cast<int16_t>(HUD_GAUGE_H * 10 / 48.0f + 0.5f);
+				constexpr int16_t ih = static_cast<int16_t>(HUD_GAUGE_H * 28 / 48.0f + 0.5f);
 				int16_t iw = gw - INSET * 2;
-				int16_t ih = HUD_GAUGE_H - INSET * 2;
 				int16_t trail_w = static_cast<int16_t>(iw * std::clamp(trail, 0.0f, 1.0f));
 				int16_t fill_w = static_cast<int16_t>(iw * std::clamp(shown, 0.0f, 1.0f));
 
 				three_slice(hud_frame, gx, gy, gw, HUD_GAUGE_H);
 
+				// The amount just lost shows as a faded copy of the fill.
 				if (trail_w > fill_w)
-					ColorBox(trail_w - fill_w, ih, Color::Name::WHITE, 0.45f)
-						.draw(DrawArgument(Point<int16_t>(gx + INSET + fill_w, gy + INSET)));
+					three_slice(fill, gx + INSET, gy + INSET, trail_w, ih, 0.35f);
 
 				if (fill_w > 0)
 					three_slice(fill, gx + INSET, gy + INSET, fill_w, ih);
@@ -2356,7 +2363,8 @@ namespace ms
 				ColorBox(1, HUD_GAUGE_H, Color::Name::RED, a).draw(DrawArgument(Point<int16_t>(gx + gw, gy)));
 			}
 
-			label.draw(Point<int16_t>(gx + gw / 2, gy + 1));
+			// Centered on the gauge, with a shadow to read over the fill
+			classic::shadowed(label, Point<int16_t>(gx + gw / 2, classic::text_y(label, gy + HUD_GAUGE_H / 2)));
 		};
 
 		gauge(cx, hud_hp_shown, hud_hp_trail, Color::Name::HUD_HP, hud_fill[0], hud_hp, gethppercent() < hp_warn);

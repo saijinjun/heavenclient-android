@@ -268,9 +268,9 @@ namespace ms
 		classic::panel(e.get_left_top(), e.width(), eh);
 
 		if (classic::close_button(Point<int16_t>(e.right() - eh, e.top()), eh))
-			exit_label.draw(Point<int16_t>(e.left() + (e.width() - eh) / 2, e.top() + (eh - exit_label.height()) / 2));
+			exit_label.draw(Point<int16_t>(e.left() + (e.width() - eh) / 2, classic::text_y(exit_label, e.top() + eh / 2)));
 		else
-			exit_label.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (eh - exit_label.height()) / 2));
+			exit_label.draw(Point<int16_t>(e.left() + e.width() / 2, classic::text_y(exit_label, e.top() + eh / 2)));
 
 		if (selected_item >= 0 && selected_item < static_cast<int16_t>(items.size()))
 		{
@@ -284,7 +284,7 @@ namespace ms
 
 			Rectangle<int16_t> b = buy_rect();
 			classic::button(b.get_left_top(), b.width(), b.height(), buy_armed);
-			buy_label.draw(Point<int16_t>(b.left() + b.width() / 2, b.top() + (b.height() - buy_label.height()) / 2));
+			buy_label.draw(Point<int16_t>(b.left() + b.width() / 2, classic::text_y(buy_label, b.top() + b.height() / 2)));
 		}
 
 		if (status_ticks > 0 && !status_message.empty())
@@ -298,7 +298,7 @@ namespace ms
 
 			status_text.change_color(status_error ? Color::Name::TORCHRED : Color::Name::WHITE);
 			classic::panel(p, w, 40);
-			status_text.draw(Point<int16_t>(r.left() + w / 2, r.top() + (40 - status_text.height()) / 2));
+			status_text.draw(Point<int16_t>(r.left() + w / 2, classic::text_y(status_text, r.top() + 40 / 2)));
 		}
 	}
 
@@ -486,6 +486,9 @@ namespace ms
 			show_status("The server didn't answer. Tap Exit to try again.", true);
 
 		preview_look.update(Constants::TIMESTEP);
+
+		if (preview_has_pet)
+			preview_pet.update();
 
 		// Walk
 		float dx = 0.0f;
@@ -856,7 +859,7 @@ namespace ms
 
 		void m_centered(const Text& text, Rectangle<int16_t> box)
 		{
-			text.draw(Point<int16_t>(box.left() + box.width() / 2, box.top() + (box.height() - text.height()) / 2));
+			text.draw(Point<int16_t>(box.left() + box.width() / 2, classic::text_y(text, box.top() + box.height() / 2)));
 		}
 
 		std::string with_commas(int64_t value)
@@ -1010,9 +1013,33 @@ namespace ms
 
 		// Try-on: your look plus the selected equip
 		preview_look = Stage::get().get_player().get_look();
+		preview_has_pet = false;
+		preview_icon_id = 0;
 
 		if (itemid >= 1000000 && itemid < 2000000)
+		{
 			preview_look.add_equip(itemid);
+		}
+		else if (itemid / 10000 == 500)
+		{
+			// Pets stand beside you on the stage
+			nl::node src = nl::nx::item["Pet"][std::to_string(itemid) + ".img"]["stand0"];
+
+			if (src)
+			{
+				preview_pet = Animation(src);
+				preview_has_pet = true;
+			}
+			else
+			{
+				preview_icon_id = itemid;
+			}
+		}
+		else if (itemid != 0)
+		{
+			// Stars, effects, scrolls and the like: show the item itself
+			preview_icon_id = itemid;
+		}
 
 		preview_look.set_stance(Stance::Id::STAND1);
 	}
@@ -1087,7 +1114,7 @@ namespace ms
 		if (m_nx.get_text() != nx)
 			m_nx.change_text(nx);
 
-		m_nx.draw(Point<int16_t>(l.exit.left() - 16 - m_nx.width(), l.exit.top() + (l.exit.height() - m_nx.height()) / 2));
+		m_nx.draw(Point<int16_t>(l.exit.left() - 16 - m_nx.width(), classic::text_y(m_nx, l.exit.top() + l.exit.height() / 2)));
 
 		classic::button(l.exit.get_left_top(), l.exit.width(), l.exit.height());
 		m_centered(m_exit, l.exit);
@@ -1169,7 +1196,25 @@ namespace ms
 		classic::frame(l.detail.left(), l.detail.top(), l.detail.width(), l.detail.height(), Color::Name::HUD_EXP, 0.4f);
 
 		classic::cell(l.stage.get_left_top(), l.stage.width(), l.stage.height(), false);
-		preview_look.draw(DrawArgument(Point<int16_t>(l.stage.left() + l.stage.width() / 2, l.stage.bottom() - 12), false), inter);
+		Point<int16_t> feet(l.stage.left() + l.stage.width() / 2, l.stage.bottom() - 12);
+
+		if (preview_has_pet)
+		{
+			// The pet beside you, both on the same floor
+			preview_look.draw(DrawArgument(feet - Point<int16_t>(30, 0), false), inter);
+			preview_pet.draw(DrawArgument(feet + Point<int16_t>(40, 0), true), inter);
+		}
+		else if (preview_icon_id)
+		{
+			preview_look.draw(DrawArgument(feet - Point<int16_t>(50, 0), false), inter);
+
+			Rectangle<int16_t> big(Point<int16_t>(feet.x() + 10, l.stage.top() + 20), Point<int16_t>(feet.x() + 90, l.stage.top() + 100));
+			mobile_draw_icon(preview_icon_id, big);
+		}
+		else
+		{
+			preview_look.draw(DrawArgument(feet, false), inter);
+		}
 
 		int32_t itemid = mobile_itemid(m_selected);
 
@@ -1242,7 +1287,7 @@ namespace ms
 
 			m_status.change_color(status_error ? Color::Name::TORCHRED : Color::Name::WHITE);
 			classic::panel(p, w, 40);
-			m_status.draw(Point<int16_t>(p.x() + w / 2, p.y() + (40 - m_status.height()) / 2));
+			m_status.draw(Point<int16_t>(p.x() + w / 2, classic::text_y(m_status, p.y() + 40 / 2)));
 		}
 	}
 
@@ -1251,6 +1296,36 @@ namespace ms
 		// The list follows the cash inventory as items arrive or leave
 		if (m_mine && get_cash_storage().size() != m_storage_seen)
 			mobile_filter();
+
+		// Picking a card only changes the preview, so it happens as soon as
+		// the finger lands; buying and switching still wait for the lift
+		// (the press itself: the UI may be disabled, which turns clicks
+		// into plain moves, so the held button is what counts)
+		bool down = clicked || UI::get().is_mouse_held();
+		bool pressed_now = down && !m_was_down;
+		m_was_down = down;
+
+		if (pressed_now)
+		{
+			MobileLayout pl = mobile_layout();
+
+			if (pl.grid.contains(cursorpos))
+			{
+				int16_t first = m_first * pl.cols;
+				int16_t last = std::min<int16_t>(mobile_count(), first + pl.rows * pl.cols);
+
+				for (int16_t i = first; i < last; i++)
+				{
+					if (mobile_card(pl, i).contains(cursorpos))
+					{
+						if (i != m_selected)
+							mobile_select(i);
+
+						break;
+					}
+				}
+			}
+		}
 
 		// Moves arrive without the button state while a finger is held;
 		// act when it lifts where it landed, so swipes never buy

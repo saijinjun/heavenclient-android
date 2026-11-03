@@ -145,6 +145,11 @@ namespace ms
 		chatfield = Textfield(Text::A12M, Text::LEFT, Color::Name::BLACK, Rectangle<int16_t>(Point<int16_t>(-435, -59), Point<int16_t>(-40, -39)), 0);
 		typing_hint = Text(Text::A12M, Text::LEFT, Color::Name::DUSTYGRAY, "Say something, then press Enter to send");
 
+		const char* chip_names[NUM_CHIPS] = { "All", "Party", "Guild", "Buddy" };
+
+		for (size_t i = 0; i < NUM_CHIPS; i++)
+			chip_labels[i] = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, chip_names[i]);
+
 		set_chat_open(chatopen);
 
 		chatfield.set_enter_callback(
@@ -216,7 +221,12 @@ namespace ms
 		chatopen = open;
 		buttons[BT_OPENCHAT]->set_active(!open);
 		buttons[BT_CLOSECHAT]->set_active(open);
+#ifdef __ANDROID__
+		// The chips above the log replace the small target menu on phones
+		buttons[BT_CHATTARGETS]->set_active(false);
+#else
 		buttons[BT_CHATTARGETS]->set_active(open);
+#endif
 		buttons[BT_SCROLLUP]->set_active(open);
 		buttons[BT_SCROLLDOWN]->set_active(open);
 		buttons[BT_IMOTICON]->set_active(open);
@@ -329,9 +339,34 @@ namespace ms
 
 		if (chatopen)
 		{
+#ifdef __ANDROID__
+			{
+				// Navy glass behind the log with a gold top edge, and the
+				// "send to" chips above it
+				int16_t top = getchattop();
+				int16_t h = chatrows * CHATROWHEIGHT + 4;
+
+				classic::box(0, top, 502, h, Color::Name::HUD_PANEL, 0.78f);
+				classic::box(0, top, 502, 2, Color::Name::HUD_EXP, 0.9f);
+				classic::box(0, top + 2, 502, 1, Color::Name::WHITE, 0.15f);
+				classic::box(501, top, 1, h, Color::Name::HUD_EXP, 0.45f);
+
+				const ChatTarget chip_targets[NUM_CHIPS] = { CHT_ALL, CHT_PARTY, CHT_GUILD, CHT_BUDDY };
+
+				for (size_t i = 0; i < NUM_CHIPS; i++)
+				{
+					Rectangle<int16_t> r = chip_rect(i);
+					bool lit = chattarget == chip_targets[i];
+					classic::tab(r.get_left_top(), r.width(), r.height(), lit);
+					chip_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
+					chip_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(chip_labels[i], r.top() + r.height() / 2)));
+				}
+			}
+#else
 			tapbartop.draw(Point<int16_t>(position.x() - 576, getchattop()));
 
 			chatbox.draw(DrawArgument(Point<int16_t>(0, getchattop() + 2)));
+#endif
 
 			int16_t chattop = getchattop();
 			int16_t chatbottom = chattop + chatrows * CHATROWHEIGHT;
@@ -458,8 +493,10 @@ namespace ms
 
 			slider.draw(Point<int16_t>(position.x(), getchattop() + 5));
 
+#ifndef __ANDROID__
 			if (chattarget >= CHT_ALL && chattarget < NUM_TARGETS)
 				chattargets[chattarget].draw(DrawArgument(position + Point<int16_t>(0, 2)));
+#endif
 
 			chatcover.draw(position);
 			chatfield.draw(position);
@@ -593,6 +630,11 @@ namespace ms
 				return true;
 		}
 
+#ifdef __ANDROID__
+		if (chatopen && chip_at(cursorpos) >= 0)
+			return true;
+#endif
+
 		Point<int16_t> absp(0, getchattop() - 16);
 		Point<int16_t> dim(500, chatrows * CHATROWHEIGHT + CHATYOFFSET + 16);
 		return Rectangle<int16_t>(absp, absp + dim).contains(cursorpos);
@@ -725,6 +767,27 @@ namespace ms
 				return Cursor::State::CANCLICK;
 			}
 		}
+
+#ifdef __ANDROID__
+		// The "send to" chips above the log
+		if (chatopen)
+		{
+			int32_t chip = chip_at(cursorpos);
+
+			if (chip >= 0)
+			{
+				const ChatTarget chip_targets[NUM_CHIPS] = { CHT_ALL, CHT_PARTY, CHT_GUILD, CHT_BUDDY };
+
+				if (clicking && chattarget != chip_targets[chip])
+				{
+					Sound(Sound::Name::BUTTONCLICK).play();
+					set_chat_target(chip_targets[chip]);
+				}
+
+				return Cursor::State::CANCLICK;
+			}
+		}
+#endif
 
 		// Custom button handling: break after a button press fires.
 		// UIElement::send_cursor iterates ALL buttons in one loop, so when
@@ -1064,6 +1127,23 @@ namespace ms
 	bool UIChatBar::is_chatfieldopen()
 	{
 		return chatfieldopen;
+	}
+
+	Rectangle<int16_t> UIChatBar::chip_rect(size_t index) const
+	{
+		int16_t x = 4 + static_cast<int16_t>(index) * (CHIP_W + 4);
+		int16_t y = getchattop() - CHIP_H - 4;
+
+		return Rectangle<int16_t>(Point<int16_t>(x, y), Point<int16_t>(x + CHIP_W, y + CHIP_H));
+	}
+
+	int32_t UIChatBar::chip_at(Point<int16_t> cursorpos) const
+	{
+		for (size_t i = 0; i < NUM_CHIPS; i++)
+			if (chip_rect(i).contains(cursorpos))
+				return static_cast<int32_t>(i);
+
+		return -1;
 	}
 
 	void UIChatBar::set_chat_target(ChatTarget target)

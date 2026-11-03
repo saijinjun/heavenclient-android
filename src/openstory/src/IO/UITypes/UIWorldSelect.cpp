@@ -948,12 +948,12 @@ namespace ms
 
 			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
 			drawn_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
-			drawn_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, r.top() + (r.height() - drawn_labels[i].height()) / 2));
+			drawn_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(drawn_labels[i], r.top() + r.height() / 2)));
 		}
 
 		Rectangle<int16_t> e = drawn_enter_rect();
 		classic::button(e.get_left_top(), e.width(), e.height());
-		drawn_enter.draw(Point<int16_t>(e.left() + e.width() / 2, e.top() + (e.height() - drawn_enter.height()) / 2));
+		drawn_enter.draw(Point<int16_t>(e.left() + e.width() / 2, classic::text_y(drawn_enter, e.top() + e.height() / 2)));
 	}
 
 }
