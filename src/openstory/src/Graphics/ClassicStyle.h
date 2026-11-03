@@ -248,10 +248,21 @@ namespace ms
 		{
 			const Texture& t = selected ? art().slot_lit : art().slot;
 
-			if (t.is_valid())
-				stretch(t, tl.x(), tl.y(), w, h);
-			else
+			if (!t.is_valid())
+			{
 				cell(tl, w, h, selected);
+				return;
+			}
+
+			stretch(t, tl.x(), tl.y(), w, h);
+
+			// The two rims are close in brightness, so the chosen slot
+			// also gets a soft gold wash and a light outline
+			if (selected)
+			{
+				box(tl.x() + 4, tl.y() + 4, w - 8, h - 8, Color::Name::HUD_EXP, 0.18f);
+				frame(tl.x() - 1, tl.y() - 1, w + 2, h + 2, Color::Name::WHITE, 0.7f);
+			}
 		}
 
 		// A skill icon frame with a thick gold rim
