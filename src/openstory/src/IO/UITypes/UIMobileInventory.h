@@ -57,6 +57,8 @@ namespace ms
 			Rectangle<int16_t> action;
 			Rectangle<int16_t> drop;
 			std::array<Rectangle<int16_t>, 6> quick;
+			Rectangle<int16_t> sort;
+			Rectangle<int16_t> drop_meso;
 			int16_t cell;
 			int16_t cols;
 			int16_t rows;
@@ -78,6 +80,9 @@ namespace ms
 		std::string action_name() const;
 		void use_selected();
 		void drop_selected();
+		void drop_meso();
+		void sort_tab();
+		bool can_sort() const;
 		void open_classic();
 		bool can_quick_slot() const;
 		// The touch quick slot that holds this item, or -1
@@ -109,6 +114,8 @@ namespace ms
 		mutable Text meso;
 		mutable Text action_label;
 		Text drop_label;
+		Text sort_label;
+		Text drop_meso_label;
 		Text classic_label;
 		Text close_label;
 		Text empty_hint;

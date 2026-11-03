@@ -375,6 +375,11 @@ namespace ms
 			}
 			case Buttons::BT_COIN:
 			case Buttons::BT_COIN_SM:
+			{
+				prompt_meso_drop(inventory.get_meso());
+
+				return Button::State::NORMAL;
+			}
 			case Buttons::BT_POINT:
 			case Buttons::BT_POINT_SM:
 			case Buttons::BT_POT:
@@ -420,6 +425,25 @@ namespace ms
 
 		if (icons.count(slot) && is_visible(slot))
 			use_item(inventory, tab, slot);
+	}
+
+	void UIItemInventory::prompt_meso_drop(int64_t meso)
+	{
+		if (meso < 10)
+		{
+			UI::get().emplace<UIOk>("You need at least 10 mesos to drop.", [](bool) {});
+			return;
+		}
+
+		auto most = static_cast<int32_t>(std::min<int64_t>(meso, 50000));
+
+		UI::get().emplace<UIEnterNumber>("How many mesos will you drop?\\n(10 to " + std::to_string(most) + ")",
+			[](int32_t amount)
+			{
+				if (amount >= 10)
+					MesoDropPacket(amount).dispatch();
+			},
+			most, std::min<int32_t>(most, 1000));
 	}
 
 	void UIItemInventory::use_item(const Inventory& inventory, InventoryType::Id tab, int16_t slot)

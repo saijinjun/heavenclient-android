@@ -94,6 +94,7 @@ namespace ms
 			/// Inventory
 			GATHER_ITEMS = 69,
 			SORT_ITEMS = 70,
+			MESO_DROP = 94,
 			MOVE_ITEM = 71,
 			USE_ITEM = 72,
 			HIRED_MERCHANT_REQUEST = 63,

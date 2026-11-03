@@ -48,6 +48,18 @@ namespace ms
 		}
 	};
 
+	// Throws mesos on the ground (the server takes 10 to 50,000)
+	// Opcode: MESO_DROP(94)
+	class MesoDropPacket : public OutPacket
+	{
+	public:
+		MesoDropPacket(int32_t amount) : OutPacket(OutPacket::Opcode::MESO_DROP)
+		{
+			write_time();
+			write_int(amount);
+		}
+	};
+
 	// Packet which requests that an item is moved
 	// Opcode: MOVE_ITEM(71)
 	class MoveItemPacket : public OutPacket

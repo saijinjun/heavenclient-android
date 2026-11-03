@@ -34,6 +34,10 @@ namespace ms
 		// Uses, equips or opens the item in a slot, as a double-click does.
 		// Also used by the mobile inventory.
 		static void use_item(const Inventory& inventory, InventoryType::Id tab, int16_t slot);
+
+		// Asks how many mesos to throw on the ground (10 to 50,000, the
+		// server's limits) and drops them.
+		static void prompt_meso_drop(int64_t meso);
 		static bool can_wear(const Inventory& inventory, int16_t slot);
 
 		UIItemInventory(const Inventory& inventory);
