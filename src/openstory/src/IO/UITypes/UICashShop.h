@@ -26,6 +26,7 @@
 
 #include "../../Character/Look/CharLook.h"
 #include "../../Data/ItemData.h"
+#include "../../Graphics/Animation.h"
 #include "../../Graphics/Text.h"
 
 #include <array>
@@ -193,6 +194,12 @@ namespace ms
 
 		int16_t selected_item;
 		CharLook preview_look;
+		// What the stage shows for an item you can't wear: a pet's
+		// standing animation, or the item's own icon drawn large
+		Animation preview_pet;
+		bool preview_has_pet = false;
+		bool m_was_down = false;
+		int32_t preview_icon_id = 0;
 
 		// Controllable stage character
 		float char_x = 820.0f;

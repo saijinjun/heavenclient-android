@@ -487,6 +487,9 @@ namespace ms
 
 		preview_look.update(Constants::TIMESTEP);
 
+		if (preview_has_pet)
+			preview_pet.update();
+
 		// Walk
 		float dx = 0.0f;
 
@@ -1010,9 +1013,33 @@ namespace ms
 
 		// Try-on: your look plus the selected equip
 		preview_look = Stage::get().get_player().get_look();
+		preview_has_pet = false;
+		preview_icon_id = 0;
 
 		if (itemid >= 1000000 && itemid < 2000000)
+		{
 			preview_look.add_equip(itemid);
+		}
+		else if (itemid / 10000 == 500)
+		{
+			// Pets stand beside you on the stage
+			nl::node src = nl::nx::item["Pet"][std::to_string(itemid) + ".img"]["stand0"];
+
+			if (src)
+			{
+				preview_pet = Animation(src);
+				preview_has_pet = true;
+			}
+			else
+			{
+				preview_icon_id = itemid;
+			}
+		}
+		else if (itemid != 0)
+		{
+			// Stars, effects, scrolls and the like: show the item itself
+			preview_icon_id = itemid;
+		}
 
 		preview_look.set_stance(Stance::Id::STAND1);
 	}
@@ -1169,7 +1196,25 @@ namespace ms
 		classic::frame(l.detail.left(), l.detail.top(), l.detail.width(), l.detail.height(), Color::Name::HUD_EXP, 0.4f);
 
 		classic::cell(l.stage.get_left_top(), l.stage.width(), l.stage.height(), false);
-		preview_look.draw(DrawArgument(Point<int16_t>(l.stage.left() + l.stage.width() / 2, l.stage.bottom() - 12), false), inter);
+		Point<int16_t> feet(l.stage.left() + l.stage.width() / 2, l.stage.bottom() - 12);
+
+		if (preview_has_pet)
+		{
+			// The pet beside you, both on the same floor
+			preview_look.draw(DrawArgument(feet - Point<int16_t>(30, 0), false), inter);
+			preview_pet.draw(DrawArgument(feet + Point<int16_t>(40, 0), true), inter);
+		}
+		else if (preview_icon_id)
+		{
+			preview_look.draw(DrawArgument(feet - Point<int16_t>(50, 0), false), inter);
+
+			Rectangle<int16_t> big(Point<int16_t>(feet.x() + 10, l.stage.top() + 20), Point<int16_t>(feet.x() + 90, l.stage.top() + 100));
+			mobile_draw_icon(preview_icon_id, big);
+		}
+		else
+		{
+			preview_look.draw(DrawArgument(feet, false), inter);
+		}
 
 		int32_t itemid = mobile_itemid(m_selected);
 
@@ -1251,6 +1296,36 @@ namespace ms
 		// The list follows the cash inventory as items arrive or leave
 		if (m_mine && get_cash_storage().size() != m_storage_seen)
 			mobile_filter();
+
+		// Picking a card only changes the preview, so it happens as soon as
+		// the finger lands; buying and switching still wait for the lift
+		// (the press itself: the UI may be disabled, which turns clicks
+		// into plain moves, so the held button is what counts)
+		bool down = clicked || UI::get().is_mouse_held();
+		bool pressed_now = down && !m_was_down;
+		m_was_down = down;
+
+		if (pressed_now)
+		{
+			MobileLayout pl = mobile_layout();
+
+			if (pl.grid.contains(cursorpos))
+			{
+				int16_t first = m_first * pl.cols;
+				int16_t last = std::min<int16_t>(mobile_count(), first + pl.rows * pl.cols);
+
+				for (int16_t i = first; i < last; i++)
+				{
+					if (mobile_card(pl, i).contains(cursorpos))
+					{
+						if (i != m_selected)
+							mobile_select(i);
+
+						break;
+					}
+				}
+			}
+		}
 
 		// Moves arrive without the button state while a finger is held;
 		// act when it lifts where it landed, so swipes never buy
