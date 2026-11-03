@@ -23,6 +23,9 @@
 #include "../Components/MapleButton.h"
 
 #include "../../Audio/Audio.h"
+#include "UIChatBar.h"
+
+#include <chrono>
 #include "../../Configuration.h"
 #include "../../Net/ChannelLoadData.h"
 #include "../../Net/Packets/GameplayPackets.h"
@@ -222,20 +225,75 @@ namespace ms
 		}
 	}
 
+	namespace
+	{
+		using Clock = std::chrono::steady_clock;
+
+		// The channel asked for, or -1 when no change is in flight
+		int16_t pending_channel = -1;
+		Clock::time_point pending_since;
+
+		// The server answers within a second on a healthy connection; past
+		// this it refused without saying so (a mini game or shop was open)
+		constexpr auto PENDING_TIMEOUT = std::chrono::seconds(8);
+
+		void tell_player(const std::string& message)
+		{
+			if (auto chatbar = UI::get().get_element<UIChatBar>())
+				chatbar->send_line(message, UIChatBar::LineType::RED);
+		}
+	}
+
 	void UIChannel::change_channel()
 	{
+		if (pending_channel >= 0)
+		{
+			deactivate();
+			return;
+		}
+
 		if (selected_channel != current_channel)
 		{
-			// Persist the new channel so UIChannel and other consumers of
-			// Configuration::get_channelid() pick up the right value after
-			// the reconnect completes.
-			Configuration::get().set_channelid(selected_channel);
-			current_channel = selected_channel;
+			pending_channel = selected_channel;
+			pending_since = Clock::now();
 
 			UI::get().disable();
 			ChangeChannelPacket(selected_channel).dispatch();
 		}
 
 		deactivate();
+	}
+
+	void UIChannel::change_succeeded()
+	{
+		if (pending_channel < 0)
+			return;
+
+		// Persist the new channel so this window and everything else that
+		// reads Configuration::get_channelid() see it after the reconnect
+		Configuration::get().set_channelid(static_cast<uint8_t>(pending_channel));
+		pending_channel = -1;
+
+		if (auto channel = UI::get().get_element<UIChannel>())
+		{
+			channel->current_channel = Configuration::get().get_channelid();
+			channel->selected_channel = channel->current_channel;
+		}
+	}
+
+	void UIChannel::update_pending()
+	{
+		if (pending_channel < 0)
+			return;
+
+		if (Clock::now() - pending_since < PENDING_TIMEOUT)
+			return;
+
+		int16_t wanted = pending_channel;
+		pending_channel = -1;
+
+		UI::get().enable();
+		tell_player("Couldn't change to Channel " + std::to_string(wanted + 1)
+			+ ". Channels can't be changed while dead, in some maps, or with a shop or mini game open.");
 	}
 }

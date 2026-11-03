@@ -136,6 +136,8 @@ namespace ms
 		// elements parked by remove() can finally be freed.
 		graveyard.clear();
 
+		UIChannel::update_pending();
+
 		bool update_screen = false;
 		int16_t new_width = Constants::Constants::get().get_viewwidth();
 		int16_t new_height = Constants::Constants::get().get_viewheight();

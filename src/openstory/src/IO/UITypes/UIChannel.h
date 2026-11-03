@@ -40,6 +40,12 @@ namespace ms
 
 		UIElement::Type get_type() const override;
 
+		// A channel change is only final when the server answers with the new
+		// channel's address. Until then the old channel stays the current one,
+		// and a refusal or silence gives the controls back with a message.
+		static void change_succeeded();
+		static void update_pending();
+
 	protected:
 		Button::State button_pressed(uint16_t buttonid) override;
 
