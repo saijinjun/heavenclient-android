@@ -19,6 +19,8 @@
 
 #include "../IO/TargetFrame.h"
 
+#include <SDL.h>
+
 #include "MapleTVBroadcast.h"
 #include "HiredMerchants.h"
 #include "MiniRooms.h"
@@ -285,9 +287,14 @@ namespace ms
 			// enters a portal again. Otherwise arriving on a portal, like the
 			// Free Market exit, would send the player straight back.
 			if (!player.is_key_down(KeyAction::Id::UP))
+			{
 				portal_armed = true;
+				portal_logged = false;
+			}
 			else if (portal_armed)
+			{
 				check_portals();
+			}
 
 			if (player.is_key_down(KeyAction::Id::DOWN))
 				check_ladders(false);
@@ -331,6 +338,15 @@ namespace ms
 
 		Point<int16_t> playerpos = player.get_position();
 		Portal::WarpInfo warpinfo = portals.find_warp_at(playerpos);
+
+		// One logcat line per press of up (tag SDL/APP), so a portal that does
+		// nothing can be told apart from one the server turns down.
+		if (!portal_logged)
+		{
+			portal_logged = true;
+			SDL_Log("Portal check on map %d at (%d, %d): %s \"%s\"", mapid, playerpos.x(), playerpos.y(),
+				warpinfo.intramap ? "intramap" : (warpinfo.valid ? "sending CHANGE_MAP" : "no portal"), warpinfo.name.c_str());
+		}
 
 		if (warpinfo.intramap)
 		{
