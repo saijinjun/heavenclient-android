@@ -258,12 +258,26 @@ namespace ms
 		classic::panel(l.panel.get_left_top(), l.panel.width(), l.panel.height());
 		m_title.draw(Point<int16_t>(l.panel.left() + l.panel.width() / 2, l.panel.top() + 10));
 
-		classic::cell(l.buy_mode.get_left_top(), l.buy_mode.width(), l.buy_mode.height(), !m_sell);
-		classic::cell(l.sell_mode.get_left_top(), l.sell_mode.width(), l.sell_mode.height(), m_sell);
+		classic::tab(l.buy_mode.get_left_top(), l.buy_mode.width(), l.buy_mode.height(), !m_sell);
+		classic::tab(l.sell_mode.get_left_top(), l.sell_mode.width(), l.sell_mode.height(), m_sell);
 		m_buy.change_color(!m_sell ? Color::Name::HUD_PANEL : Color::Name::WHITE);
 		m_sell_label.change_color(m_sell ? Color::Name::HUD_PANEL : Color::Name::WHITE);
-		draw_centered(m_buy, l.buy_mode);
-		draw_centered(m_sell_label, l.sell_mode);
+
+		// A bag or coins picture beside Buy and Sell when the APK has them
+		auto mode_label = [&](const Text& label, const char* icon, const Rectangle<int16_t>& r)
+		{
+			int16_t size = r.height() - 12;
+			int16_t text_w = label.width();
+			int16_t ix = r.left() + (r.width() - size - 6 - text_w) / 2;
+
+			if (size + 6 + text_w <= r.width() - 6 && classic::icon(icon, Point<int16_t>(ix, r.top() + 6), size))
+				label.draw(Point<int16_t>(ix + size + 6 + text_w / 2, r.top() + (r.height() - label.height()) / 2));
+			else
+				draw_centered(label, r);
+		};
+
+		mode_label(m_buy, "shop_buy", l.buy_mode);
+		mode_label(m_sell_label, "shop_sell", l.sell_mode);
 
 		classic::button(l.leave.get_left_top(), l.leave.width(), l.leave.height());
 		draw_centered(m_leave, l.leave);
@@ -280,7 +294,7 @@ namespace ms
 			if (m_tabs[i].get_text() != category_name(categories[i]))
 				m_tabs[i].change_text(category_name(categories[i]));
 
-			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
+			classic::tab(r.get_left_top(), r.width(), r.height(), lit);
 			m_tabs[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
 			draw_centered(m_tabs[i], r);
 		}
@@ -299,15 +313,16 @@ namespace ms
 			Rectangle<int16_t> r = mobile_row(l, i);
 			bool lit = i == selection;
 
-			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
+			classic::row(r.get_left_top(), r.width(), r.height(), lit);
+			classic::slot(Point<int16_t>(r.left() + 3, r.top() + 3), ROW_H - 6, ROW_H - 6, false);
 			mobile_draw_icon(itemid, rect(r.left() + 3, r.top() + 3, ROW_H - 6, ROW_H - 6));
 
 			Text& name = const_cast<Text&>(mobile_name(itemid));
-			name.change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
+			name.change_color(classic::row_text(lit, Color::Name::WHITE));
 			name.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 6));
 
 			Text& price = const_cast<Text&>(mobile_price(i));
-			price.change_color(lit ? Color::Name::HUD_PANEL : Color::Name::HUD_EXP);
+			price.change_color(classic::row_text(lit, Color::Name::HUD_EXP));
 			price.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 27));
 
 			// How many of it the character has, for things that stack
@@ -322,7 +337,7 @@ namespace ms
 					entry.second = Text(Text::Font::A13B, Text::Alignment::RIGHT, Color::Name::WHITE, "x" + std::to_string(have));
 				}
 
-				entry.second.change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
+				entry.second.change_color(classic::row_text(lit, Color::Name::WHITE));
 				entry.second.draw(Point<int16_t>(r.right() - 10, r.top() + (r.height() - entry.second.height()) / 2));
 			}
 		}
@@ -332,10 +347,9 @@ namespace ms
 			int16_t track_h = l.list.height() - GAP;
 			int16_t thumb_h = std::max<int16_t>(24, track_h * l.rows / count);
 			int16_t thumb_y = l.list.top() + (track_h - thumb_h) * m_first / std::max<int16_t>(1, count - l.rows);
-			int16_t bar_x = l.list.right() - 4;
+			int16_t bar_x = l.list.right() - 6;
 
-			classic::box(bar_x, l.list.top(), 4, track_h, Color::Name::HUD_TRACK, 0.9f);
-			classic::box(bar_x, thumb_y, 4, thumb_h, Color::Name::HUD_EXP);
+			classic::scrollbar(bar_x, l.list.top(), 6, track_h, thumb_y, thumb_h);
 		}
 
 		mesolabel.draw(Point<int16_t>(l.list.left() + 4, l.panel.bottom() - FOOT_H));

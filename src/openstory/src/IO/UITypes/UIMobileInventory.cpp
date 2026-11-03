@@ -35,6 +35,7 @@ namespace ms
 		};
 
 		const char* TAB_NAMES[] = { "Worn", "Equip", "Use", "Set-up", "Etc", "Cash" };
+		const char* TAB_ICONS[] = { nullptr, "tab_equip", "tab_use", "tab_setup", "tab_etc", "tab_cash" };
 
 		// The worn tab lists these equipment slots in order
 		const std::pair<EquipSlot::Id, const char*> WORN[] = {
@@ -253,9 +254,20 @@ namespace ms
 		for (size_t i = 0; i < NUM_TABS; i++)
 		{
 			bool lit = i == tab;
-			classic::cell(l.tabs[i].get_left_top(), l.tabs[i].width(), l.tabs[i].height(), lit);
+			classic::tab(l.tabs[i].get_left_top(), l.tabs[i].width(), l.tabs[i].height(), lit);
 			tab_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
-			draw_label(tab_labels[i], l.tabs[i]);
+
+			// The tab's picture sits left of its name when the APK has it
+			int16_t icon = TAB_H - 12;
+			int16_t text_w = tab_labels[i].width();
+			int16_t total = icon + 4 + text_w;
+			int16_t ix = l.tabs[i].left() + (l.tabs[i].width() - total) / 2;
+
+			if (TAB_ICONS[i] && total <= l.tabs[i].width() - 6
+				&& classic::icon(TAB_ICONS[i], Point<int16_t>(ix, l.tabs[i].top() + 6), icon))
+				tab_labels[i].draw(Point<int16_t>(ix + icon + 4 + text_w / 2, l.tabs[i].top() + (l.tabs[i].height() - tab_labels[i].height()) / 2));
+			else
+				draw_label(tab_labels[i], l.tabs[i]);
 		}
 
 		// The grid
@@ -266,7 +278,7 @@ namespace ms
 		for (int16_t slot = first; slot <= last; slot++)
 		{
 			Rectangle<int16_t> r = slot_rect(l, slot);
-			classic::cell(r.get_left_top(), r.width(), r.height(), slot == selected);
+			classic::slot(r.get_left_top(), r.width(), r.height(), slot == selected);
 
 			int32_t itemid = item_at(slot);
 
@@ -307,8 +319,7 @@ namespace ms
 			int16_t thumb_y = l.grid.top() + (track_h - thumb_h) * first_row / std::max<int16_t>(1, rows - l.rows);
 			int16_t bar_x = l.grid.right() + 2;
 
-			classic::box(bar_x, l.grid.top(), 4, track_h, Color::Name::HUD_TRACK, 0.9f);
-			classic::box(bar_x, thumb_y, 4, thumb_h, Color::Name::HUD_EXP);
+			classic::scrollbar(bar_x, l.grid.top(), 8, track_h, thumb_y, thumb_h);
 		}
 
 		// The selected item
@@ -345,7 +356,7 @@ namespace ms
 				amount.change_text(amount_text);
 
 			Rectangle<int16_t> big = rect(l.detail.left() + (l.detail.width() - 72) / 2, l.detail.top() + 10, 72, 72);
-			classic::cell(big.get_left_top(), big.width(), big.height(), true);
+			classic::slot(big.get_left_top(), big.width(), big.height(), true);
 			draw_icon(itemid, big);
 
 			int16_t y = big.bottom() + 8;
@@ -411,12 +422,18 @@ namespace ms
 
 		std::string meso_text = std::to_string(inventory.get_meso());
 		string_format::split_number(meso_text);
-		meso_text = "Meso  " + meso_text;
+		int16_t meso_x = l.panel.left() + MARGIN + 4;
+		int16_t meso_y = l.panel.bottom() - FOOT_H - 2;
+
+		if (classic::meso_icon(Point<int16_t>(meso_x, meso_y), 18))
+			meso_x += 22;
+		else
+			meso_text = "Meso  " + meso_text;
 
 		if (meso.get_text() != meso_text)
 			meso.change_text(meso_text);
 
-		meso.draw(Point<int16_t>(l.panel.left() + MARGIN + 4, l.panel.bottom() - FOOT_H - 2));
+		meso.draw(Point<int16_t>(meso_x, meso_y));
 
 		UIElement::draw(inter);
 	}

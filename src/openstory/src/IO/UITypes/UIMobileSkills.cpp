@@ -346,7 +346,7 @@ namespace ms
 		for (size_t i = 0; i < num_tabs(); i++)
 		{
 			bool lit = i == tab;
-			classic::cell(l.tabs[i].get_left_top(), l.tabs[i].width(), l.tabs[i].height(), lit);
+			classic::tab(l.tabs[i].get_left_top(), l.tabs[i].width(), l.tabs[i].height(), lit);
 			tab_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
 			draw_label(tab_labels[i], l.tabs[i]);
 		}
@@ -359,11 +359,13 @@ namespace ms
 			const Row& row = rows[i];
 			Rectangle<int16_t> r = row_rect(l, i);
 
-			classic::cell(r.get_left_top(), r.width(), r.height(), row.id == selected);
+			bool lit = row.id == selected;
+			classic::row(r.get_left_top(), r.width(), r.height(), lit);
+			classic::skill_slot(Point<int16_t>(r.left() + 3, r.top() + 3), ROW_H - 6, ROW_H - 6, false);
 			draw_icon(row.id, row.level > 0, rect(r.left() + 3, r.top() + 3, ROW_H - 6, ROW_H - 6));
 
 			Text& name_text = row_name(row.id);
-			name_text.change_color(row.id == selected ? Color::Name::HUD_PANEL : (row.level > 0 ? Color::Name::WHITE : Color::Name::SILVERCHALICE));
+			name_text.change_color(classic::row_text(lit, row.level > 0 ? Color::Name::WHITE : Color::Name::SILVERCHALICE));
 			name_text.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 6));
 
 			auto& lv = levels[row.id];
@@ -374,14 +376,19 @@ namespace ms
 				lv.second = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::SILVERCHALICE, "Lv. " + std::to_string(row.level) + " / " + std::to_string(row.masterlevel));
 			}
 
-			lv.second.change_color(row.id == selected ? Color::Name::HUD_PANEL : Color::Name::SILVERCHALICE);
+			lv.second.change_color(classic::row_text(lit, Color::Name::SILVERCHALICE));
 			lv.second.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 27));
 
 			if (can_raise(row))
 			{
 				Rectangle<int16_t> p = plus_rect(r);
-				classic::button(p.get_left_top(), p.width(), p.height(), true);
-				draw_label(plus_label, p);
+				int16_t size = p.height();
+
+				if (!classic::plus_button(Point<int16_t>(p.left() + (p.width() - size) / 2, p.top()), size))
+				{
+					classic::button(p.get_left_top(), p.width(), p.height(), true);
+					draw_label(plus_label, p);
+				}
 			}
 		}
 
@@ -393,10 +400,9 @@ namespace ms
 			int16_t track_h = l.list.height() - GAP;
 			int16_t thumb_h = std::max<int16_t>(24, track_h * l.rows / count);
 			int16_t thumb_y = l.list.top() + (track_h - thumb_h) * first_row / std::max<int16_t>(1, count - l.rows);
-			int16_t bar_x = l.list.right() - 4;
+			int16_t bar_x = l.list.right() - 6;
 
-			classic::box(bar_x, l.list.top(), 4, track_h, Color::Name::HUD_TRACK, 0.9f);
-			classic::box(bar_x, thumb_y, 4, thumb_h, Color::Name::HUD_EXP);
+			classic::scrollbar(bar_x, l.list.top(), 6, track_h, thumb_y, thumb_h);
 		}
 
 		sp_text.draw(Point<int16_t>(l.list.left() + 4, l.panel.bottom() - FOOT_H - 2));
@@ -429,6 +435,7 @@ namespace ms
 			}
 
 			Rectangle<int16_t> big = rect(l.detail.left() + 10, l.detail.top() + 10, 56, 56);
+			classic::skill_slot(big.get_left_top(), big.width(), big.height(), false);
 			draw_icon(row->id, row->level > 0, big);
 
 			name.draw(Point<int16_t>(big.right() + 8, big.top() + 4));

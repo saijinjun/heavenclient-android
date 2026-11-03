@@ -28,6 +28,7 @@ namespace ms
 	namespace
 	{
 		const char* TAB_NAMES[] = { "In progress", "Available", "Done" };
+		const char* TAB_ICONS[] = { "quest_progress", "quest_available", "quest_done" };
 
 		constexpr int16_t MARGIN = 12;
 		constexpr int16_t TITLE_H = 26;
@@ -475,9 +476,19 @@ namespace ms
 		for (size_t i = 0; i < NUM_TABS; i++)
 		{
 			bool lit = i == tab;
-			classic::cell(l.tabs[i].get_left_top(), l.tabs[i].width(), l.tabs[i].height(), lit);
+			classic::tab(l.tabs[i].get_left_top(), l.tabs[i].width(), l.tabs[i].height(), lit);
 			tab_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
-			draw_label(tab_labels[i], l.tabs[i]);
+
+			// The quest state badge sits left of the tab's name
+			const Rectangle<int16_t>& t = l.tabs[i];
+			int16_t icon = t.height() - 10;
+			int16_t text_w = tab_labels[i].width();
+			int16_t ix = t.left() + (t.width() - icon - 6 - text_w) / 2;
+
+			if (icon + 6 + text_w <= t.width() - 6 && classic::icon(TAB_ICONS[i], Point<int16_t>(ix, t.top() + 5), icon))
+				tab_labels[i].draw(Point<int16_t>(ix + icon + 6 + text_w / 2, t.top() + (t.height() - tab_labels[i].height()) / 2));
+			else
+				draw_label(tab_labels[i], t);
 		}
 
 		// The quest rows
@@ -493,14 +504,20 @@ namespace ms
 			Rectangle<int16_t> r = row_rect(l, i);
 			bool lit = entry.id == selected;
 
-			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
+			classic::row(r.get_left_top(), r.width(), r.height(), lit);
 
-			entry.name.change_color(lit ? Color::Name::HUD_PANEL : (tab == DONE ? Color::Name::SILVERCHALICE : Color::Name::WHITE));
-			entry.name.draw(Point<int16_t>(r.left() + 10, r.top() + (r.height() - entry.name.height()) / 2));
+			int16_t badge = r.height() - 14;
+			int16_t name_x = r.left() + 10;
+
+			if (classic::icon(TAB_ICONS[tab], Point<int16_t>(r.left() + 10, r.top() + 7), badge))
+				name_x += badge + 8;
+
+			entry.name.change_color(classic::row_text(lit, tab == DONE ? Color::Name::SILVERCHALICE : Color::Name::WHITE));
+			entry.name.draw(Point<int16_t>(name_x, r.top() + (r.height() - entry.name.height()) / 2));
 
 			if (!entry.note.get_text().empty())
 			{
-				entry.note.change_color(lit ? Color::Name::HUD_PANEL : Color::Name::SILVERCHALICE);
+				entry.note.change_color(classic::row_text(lit, Color::Name::SILVERCHALICE));
 				entry.note.draw(Point<int16_t>(r.right() - 8, r.top() + (r.height() - entry.note.height()) / 2));
 			}
 		}
@@ -512,10 +529,9 @@ namespace ms
 			int16_t track_h = l.list.height() - GAP;
 			int16_t thumb_h = std::max<int16_t>(24, track_h * l.rows / count);
 			int16_t thumb_y = l.list.top() + (track_h - thumb_h) * first_row / std::max<int16_t>(1, count - l.rows);
-			int16_t bar_x = l.list.right() - 4;
+			int16_t bar_x = l.list.right() - 6;
 
-			classic::box(bar_x, l.list.top(), 4, track_h, Color::Name::HUD_TRACK, 0.9f);
-			classic::box(bar_x, thumb_y, 4, thumb_h, Color::Name::HUD_EXP);
+			classic::scrollbar(bar_x, l.list.top(), 6, track_h, thumb_y, thumb_h);
 		}
 
 		// The selected quest
