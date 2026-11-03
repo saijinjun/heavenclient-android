@@ -445,10 +445,26 @@ namespace ms
 					}
 					case InventoryType::Id::USE:
 					{
-						if (item_id / 10000 == 212)
+						int32_t prefix = item_id / 10000;
+
+						if (prefix == 212)
+						{
 							PetFoodPacket(slot, item_id).dispatch();
-						else
+						}
+						else if (prefix <= 203 || prefix == 205)
+						{
+							// Potions, food, return scrolls and cures: the
+							// only items the server's use handler knows
 							UseItemPacket(slot, item_id).dispatch();
+						}
+						else if (prefix == 204)
+						{
+							UI::get().emplace<UIOk>("Put this scroll on the item you're wearing to use it.", [](bool) {});
+						}
+
+						// Anything else (stars, arrows, summon bags, skill
+						// books) has its own use or none; sending it as a
+						// potion made the server fail and eat the item
 
 						break;
 					}

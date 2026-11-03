@@ -295,6 +295,32 @@ namespace ms
 		return state_id == State::CASHSHOP;
 	}
 
+	bool UI::window_at(Point<int16_t> pos)
+	{
+		if (state_id != State::GAME)
+			return false;
+
+		UIElement* front = state->get_front(pos);
+
+		if (!front)
+			return false;
+
+		switch (front->get_type())
+		{
+		case UIElement::Type::STATUSMESSENGER:
+		case UIElement::Type::STATUSBAR:
+		case UIElement::Type::CHATBAR:
+		case UIElement::Type::BUFFLIST:
+		case UIElement::Type::MINIMAP:
+		case UIElement::Type::QUESTHELPER:
+		case UIElement::Type::PARTYHUD:
+		case UIElement::Type::CLOCK:
+			return false;
+		default:
+			return true;
+		}
+	}
+
 	bool UI::in_mobile_panel() const
 	{
 		if (state_id != State::GAME)
