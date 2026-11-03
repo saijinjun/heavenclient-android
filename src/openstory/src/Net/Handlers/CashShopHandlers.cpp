@@ -17,8 +17,11 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "CashShopHandlers.h"
 
+#include <algorithm>
+
 #include "Helpers/CashShopParser.h"
 #include "../OutPacket.h"
+#include "../Packets/CashShopPackets.h"
 
 #include "../../Gameplay/Stage.h"
 #include "../../IO/UI.h"
@@ -72,6 +75,46 @@ namespace ms
 
 	namespace
 	{
+		std::vector<CashStorageItem> s_cash_storage;
+		int64_t s_pending_take = 0;
+
+		// Cosmic's addCashItemInformation, not a gift: 55 bytes
+		CashStorageItem read_cash_item(InPacket& recv)
+		{
+			CashStorageItem item;
+			item.cashid = recv.read_long();
+			recv.skip_int(); // account id
+			recv.skip_int();
+			item.itemid = recv.read_int();
+			item.sn = recv.read_int();
+			item.quantity = recv.read_short();
+			recv.skip(13); // gift from
+			recv.skip(8); // expiration
+			recv.skip(8);
+
+			return item;
+		}
+
+		void add_to_storage(const CashStorageItem& item)
+		{
+			s_cash_storage.push_back(item);
+		}
+	}
+
+	const std::vector<CashStorageItem>& get_cash_storage()
+	{
+		return s_cash_storage;
+	}
+
+	void take_from_cash_storage(int64_t cashid)
+	{
+		// Cosmic finds the item by the low 32 bits of its cash id
+		s_pending_take = cashid;
+		TakeFromCashInventoryPacket(static_cast<int32_t>(cashid)).dispatch();
+	}
+
+	namespace
+	{
 		// Cosmic's cash shop result codes (operation 0x5C)
 		std::string cash_error(uint8_t code)
 		{
@@ -100,11 +143,50 @@ namespace ms
 
 		switch (operation)
 		{
+		case 0x4B:
+		{
+			// The whole cash inventory, sent on entering the shop
+			s_cash_storage.clear();
+			int16_t count = recv.read_short();
+
+			for (int16_t i = 0; i < count && recv.available(); i++)
+				add_to_storage(read_cash_item(recv));
+
+			break;
+		}
 		case 0x57:
-		case 0x89:
-			UICashShop::show_status("Purchased! It's in your Cash Inventory.", false);
+			add_to_storage(read_cash_item(recv));
+			UICashShop::show_status("Purchased! Find it under My items.", false);
 			// Refresh the NX balances
 			OutPacket(0xE4).dispatch();
+			break;
+		case 0x89:
+		{
+			// A package: several items at once
+			uint8_t count = static_cast<uint8_t>(recv.read_byte());
+
+			for (uint8_t i = 0; i < count && recv.available(); i++)
+				add_to_storage(read_cash_item(recv));
+
+			UICashShop::show_status("Purchased! Find it under My items.", false);
+			OutPacket(0xE4).dispatch();
+			break;
+		}
+		case 0x68:
+		{
+			// Taken out: the server sent the item's new inventory slot;
+			// the inventory itself is resent when leaving the shop
+			int64_t taken = s_pending_take;
+			s_pending_take = 0;
+
+			s_cash_storage.erase(std::remove_if(s_cash_storage.begin(), s_cash_storage.end(),
+				[taken](const CashStorageItem& item) { return item.cashid == taken; }), s_cash_storage.end());
+
+			UICashShop::show_status("Moved to your inventory.", false);
+			break;
+		}
+		case 0x6A:
+			add_to_storage(read_cash_item(recv));
 			break;
 		case 0x5C:
 			UICashShop::show_status(cash_error(static_cast<uint8_t>(recv.read_byte())), true);
@@ -155,14 +237,21 @@ namespace ms
 		// (cursor_callback divides physical coords by get_viewwidth() /
 		// get_viewheight(), which at scale=1.0 equal the physical size).
 		s_pre_cashshop_ui_scale = Constants::Constants::get().get_ui_scale();
+
+#ifndef __ANDROID__
 		Constants::Constants::get().set_ui_scale(1.0f);
+#endif
 
 		// Drop any focused textfield (e.g. the chat bar) so the arrow
 		// keys reach the cash shop stage character
 		UI::get().remove_textfield();
 
+#ifndef __ANDROID__
 		Constants::Constants::get().set_viewwidth(1024);
 		Constants::Constants::get().set_viewheight(768);
+#endif
+		// Phones keep the game's view: the shop draws a full-screen touch
+		// layout sized to it instead of the 1024x768 desktop art
 
 		float fadestep = 0.025f;
 
