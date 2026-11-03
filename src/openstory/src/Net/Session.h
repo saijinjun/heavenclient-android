@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <string>
+
 #include "Cryptography.h"
 #include "PacketSwitch.h"
 
@@ -51,8 +53,13 @@ namespace ms
 		void reconnect(const char* address, const char* port);
 		// Check if the connection is alive
 		bool is_connected() const;
+		// Where the last reconnect tried to go when it failed, e.g. a channel
+		// server the phone can't reach, or "" when the last one worked
+		const std::string& get_failed_target() const;
 
 	private:
+		std::string failed_target;
+
 		bool init(const char* host, const char* port);
 		void process(const int8_t* bytes, size_t available);
 

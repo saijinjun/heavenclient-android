@@ -88,6 +88,7 @@ namespace ms
 		for (size_t i = 0; i < NUM_QUICK; i++)
 			quick_labels[i] = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, std::to_string(i + 1));
 
+		scroll_hint = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::HUD_EXP, "", DETAIL_W - 20);
 		empty_hint = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, "Tap an item to see it here", DETAIL_W - 20);
 	}
 
@@ -316,7 +317,11 @@ namespace ms
 
 		int32_t itemid = item_at(selected);
 
-		if (itemid == 0)
+		if (scroll_id && worn_tab())
+		{
+			scroll_hint.draw(Point<int16_t>(l.detail.left() + l.detail.width() / 2, l.detail.top() + l.detail.height() / 2 - 40));
+		}
+		else if (itemid == 0)
 		{
 			empty_hint.draw(Point<int16_t>(l.detail.left() + l.detail.width() / 2, l.detail.top() + l.detail.height() / 2 - 20));
 		}
@@ -436,7 +441,7 @@ namespace ms
 		case InventoryType::Id::EQUIP:
 			return "Equip";
 		case InventoryType::Id::USE:
-			return "Use";
+			return is_equip_scroll(item_at(selected)) ? "Use on equipment" : "Use";
 		case InventoryType::Id::SETUP:
 			return "Sit";
 		case InventoryType::Id::CASH:
@@ -461,7 +466,72 @@ namespace ms
 			return;
 		}
 
+		if (tab_type() == InventoryType::Id::USE && is_equip_scroll(item_at(selected)))
+		{
+			start_scrolling();
+			return;
+		}
+
 		UIItemInventory::use_item(inventory, tab_type(), selected);
+	}
+
+	bool UIMobileInventory::is_equip_scroll(int32_t itemid)
+	{
+		// 204xxxx: scrolls for weapons and armor, plus chaos scrolls and
+		// clean slates, which also go on an equip
+		return itemid / 10000 == 204;
+	}
+
+	void UIMobileInventory::start_scrolling()
+	{
+		scroll_slot = selected;
+		scroll_id = item_at(selected);
+
+		scroll_hint.change_text("Tap the worn item to use\\n" + ItemData::get(scroll_id).get_name()
+			+ " on.\\n\\nTap another tab to cancel.");
+
+		// Scrolls only work on what the character is wearing
+		tab = 0;
+		selected = 0;
+		first_row = 0;
+		counts.clear();
+	}
+
+	void UIMobileInventory::stop_scrolling()
+	{
+		scroll_slot = 0;
+		scroll_id = 0;
+	}
+
+	void UIMobileInventory::apply_scroll(int16_t worn_slot)
+	{
+		int16_t source = scroll_slot;
+		int32_t scroll = scroll_id;
+		int32_t target_id = item_at(worn_slot);
+		auto target = static_cast<EquipSlot::Id>(inventory_slot(worn_slot));
+
+		stop_scrolling();
+
+		// The scroll may have been used up while the player looked
+		if (inventory.get_item_id(InventoryType::Id::USE, source) != scroll || target_id == 0)
+			return;
+
+		if (auto equip = inventory.get_equip(InventoryType::Id::EQUIPPED, inventory_slot(worn_slot)))
+		{
+			if (equip->get_slots() <= 0 && ItemData::get(scroll).get_name().find("Clean Slate") == std::string::npos)
+			{
+				UI::get().emplace<UIOk>(ItemData::get(target_id).get_name() + " has no upgrade slots left.", [](bool) {});
+				return;
+			}
+		}
+
+		std::string question = "Use " + ItemData::get(scroll).get_name() + "\\non " + ItemData::get(target_id).get_name() + "?";
+
+		UI::get().emplace<UIYesNo>(question, [source, target](bool yes)
+		{
+			if (yes)
+				ScrollEquipPacket(source, target).dispatch();
+		});
 	}
 
 	void UIMobileInventory::drop_selected()
@@ -648,6 +718,7 @@ namespace ms
 			{
 				if (tab != i)
 				{
+					stop_scrolling();
 					tab = i;
 					selected = 0;
 					first_row = 0;
@@ -687,6 +758,14 @@ namespace ms
 
 		if (int16_t slot = slot_at(l, cursorpos))
 		{
+			if (scroll_id && worn_tab())
+			{
+				if (item_at(slot))
+					apply_scroll(slot);
+
+				return Cursor::State::CLICKING;
+			}
+
 			// A second tap on the selected item uses it, like a double-click
 			if (slot == selected && item_at(slot) && !action_name().empty())
 				use_selected();
