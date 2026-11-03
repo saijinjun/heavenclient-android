@@ -87,18 +87,35 @@ namespace ms
 		// First existing style wins ("11" is the distinct GM plate if present,
 		// otherwise fall back to whatever the NX actually carries).
 		nl::node nt = nl::nx::ui["NameTag.img"];
-		nl::node style;
 
 		for (const char* k : { "11", "0", "1", "2", "3", "4", "5", "10" })
 		{
 			if (nt[k] && nt[k].size() > 0)
 			{
-				style = nt[k];
+				load_style(k);
 				break;
 			}
 		}
+#else
+		(void)is_gm;
+#endif
+	}
 
-		if (!style)
+	void NameTagStyle::apply_style(int32_t style)
+	{
+#ifdef USE_NX
+		load_style(std::to_string(style));
+#else
+		(void)style;
+#endif
+	}
+
+	void NameTagStyle::load_style(const std::string& key)
+	{
+#ifdef USE_NX
+		nl::node style = nl::nx::ui["NameTag.img"][key];
+
+		if (!style["c"])
 			return;
 
 		// The plate provides its own background — drop the default one so they
@@ -127,7 +144,7 @@ namespace ms
 			catch (...) {}
 		}
 #else
-		(void)is_gm;
+		(void)key;
 #endif
 	}
 

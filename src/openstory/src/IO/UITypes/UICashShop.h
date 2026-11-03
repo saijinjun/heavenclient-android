@@ -20,10 +20,12 @@
 #include "../UIElement.h"
 
 #include "../Components/Charset.h"
+#include "../Components/ChatBalloon.h"
 #include "../Components/Gauge.h"
 #include "../Components/Slider.h"
 #include "../Components/TapGesture.h"
 
+#include "../../Character/NameTagStyle.h"
 #include "../../Character/Look/CharLook.h"
 #include "../../Data/ItemData.h"
 #include "../../Graphics/Animation.h"
@@ -31,6 +33,7 @@
 
 #include <array>
 #include <map>
+#include <memory>
 #include <vector>
 
 namespace ms
@@ -200,6 +203,11 @@ namespace ms
 		bool preview_has_pet = false;
 		bool m_was_down = false;
 		int32_t preview_icon_id = 0;
+		// Your name under the try-on character, wearing a name tag ring's
+		// plate, and a sample line in a chat ring's balloon
+		std::unique_ptr<NameTagStyle> preview_nametag;
+		ChatBalloon preview_balloon;
+		bool preview_has_balloon = false;
 
 		// Controllable stage character
 		float char_x = 820.0f;

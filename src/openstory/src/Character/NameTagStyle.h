@@ -35,9 +35,15 @@ namespace ms
 		// Give GMs the distinct NameTag.img plate; regular players keep the
 		// plain default name.
 		void apply(bool is_gm);
+		// Use the plate NameTag.img/<style>, as a name tag ring sets it.
+		// Keeps the current plate if the style has no art.
+		void apply_style(int32_t style);
 		std::string get_name() const;
 
 	private:
+		// Loads the plate and name color from NameTag.img/<key>
+		void load_style(const std::string& key);
+
 		Text namelabel;
 		Color name_color;
 		// Nametag 9-slice sprite pieces loaded from NameTag.img/<style>/{w,c,e}.
