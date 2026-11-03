@@ -67,18 +67,38 @@ namespace ms
 			int16_t x = (Constants::Constants::get().get_viewwidth() - w) / 2;
 			int16_t y = 6;
 
-			classic::box(x + 2, y + 3, w, h, Color::Name::BLACK, 0.3f * alpha);
-			classic::box(x, y, w, h, Color::Name::HUD_PANEL, 0.88f * alpha);
-			classic::frame(x, y, w, h, Color::Name::HUD_EXP, alpha);
-			classic::box(x + 1, y + 1, w - 2, 1, Color::Name::WHITE, 0.18f * alpha);
+			// Summer's plate (gold-rimmed navy pill with a slime badge on the
+			// left), or a plain navy card in a gold rim without it
+			const classic::Art& art = classic::art();
+			int16_t left = 10;
 
-			label.draw(DrawArgument(Point<int16_t>(x + 10, y + 3), alpha));
-			level_text.draw(DrawArgument(Point<int16_t>(x + w - 10, y + 4), alpha));
+			if (classic::Art::valid(art.target, 3))
+			{
+				int16_t l = static_cast<int16_t>(art.target[0].width() * h / std::max<int16_t>(art.target[0].height(), 1));
+				int16_t r = static_cast<int16_t>(art.target[2].width() * h / std::max<int16_t>(art.target[2].height(), 1));
+
+				classic::stretch(art.target[0], x, y, l, h, alpha);
+				classic::stretch(art.target[1], x + l, y, w - l - r, h, alpha);
+				classic::stretch(art.target[2], x + w - r, y, r, h, alpha);
+
+				// Text and bar start right of the badge
+				left = h + 4;
+			}
+			else
+			{
+				classic::box(x + 2, y + 3, w, h, Color::Name::BLACK, 0.3f * alpha);
+				classic::box(x, y, w, h, Color::Name::HUD_PANEL, 0.88f * alpha);
+				classic::frame(x, y, w, h, Color::Name::HUD_EXP, alpha);
+				classic::box(x + 1, y + 1, w - 2, 1, Color::Name::WHITE, 0.18f * alpha);
+			}
+
+			label.draw(DrawArgument(Point<int16_t>(x + left, y + 5), alpha));
+			level_text.draw(DrawArgument(Point<int16_t>(x + w - 16, y + 6), alpha));
 
 			// HP bar: a dark track, the red fill, and a lighter band on top
-			int16_t bx = x + 10;
-			int16_t by = y + h - 13;
-			int16_t bw = w - 20;
+			int16_t bx = x + left;
+			int16_t by = y + h - 15;
+			int16_t bw = w - left - 16;
 			int16_t fill = static_cast<int16_t>(bw * shown_hp / 100.0f);
 
 			classic::box(bx, by, bw, 8, Color::Name::BLACK, 0.6f * alpha);
@@ -106,8 +126,8 @@ namespace ms
 		}
 
 	private:
-		static constexpr int16_t WIDTH = 240;
-		static constexpr int16_t HEIGHT = 36;
+		static constexpr int16_t WIDTH = 260;
+		static constexpr int16_t HEIGHT = 42;
 		static constexpr int32_t SHOW_MS = 6000;
 		static constexpr int32_t DEAD_MS = 900;
 		static constexpr int32_t FADE_MS = 600;

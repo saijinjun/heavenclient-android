@@ -37,6 +37,7 @@ namespace ms
 			Texture track[3];
 			Texture thumb[3];
 			Texture plus, meso;
+			Texture target[3];
 
 			Art()
 			{
@@ -74,6 +75,7 @@ namespace ms
 					row_lit[i] = load(std::string("row_lit_") + ends[i]);
 					track[i] = load(std::string("scroll_track_") + vends[i]);
 					thumb[i] = load(std::string("scroll_thumb_") + vends[i]);
+					target[i] = load(std::string("target_plate_") + ends[i]);
 				}
 			}
 
@@ -108,10 +110,10 @@ namespace ms
 			box(x + w - 1, y + 1, 1, h - 2, color, alpha);
 		}
 
-		inline void stretch(const Texture& t, int16_t x, int16_t y, int16_t w, int16_t h)
+		inline void stretch(const Texture& t, int16_t x, int16_t y, int16_t w, int16_t h, float alpha = 1.0f)
 		{
 			if (w > 0 && h > 0)
-				t.draw(DrawArgument(Point<int16_t>(x, y), Point<int16_t>(w, h)));
+				t.draw(DrawArgument(Point<int16_t>(x, y), Point<int16_t>(x, y), Point<int16_t>(w, h), 1.0f, 1.0f, alpha, 0.0f));
 		}
 
 		// Caps keep their shape at height h; the middle stretches.
@@ -344,7 +346,7 @@ namespace ms
 
 		// A small picture from ui/icon_<name>.png, fitted into a size x size
 		// square at tl. Returns false when the APK has no such picture.
-		inline bool icon(const std::string& name, Point<int16_t> tl, int16_t size)
+		inline bool icon(const std::string& name, Point<int16_t> tl, int16_t size, float alpha = 1.0f)
 		{
 			static std::map<std::string, Texture> cache;
 
@@ -363,7 +365,8 @@ namespace ms
 			int16_t dw = w >= h ? size : static_cast<int16_t>(size * w / std::max<int16_t>(h, 1));
 			int16_t dh = h >= w ? size : static_cast<int16_t>(size * h / std::max<int16_t>(w, 1));
 
-			stretch(t, tl.x() + (size - dw) / 2, tl.y() + (size - dh) / 2, dw, dh);
+			Point<int16_t> at(tl.x() + (size - dw) / 2, tl.y() + (size - dh) / 2);
+			t.draw(DrawArgument(at, at, Point<int16_t>(dw, dh), 1.0f, 1.0f, alpha, 0.0f));
 
 			return true;
 		}

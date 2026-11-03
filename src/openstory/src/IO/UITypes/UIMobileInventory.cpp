@@ -48,7 +48,16 @@ namespace ms
 			{ EquipSlot::Id::SHOULDER, "Shoulder" }, { EquipSlot::Id::POCKET, "Pocket" }
 		};
 
+		// Faint outlines for empty worn slots, in WORN order
+		const char* WORN_ICONS[] = {
+			"worn_hat", nullptr, nullptr, "worn_earring", "worn_top", "worn_bottom",
+			"worn_shoes", "worn_gloves", "worn_cape", "worn_weapon", "worn_shield", "worn_pendant",
+			"worn_belt", nullptr, "worn_ring", "worn_ring", "worn_ring", "worn_ring",
+			nullptr, nullptr
+		};
+
 		constexpr int16_t NUM_WORN = static_cast<int16_t>(sizeof(WORN) / sizeof(WORN[0]));
+		static_assert(sizeof(WORN_ICONS) / sizeof(WORN_ICONS[0]) == NUM_WORN, "one outline entry per worn slot");
 
 		constexpr int16_t MARGIN = 12;
 		constexpr int16_t TITLE_H = 26;
@@ -284,9 +293,18 @@ namespace ms
 
 			if (itemid == 0)
 			{
-				// Empty worn slots say what goes there
+				// Empty worn slots show a faint outline of what goes there
+				// and its name, or just the name without the picture
 				if (worn_tab())
-					draw_label(worn_labels[slot - 1], r);
+				{
+					const char* outline = WORN_ICONS[slot - 1];
+					int16_t size = r.height() - 22;
+
+					if (outline && classic::icon(outline, Point<int16_t>(r.left() + (r.width() - size) / 2, r.top() + 4), size, 0.3f))
+						worn_labels[slot - 1].draw(Point<int16_t>(r.left() + r.width() / 2, r.bottom() - 16));
+					else
+						draw_label(worn_labels[slot - 1], r);
+				}
 
 				continue;
 			}
