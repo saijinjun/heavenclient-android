@@ -127,7 +127,11 @@ namespace ms
 
 			int32_t itemid = entry["ItemId"];
 
-			if (!ItemData::get(itemid).is_valid())
+			// Only check that the item exists: loading every listed item's
+			// icons here pulled most of Character.nx and Item.nx on a
+			// phone's first visit, freezing the game for minutes until the
+			// server dropped the connection. Icons load as cards are shown.
+			if (!ItemData::exists(itemid))
 				continue;
 
 			int32_t sn = entry["SN"];

@@ -121,7 +121,7 @@ namespace ms
 
 			// price is the NX cash price from Commodity.img, not the
 			// item's meso shop price
-			Item(int32_t itemid, int32_t sn, Label label, int32_t price, uint16_t count) : sn(sn), label(label), price(price), discount_price(0), count(count), data(ItemData::get(itemid)) {}
+			Item(int32_t itemid, int32_t sn, Label label, int32_t price, uint16_t count) : sn(sn), label(label), price(price), discount_price(0), count(count), itemid(itemid) {}
 
 			int32_t sn;
 			Label label;
@@ -131,22 +131,22 @@ namespace ms
 
 			void draw(const DrawArgument& args) const
 			{
-				data.get_icon(false).draw(args);
+				ItemData::get(itemid).get_icon(false).draw(args);
 			}
 
 			const std::string get_name() const
 			{
-				return data.get_name();
+				return ItemData::get(itemid).get_name();
 			}
 
 			const std::string& get_desc() const
 			{
-				return data.get_desc();
+				return ItemData::get(itemid).get_desc();
 			}
 
 			int32_t get_itemid() const
 			{
-				return data.get_id();
+				return itemid;
 			}
 
 			const int32_t get_price() const
@@ -155,7 +155,9 @@ namespace ms
 			}
 
 		private:
-			const ItemData& data;
+			// Only the id: the shop lists thousands of items, and loading
+			// each one's data up front downloads its icons on a phone
+			int32_t itemid;
 		};
 
 		enum Buttons : uint16_t

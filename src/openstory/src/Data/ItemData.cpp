@@ -25,22 +25,12 @@
 
 namespace ms
 {
-	ItemData::ItemData(int32_t id) : itemid(id)
+	void ItemData::find_nodes(int32_t itemid, std::string& category, nl::node& src, nl::node& strsrc)
 	{
-		untradable = false;
-		unique = false;
-		unsellable = false;
-		cashitem = false;
-		gender = 0;
-
-		nl::node src;
-		nl::node strsrc;
-
 		std::string strprefix = "0" + std::to_string(get_item_prefix(itemid));
 		std::string strid = "0" + std::to_string(itemid);
-		int32_t prefix = get_prefix(itemid);
 
-		switch (prefix)
+		switch (get_prefix(itemid))
 		{
 		case 1:
 			if (get_item_prefix(itemid) == 190 || get_item_prefix(itemid) == 191)
@@ -92,6 +82,34 @@ namespace ms
 			strsrc = nl::nx::string["Cash.img"][std::to_string(itemid)];
 			break;
 		}
+	}
+
+	bool ItemData::exists(int32_t itemid)
+	{
+		std::string category;
+		nl::node src;
+		nl::node strsrc;
+
+		find_nodes(itemid, category, src, strsrc);
+
+		return static_cast<bool>(src);
+	}
+
+	ItemData::ItemData(int32_t id) : itemid(id)
+	{
+		untradable = false;
+		unique = false;
+		unsellable = false;
+		cashitem = false;
+		gender = 0;
+
+		nl::node src;
+		nl::node strsrc;
+
+		find_nodes(itemid, category, src, strsrc);
+
+		std::string strid = "0" + std::to_string(itemid);
+		int32_t prefix = get_prefix(itemid);
 
 		if (src)
 		{
@@ -150,7 +168,7 @@ namespace ms
 		}
 	}
 
-	std::string ItemData::get_eqcategory(int32_t id) const
+	std::string ItemData::get_eqcategory(int32_t id)
 	{
 		constexpr char* categorynames[15] =
 		{
@@ -181,12 +199,12 @@ namespace ms
 			return "";
 	}
 
-	int32_t ItemData::get_prefix(int32_t id) const
+	int32_t ItemData::get_prefix(int32_t id)
 	{
 		return id / 1000000;
 	}
 
-	int32_t ItemData::get_item_prefix(int32_t id) const
+	int32_t ItemData::get_item_prefix(int32_t id)
 	{
 		return id / 10000;
 	}
