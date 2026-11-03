@@ -6,11 +6,13 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `c577aa7` | held |
+| server | `25fa1cd` | ok |
 | client | `7732617` | held |
 
 ## Recent events (newest first)
 
+- 2026-11-03 20:16 · server · ✅ deployed `25fa1cd` - online, 8484 open
+- 2026-11-03 20:14 · server · Onyx approved `25fa1cd` (docker-compose.override.yml)
 - 2026-11-03 20:04 · server · **HELD for Onyx review** `c577aa7..25fa1cd` - sensitive: docker-compose.override.yml
 - 2026-11-03 19:36 · client · **HELD for Onyx review** `7732617..772ee78` - sensitive: web/server.py, web/ws_proxy.py
 - 2026-11-03 19:31 · client · **HELD for Onyx review** `7732617..aaebd1c` - sensitive: web/server.py, web/ws_proxy.py
