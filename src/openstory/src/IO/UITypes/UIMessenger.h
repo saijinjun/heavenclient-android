@@ -33,6 +33,9 @@ namespace ms
 		static constexpr bool FOCUSED = false;
 		static constexpr bool TOGGLED = true;
 
+		// True while the messenger window is showing
+		static bool is_open();
+
 		UIMessenger();
 
 		void draw(float inter) const override;

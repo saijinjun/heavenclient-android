@@ -186,25 +186,15 @@ namespace ms
 		}
 	};
 
-	// Rearrange items in hired merchant (owner only)
-	// action 42
-	class ShopArrangePacket : public OutPacket
-	{
-	public:
-		ShopArrangePacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
-		{
-			write_byte(42);
-		}
-	};
-
-	// Collect stored meso from shop
-	// action 28
+	// Collect a hired merchant's stored meso (owner only)
+	// action 0x2B MERCHANT_MESO. Action 28 (0x1C) the old code sent is
+	// BAN_PLAYER on Cosmic, and 42 (0x2A) closes the merchant for good.
 	class ShopTakeMesoPacket : public OutPacket
 	{
 	public:
 		ShopTakeMesoPacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
 		{
-			write_byte(28);
+			write_byte(0x2B);
 		}
 	};
 
@@ -310,26 +300,17 @@ namespace ms
 		}
 	};
 
-	// Ban a visitor from shop (owner only)
-	// action 14: byte slot (0 = first visitor)
+	// Ban a visitor from your player shop by name (owner only)
+	// action 0x1C BAN_PLAYER: a byte the server skips, then the name.
+	// The old code sent action 14, which Cosmic reads as OPEN_CASH.
 	class ShopBanVisitorPacket : public OutPacket
 	{
 	public:
-		ShopBanVisitorPacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
+		ShopBanVisitorPacket(const std::string& name) : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
 		{
-			write_byte(14);
+			write_byte(0x1C);
 			write_byte(0);
-		}
-	};
-
-	// Blacklist management (owner only)
-	// action 15
-	class ShopBlacklistPacket : public OutPacket
-	{
-	public:
-		ShopBlacklistPacket() : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
-		{
-			write_byte(15);
+			write_string(name);
 		}
 	};
 }

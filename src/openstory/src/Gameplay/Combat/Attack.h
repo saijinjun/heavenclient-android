@@ -108,6 +108,7 @@ namespace ms
 			stance = attack.stance;
 			bullet = attack.bullet;
 			toleft = attack.toleft;
+			origin = attack.origin;
 		}
 
 		Attack::Type type;
@@ -122,6 +123,7 @@ namespace ms
 		uint8_t stance = 0;
 		uint8_t speed = 0;
 		bool toleft = false;
+		Point<int16_t> origin;
 		std::unordered_map<int32_t, std::vector<std::pair<int32_t, bool>>> damagelines;
 		int32_t first_oid;
 		int32_t last_oid;

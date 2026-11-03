@@ -36,7 +36,10 @@ namespace ms
 			write_byte((attack.mobcount << 4) | attack.hitcount);
 			write_int(attack.skill);
 
-			if (attack.charge > 0)
+			// The server reads a charge time for these skills whether or
+			// not the key was held; without it every later field shifts
+			// by four bytes and the hit is lost
+			if (has_charge(attack.skill))
 				write_int(attack.charge);
 
 			skip(8);
@@ -56,7 +59,10 @@ namespace ms
 				skip(7);
 
 				// Hurricane/piercing arrow/rapidfire require additional 4 bytes
-				if (attack.skill == 5221004 || attack.skill == 5721001 || attack.skill == 4341002 || attack.skill == 4341003)
+				// Skills the server reads four more bytes for: Hurricane
+				// (Bowmaster, Wind Archer), Piercing Arrow, Rapid Fire
+				if (attack.skill == 3121004 || attack.skill == 3221001 || attack.skill == 5221004 || attack.skill == 13111002 ||
+					attack.skill == 5721001 || attack.skill == 4341002 || attack.skill == 4341003)
 					skip(4);
 			}
 			else
@@ -79,9 +85,36 @@ namespace ms
 				if (attack.skill != 5221004)
 					skip(4);
 			}
+
+			// Poison Bomb: the server reads where the bomb lands
+			if (attack.skill == 14111006)
+			{
+				skip(4);
+				write_short(attack.origin.x());
+				write_short(attack.origin.y());
+			}
 		}
 
 	private:
+		static bool has_charge(int32_t skill)
+		{
+			switch (skill)
+			{
+			case 2121001: // Big Bang (F/P)
+			case 2221001: // Big Bang (I/L)
+			case 2321001: // Big Bang (Bishop)
+			case 5101004: // Corkscrew Blow
+			case 15101003: // Corkscrew Blow (Thunder Breaker)
+			case 5201002: // Grenade
+			case 14111006: // Poison Bomb
+			case 22121000: // Ice Breath
+			case 22151001: // Fire Breath
+				return true;
+			default:
+				return false;
+			}
+		}
+
 		static OutPacket::Opcode opcodefor(Attack::Type type)
 		{
 			switch (type)

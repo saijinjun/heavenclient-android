@@ -94,6 +94,62 @@ namespace ms
 		}
 	};
 
+	// Use-tab items that have their own handler on the server. Same
+	// payload as USE_ITEM: timestamp, short slot, int itemid.
+	//   Summon bags (210xxxx): USE_SUMMON_BAG
+	//   Skill and mastery books (228xxxx, 229xxxx): USE_SKILL_BOOK
+	//   Scripted items (243xxxx): SCRIPTED_ITEM
+	class UseItemByTypePacket : public OutPacket
+	{
+	public:
+		UseItemByTypePacket(int16_t opcode, int16_t slot, int32_t itemid) : OutPacket(opcode)
+		{
+			write_time();
+			write_short(slot);
+			write_int(itemid);
+		}
+
+		// The opcode for a use-tab item, or 0 when nothing on the
+		// server uses it by a tap (scrolls, stars, arrows...)
+		static int16_t opcode_for(int32_t itemid)
+		{
+			int32_t prefix = itemid / 10000;
+
+			// Potions, food, return scrolls, cures and transformation
+			// potions: the server's use handler
+			if (prefix <= 203 || prefix == 205 || prefix == 221)
+				return OutPacket::Opcode::USE_ITEM;
+
+			if (prefix == 210)
+				return OutPacket::Opcode::USE_SUMMON_BAG;
+
+			if (prefix == 228 || prefix == 229)
+				return OutPacket::Opcode::USE_SKILL_BOOK;
+
+			if (prefix == 243)
+				return OutPacket::Opcode::SCRIPTED_ITEM;
+
+			return 0;
+		}
+	};
+
+	// Use a cash item that needs no extra input, or one line of text
+	// (chalkboard, weather effect, kite)
+	class UseSimpleCashItemPacket : public OutPacket
+	{
+	public:
+		UseSimpleCashItemPacket(int16_t slot, int32_t itemid) : OutPacket(OutPacket::Opcode::USE_CASH_ITEM)
+		{
+			write_short(slot);
+			write_int(itemid);
+		}
+
+		UseSimpleCashItemPacket(int16_t slot, int32_t itemid, const std::string& text) : UseSimpleCashItemPacket(slot, itemid)
+		{
+			write_string(text);
+		}
+	};
+
 	// Summon or dismiss a pet from its CASH slot.
 	// Opcode: SPAWN_PET(98) — int tick, short slot, byte lead
 	class SpawnPetPacket : public OutPacket
@@ -239,10 +295,10 @@ namespace ms
 			if (count < 1) count = 1;
 			if (count > 3) count = 3;
 
-			write_string(lines.empty() ? std::string() : lines[0]);
+			// The server reads the line count first, then each line
 			write_byte(count);
-			for (uint8_t i = 1; i < count; i++)
-				write_string(lines[i]);
+			for (uint8_t i = 0; i < count; i++)
+				write_string(i < lines.size() ? lines[i] : std::string());
 			write_byte(whisper ? 1 : 0);
 		}
 	};
@@ -267,25 +323,48 @@ namespace ms
 	};
 
 	// Use a Maple TV cash item (5075xxx). Same opcode as megaphones.
-	// Payload: short slot; int itemid; string victim_name (empty if none);
-	//          5 strings (message lines, pad with empty); bool megassenger.
+	// The fields before the message follow the item's last digit, as the
+	// server's UseCashItemHandler reads them:
+	//   0: byte, victim   1: nothing     2: victim
+	//   3: byte, ear, victim   4: ear     5+: ear, victim
+	// then 5 message lines and an int (timestamp). "ear" is the
+	// Megassenger whisper toggle.
 	class UseMapleTVPacket : public OutPacket
 	{
 	public:
 		UseMapleTVPacket(int16_t slot, int32_t itemid,
 			const std::string& victim_name,
 			const std::vector<std::string>& lines,
-			bool megassenger)
+			bool ear)
 			: OutPacket(OutPacket::Opcode::USE_CASH_ITEM)
 		{
 			write_short(slot);
 			write_int(itemid);
-			write_string(victim_name);
+
+			int32_t tv_type = itemid % 10;
+
+			if (tv_type != 1)
+			{
+				if (tv_type >= 3)
+				{
+					if (tv_type == 3)
+						write_byte(0);
+
+					write_byte(ear ? 1 : 0);
+				}
+				else if (tv_type != 2)
+				{
+					write_byte(0);
+				}
+
+				if (tv_type != 4)
+					write_string(victim_name);
+			}
 
 			for (int i = 0; i < 5; i++)
 				write_string(i < static_cast<int>(lines.size()) ? lines[i] : std::string());
 
-			write_byte(megassenger ? 1 : 0);
+			write_int(0);
 		}
 	};
 

@@ -1642,6 +1642,9 @@ namespace ms
 			return Button::State::NORMAL;
 
 		case BT_MENU_MSN:
+			if (!UIMessenger::is_open())
+				MessengerOpenPacket().dispatch(); // make a messenger to invite into
+
 			UI::get().emplace<UIMessenger>();
 			remove_menus();
 			return Button::State::NORMAL;

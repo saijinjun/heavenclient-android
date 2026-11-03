@@ -104,7 +104,10 @@ namespace ms
 			PET_CHAT_SEND = 168,
 			PET_COMMAND_SEND = 169,
 			PET_LOOT = 170,
+			USE_SUMMON_BAG = 75,
+			SCRIPTED_ITEM = 78,
 			USE_CASH_ITEM = 79,
+			USE_SKILL_BOOK = 82,
 			SCROLL_EQUIP = 86,
 
 			/// Player
