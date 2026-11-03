@@ -315,6 +315,14 @@ namespace ms
 		TouchVibration() : BoolEntry("TouchVibration", "true") {}
 	};
 
+	// Walk-over looting: touching a drop picks it up, as if the loot key
+	// were pressed. Drops still land on the ground like classic MapleStory;
+	// a phone player just never has to tap the loot button.
+	struct AutoPickup : public Configuration::BoolEntry
+	{
+		AutoPickup() : BoolEntry("AutoPickup", "true") {}
+	};
+
 	struct TouchLayout : public Configuration::StringEntry
 	{
 		TouchLayout() : StringEntry("TouchLayout", "") {}
