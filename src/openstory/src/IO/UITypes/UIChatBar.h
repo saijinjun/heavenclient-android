@@ -181,6 +181,15 @@ namespace ms
 		Textfield chatfield;
 		// Shown in the typing bar at the top while the chat field is empty.
 		Text typing_hint;
+
+		// Phone: big "send to" chips above the chat log in place of the
+		// small classic target menu
+		static constexpr int16_t CHIP_W = 74;
+		static constexpr int16_t CHIP_H = 26;
+		static constexpr size_t NUM_CHIPS = 4;
+		Rectangle<int16_t> chip_rect(size_t index) const;
+		int32_t chip_at(Point<int16_t> cursorpos) const;
+		mutable Text chip_labels[NUM_CHIPS];
 		Texture chatspace[2];
 		Texture chattargets[NUM_TARGETS];
 		Texture chatenter;
