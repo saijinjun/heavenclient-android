@@ -14,6 +14,10 @@
 #include "../../Constants.h"
 #include "../../Character/Look/EquipSlot.h"
 #include "../../Data/ItemData.h"
+#include <tuple>
+#include "../../Character/Inventory/Equip.h"
+#include "../../Net/Packets/PlayerPackets.h"
+#include "../../Data/EquipData.h"
 #include "../../Graphics/ClassicStyle.h"
 #include "../../Gameplay/Stage.h"
 #include "../../Net/Packets/InventoryPackets.h"
@@ -48,7 +52,9 @@ namespace ms
 		constexpr int16_t MARGIN = 12;
 		constexpr int16_t TITLE_H = 26;
 		constexpr int16_t TAB_H = 32;
-		constexpr int16_t DETAIL_W = 200;
+		constexpr int16_t DETAIL_W = 230;
+		constexpr int16_t SLOT_BTN_H = 30;
+		constexpr size_t NUM_QUICK = 6;
 		constexpr int16_t FOOT_H = 30;
 		constexpr int16_t SLOT = 50;
 		constexpr int16_t GAP = 6;
@@ -76,6 +82,11 @@ namespace ms
 		close_label = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "X");
 		for (const auto& worn : WORN)
 			worn_labels.emplace_back(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, worn.second);
+
+		quick_hint = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::SILVERCHALICE, "Put on quick slot");
+
+		for (size_t i = 0; i < NUM_QUICK; i++)
+			quick_labels[i] = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, std::to_string(i + 1));
 
 		empty_hint = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, "Tap an item to see it here", DETAIL_W - 20);
 	}
@@ -112,6 +123,17 @@ namespace ms
 		l.detail = rect(px + pw - MARGIN - DETAIL_W, body_y, DETAIL_W, body_h);
 		l.action = rect(l.detail.left() + 10, l.detail.bottom() - 86, DETAIL_W - 20, 38);
 		l.drop = rect(l.detail.left() + 10, l.detail.bottom() - 42, DETAIL_W - 20, 34);
+
+		// Quick slot 1-6 buttons, two rows of three above Use and Drop
+		int16_t quick_w = (DETAIL_W - 20 - 2 * 6) / 3;
+
+		for (size_t i = 0; i < NUM_QUICK; i++)
+		{
+			int16_t col = static_cast<int16_t>(i % 3);
+			int16_t row = static_cast<int16_t>(i / 3);
+			int16_t y = l.action.top() - 8 - (2 - row) * SLOT_BTN_H - (1 - row) * 6;
+			l.quick[i] = rect(l.detail.left() + 10 + col * (quick_w + 6), y, quick_w, SLOT_BTN_H);
+		}
 
 		return l;
 	}
@@ -300,12 +322,15 @@ namespace ms
 		}
 		else
 		{
-			if (shown_item != itemid)
+			if (shown_item != itemid || shown_slot != selected || shown_tab != tab)
 			{
 				const ItemData& data = ItemData::get(itemid);
 				shown_item = itemid;
+				shown_slot = selected;
+				shown_tab = tab;
 				name.change_text(data.get_name());
 				desc.change_text(data.get_desc());
+				build_equip_lines();
 			}
 
 			int16_t count = inventory.get_item_count(type, selected);
@@ -328,9 +353,38 @@ namespace ms
 				y += amount.height() + 4;
 			}
 
-			// The description fills what's left above the buttons
-			if (y + desc.height() < l.action.top() - 6)
+			bool quick = can_quick_slot();
+			int16_t bottom = quick ? l.quick[0].top() - 22 : l.action.top() - 6;
+
+			// An equip's requirements and stats, then the description in
+			// what's left above the buttons
+			for (const Text& line : equip_lines)
+			{
+				if (y + line.height() > bottom)
+					break;
+
+				line.draw(Point<int16_t>(l.detail.left() + 10, y));
+				y += line.height() + 1;
+			}
+
+			if (!equip_lines.empty())
+				y += 6;
+
+			if (y + desc.height() < bottom)
 				desc.draw(Point<int16_t>(l.detail.left() + 10, y));
+
+			if (quick)
+			{
+				int16_t bound = bound_quick_slot(itemid);
+				quick_hint.draw(Point<int16_t>(l.detail.left() + 10, l.quick[0].top() - 18));
+
+				for (size_t i = 0; i < NUM_QUICK; i++)
+				{
+					const Rectangle<int16_t>& q = l.quick[i];
+					classic::button(q.get_left_top(), q.width(), q.height(), static_cast<int16_t>(i) == bound);
+					draw_label(quick_labels[i], q);
+				}
+			}
 
 			std::string action = action_name();
 
@@ -454,6 +508,106 @@ namespace ms
 		}
 	}
 
+	bool UIMobileInventory::can_quick_slot() const
+	{
+		// Potions, scrolls, chairs and cash items go on quick slots; equips
+		// and etc items can't be used from one
+		InventoryType::Id type = tab_type();
+		return type == InventoryType::Id::USE || type == InventoryType::Id::SETUP || type == InventoryType::Id::CASH;
+	}
+
+	int16_t UIMobileInventory::bound_quick_slot(int32_t itemid) const
+	{
+		const Keyboard& keyboard = UI::get().get_keyboard();
+		const auto& keys = keyboard.get_quickslot_keys();
+
+		for (size_t i = 0; i < NUM_QUICK && i < keys.size(); i++)
+		{
+			Keyboard::Mapping mapping = keyboard.get_maple_mapping(keys[i]);
+
+			if (mapping.type == KeyType::Id::ITEM && mapping.action == itemid)
+				return static_cast<int16_t>(i);
+		}
+
+		return -1;
+	}
+
+	void UIMobileInventory::bind_quick_slot(size_t slot, int32_t itemid) const
+	{
+		// The touch quick slots show the quickslot bar's keys, so this is the
+		// same binding a drag onto a slot makes
+		Keyboard& keyboard = UI::get().get_keyboard();
+		const auto& keys = keyboard.get_quickslot_keys();
+
+		if (slot >= keys.size())
+			return;
+
+		uint8_t key = keys[slot];
+		keyboard.assign(key, static_cast<uint8_t>(KeyType::Id::ITEM), itemid);
+
+		std::vector<std::tuple<KeyConfig::Key, KeyType::Id, int32_t>> updates;
+		updates.emplace_back(static_cast<KeyConfig::Key>(key), KeyType::Id::ITEM, itemid);
+		ChangeKeyMapPacket(updates).dispatch();
+	}
+
+	void UIMobileInventory::build_equip_lines() const
+	{
+		equip_lines.clear();
+
+		InventoryType::Id type = tab_type();
+
+		if (type != InventoryType::Id::EQUIP && type != InventoryType::Id::EQUIPPED)
+			return;
+
+		int32_t itemid = item_at(selected);
+		const EquipData& data = EquipData::get(itemid);
+
+		if (!data.is_valid())
+			return;
+
+		const CharStats& stats = Stage::get().get_player().get_stats();
+		uint16_t width = DETAIL_W - 20;
+
+		auto add = [&](const std::string& text, Color::Name color)
+		{
+			equip_lines.emplace_back(Text::Font::A12M, Text::Alignment::LEFT, color, text, width, false);
+		};
+
+		if (!data.get_type().empty())
+			add(data.get_type(), Color::Name::SILVERCHALICE);
+
+		// Requirements, red when the character doesn't meet them
+		const std::pair<MapleStat::Id, const char*> reqs[] = {
+			{ MapleStat::Id::LEVEL, "Req Lv." }, { MapleStat::Id::STR, "Req STR" }, { MapleStat::Id::DEX, "Req DEX" },
+			{ MapleStat::Id::INT, "Req INT" }, { MapleStat::Id::LUK, "Req LUK" }
+		};
+
+		for (const auto& req : reqs)
+		{
+			int16_t need = data.get_reqstat(req.first);
+
+			if (need <= 0)
+				continue;
+
+			bool met = stats.get_stat(req.first) >= need;
+			add(std::string(req.second) + " " + std::to_string(need), met ? Color::Name::WHITE : Color::Name::TORCHRED);
+		}
+
+		// This copy's own stats (scrolls included), or the item's defaults
+		Optional<const Equip> equip = inventory.get_equip(type, inventory_slot(selected));
+
+		for (auto id : EquipStat::values)
+		{
+			int32_t value = equip ? equip->get_stat(id) : data.get_defstat(id);
+
+			if (value > 0)
+				add(std::string(EquipStat::names[id]) + " +" + std::to_string(value), Color::Name::HUD_EXP);
+		}
+
+		if (equip && equip->get_slots() > 0)
+			add("Upgrades available: " + std::to_string(equip->get_slots()), Color::Name::SILVERCHALICE);
+	}
+
 	void UIMobileInventory::open_classic()
 	{
 		deactivate();
@@ -501,6 +655,18 @@ namespace ms
 				}
 
 				return Cursor::State::CLICKING;
+			}
+		}
+
+		if (item_at(selected) && can_quick_slot())
+		{
+			for (size_t i = 0; i < NUM_QUICK; i++)
+			{
+				if (l.quick[i].contains(cursorpos))
+				{
+					bind_quick_slot(i, item_at(selected));
+					return Cursor::State::CLICKING;
+				}
 			}
 		}
 
