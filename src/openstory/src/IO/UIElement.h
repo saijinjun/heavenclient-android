@@ -190,5 +190,9 @@ namespace ms
 		Point<int16_t> dimension;
 		bool active;
 		ScaleMode scale_mode;
+
+		// The press (UI::get_press_count) that last pressed one of the
+		// buttons, or the one held when the window was made
+		uint32_t button_press;
 	};
 }
