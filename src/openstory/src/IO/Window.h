@@ -95,6 +95,7 @@ namespace ms
 		// The controller's extras on top of Gamepad's button mapping:
 		// quick slots on the bumpers and triggers, a cursor on the right stick.
 		void poll_pad();
+		void repeat_held_slots();
 		void update_viewport();
 		void update_text_input();
 		Point<int16_t> to_view(int32_t x, int32_t y) const;
@@ -130,6 +131,10 @@ namespace ms
 		SDL_GameController* pad = nullptr;
 		bool pad_slots[4] = {};
 		bool pad_click = false;
+		// Quick slots held down (touch or controller), and when a held
+		// attack skill on one was last sent again
+		std::array<bool, TouchControls::NUM_SLOTS> held_slots = {};
+		uint32_t slot_repeat_tick = 0;
 		uint32_t pad_tick = 0;
 		float pad_cursor_x = 0.0f;
 		float pad_cursor_y = 0.0f;
