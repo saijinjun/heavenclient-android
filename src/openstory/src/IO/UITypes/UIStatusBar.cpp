@@ -289,6 +289,7 @@ namespace ms
 		// these keep working whatever the NX build ships.
 		joblabel = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::YELLOW);
 		namelabel = Text(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::WHITE);
+		sys_title = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::YELLOW, "SYSTEM");
 		// Bold white key label drawn in each quickslot cube's corner.
 		qs_key_label = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::WHITE);
 		v83_menu_label = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::WHITE);
@@ -1283,6 +1284,23 @@ namespace ms
 			draw_subpanel(*buttons.at(BT_SYS_CHANNEL),
 			              *buttons.at(BT_SYS_GAMEQUIT),
 			              sys_bg_top, sys_bg_mid, sys_bg_bot, sys_fade);
+
+			// Both panels share art that reads GAME MENU. In the 79 px wide
+			// art the words sit at x 12-66, y 8-12: paint them out, stretched
+			// the same way as the panel, and write this panel's own title.
+			{
+				constexpr int16_t ART_W = 79;
+				auto sys_top = buttons.at(BT_SYS_CHANNEL)->bounds(position);
+				int16_t panel_w = sys_top.get_right_bottom().x() - sys_top.get_left_top().x() + SUBPANEL_PAD_X * 2;
+				Point<int16_t> tl = sys_top.get_left_top() - Point<int16_t>(SUBPANEL_PAD_X, SUBPANEL_PAD_TOP);
+				int16_t cover_x = static_cast<int16_t>(10 * panel_w / ART_W);
+				int16_t cover_w = static_cast<int16_t>(59 * panel_w / ART_W);
+
+				ColorBox(cover_w, 7, Color::Name::BLACK, 1.0f).draw(
+					DrawArgument(tl + Point<int16_t>(cover_x, 7), sys_fade));
+				sys_title.draw(DrawArgument(tl + Point<int16_t>(panel_w / 2, 3), sys_fade));
+			}
+
 			auto draw_sys = [&](uint16_t id) {
 				static_cast<MapleButton*>(buttons.at(id).get())->draw(position, sys_fade);
 			};
