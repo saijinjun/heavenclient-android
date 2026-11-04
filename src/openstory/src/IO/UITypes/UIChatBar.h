@@ -21,6 +21,7 @@
 #include "../Messages.h"
 
 #include "../Components/Slider.h"
+#include "../Components/TapGesture.h"
 #include "../Components/Textfield.h"
 
 #include "../../Graphics/Geometry.h"
@@ -100,9 +101,9 @@ namespace ms
 
 		bool is_in_range(Point<int16_t> cursorpos) const override;
 
-		// Whether one of the "send to" chips (All, Party, Guild, Buddy) is
-		// at this point. They sit inside the touch stick's zone.
-		bool chip_hit(Point<int16_t> cursorpos) const;
+		// Whether a touch here is for the chat bar on a phone, not for the
+		// touch controls or the world
+		bool touch_hit(Point<int16_t> cursorpos) const;
 
 		// Windows-style chat-log text selection (drag to highlight, Ctrl+C to copy).
 		std::string get_selected_text() const;
@@ -143,6 +144,7 @@ namespace ms
 		void set_chat_open(bool open);
 		int32_t resolve_party_member_id(const std::string& token) const;
 		bool handle_party_command(const std::string& message);
+		void submit_chat(std::string message);
 		void send_chat_message(const std::string& message);
 		void send_targeted_message(const std::string& target, const std::string& message);
 		void send_party_message(const std::string& message);
@@ -161,6 +163,7 @@ namespace ms
 		// Emoticon picker. Sprites are v83's own: socialChat/BtImoticon for the
 		// button and socialChat/ImoticonFrame for the panel.
 		void toggle_emoticons();
+		void pick_emoticon(int32_t index);
 		void make_face(const std::string& name);
 		void draw_emoticons(Point<int16_t> position) const;
 		// Grid cell under the cursor, or -1. Shared by hover and click so the
@@ -169,7 +172,11 @@ namespace ms
 		Point<int16_t> emoticon_origin() const;
 
 		static constexpr int16_t EMOTE_COLS = 6;
+#ifdef __ANDROID__
+		static constexpr int16_t EMOTE_CELL = 40;
+#else
 		static constexpr int16_t EMOTE_CELL = 28;
+#endif
 		static constexpr int16_t EMOTE_PAD = 8;
 
 		bool emoticons_open = false;
@@ -189,12 +196,59 @@ namespace ms
 
 		// Phone: big "send to" chips above the chat log in place of the
 		// small classic target menu
-		static constexpr int16_t CHIP_W = 74;
-		static constexpr int16_t CHIP_H = 26;
+		static constexpr int16_t CHIP_W = 84;
+		static constexpr int16_t CHIP_H = 34;
 		static constexpr size_t NUM_CHIPS = 4;
 		Rectangle<int16_t> chip_rect(size_t index) const;
 		int32_t chip_at(Point<int16_t> cursorpos) const;
 		mutable Text chip_labels[NUM_CHIPS];
+
+		// The phone layout. Everything sits in the free space above the dock,
+		// between the touch stick's zone and the attack buttons, so nothing
+		// lies under the stick or covers the dock.
+		static constexpr int16_t TOUCH_W = 512;
+		static constexpr int16_t TOUCH_ABOVE_DOCK = 60;
+		static constexpr int16_t TOUCH_LINE_H = 30;
+		static constexpr int16_t TOUCH_LINE_REACH = 8;
+		static constexpr int16_t TOUCH_FIELD_H = 38;
+		static constexpr int16_t TOUCH_ROWS = 5;
+		static constexpr int16_t TYPING_MAX_W = 600;
+		static constexpr int16_t TYPING_LEFT = 430;
+		static constexpr int16_t TYPING_TOP = 26;
+		static constexpr int16_t TYPING_H = 40;
+		static constexpr int16_t TYPING_BTN_W = 78;
+		static constexpr int16_t TYPING_GAP = 6;
+
+		int16_t touch_left() const;
+		int16_t touch_bottom() const;
+		Rectangle<int16_t> line_rect() const;
+		Rectangle<int16_t> log_rect() const;
+		Rectangle<int16_t> field_rect() const;
+		Rectangle<int16_t> emoticon_button_rect() const;
+		Rectangle<int16_t> log_close_rect() const;
+		Rectangle<int16_t> emoticon_panel_rect() const;
+		Rectangle<int16_t> typing_rect() const;
+		Rectangle<int16_t> typing_target_rect() const;
+		Rectangle<int16_t> typing_field_rect() const;
+		Rectangle<int16_t> typing_send_rect() const;
+		bool typing_bar_shown() const;
+		size_t chip_index() const;
+		static ChatTarget chip_target(size_t index);
+		void draw_touch() const;
+		void draw_touch_line() const;
+		void draw_touch_log() const;
+		void draw_log_rows(int16_t left) const;
+		void draw_typing_bar() const;
+		Cursor::State send_cursor_touch(bool clicking, Point<int16_t> cursorpos);
+		void touch_tap(Point<int16_t> at);
+		void scroll_log(bool older);
+
+		TapGesture tap;
+		bool swiping_log = false;
+		int16_t swipe_anchor_y = 0;
+		Text touch_hint;
+		Text touch_close;
+		mutable Text send_label;
 		Texture chatspace[2];
 		Texture chattargets[NUM_TARGETS];
 		Texture chatenter;

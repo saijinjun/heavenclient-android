@@ -37,6 +37,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <list>
 #include <sstream>
 
@@ -92,7 +93,11 @@ namespace ms
 		party_id = -1;
 		party_leader_id = -1;
 		pending_party_invite_id = -1;
+#ifdef __ANDROID__
+		chatrows = TOUCH_ROWS;
+#else
 		chatrows = 4;
+#endif
 		rowpos = 0;
 		rowmax = -1;
 		lastpos = 0;
@@ -143,7 +148,14 @@ namespace ms
 		// few pixels so the typed text sits centered in the input
 		// strip instead of jamming against its top edge.
 		chatfield = Textfield(Text::A12M, Text::LEFT, Color::Name::BLACK, Rectangle<int16_t>(Point<int16_t>(-435, -59), Point<int16_t>(-40, -39)), 0);
+#ifdef __ANDROID__
+		typing_hint = Text(Text::A12M, Text::LEFT, Color::Name::DUSTYGRAY, "Say something");
+#else
 		typing_hint = Text(Text::A12M, Text::LEFT, Color::Name::DUSTYGRAY, "Say something, then press Enter to send");
+#endif
+		touch_hint = Text(Text::A12M, Text::LEFT, Color::Name::DUSTYGRAY, "Tap here to type");
+		touch_close = Text(Text::A12B, Text::CENTER, Color::Name::WHITE, "X");
+		send_label = Text(Text::A12B, Text::CENTER, Color::Name::WHITE, "Send");
 
 		const char* chip_names[NUM_CHIPS] = { "All", "Party", "Guild", "Buddy" };
 
@@ -155,20 +167,7 @@ namespace ms
 		chatfield.set_enter_callback(
 			[&](std::string msg)
 			{
-				msg = trim(msg);
-				if (msg.empty())
-				{
-					// Empty Enter minimizes the whole chat window.
-					set_chat_open(false);
-					return;
-				}
-
-				if (!handle_party_command(msg))
-					send_chat_message(msg);
-
-				lastentered.push_back(msg);
-				lastpos = lastentered.size();
-				chatfield.change_text("");
+				submit_chat(msg);
 			}
 		);
 
@@ -216,20 +215,42 @@ namespace ms
 		send_line("[Welcome] Welcome to MapleStory!", YELLOW);
 	}
 
+	void UIChatBar::submit_chat(std::string msg)
+	{
+		msg = trim(msg);
+		if (msg.empty())
+		{
+			// Empty Enter minimizes the whole chat window.
+			set_chat_open(false);
+			return;
+		}
+
+		if (!handle_party_command(msg))
+			send_chat_message(msg);
+
+		lastentered.push_back(msg);
+		lastpos = lastentered.size();
+		chatfield.change_text("");
+	}
+
 	void UIChatBar::set_chat_open(bool open)
 	{
 		chatopen = open;
+#ifdef __ANDROID__
+		// Phones draw and hit test their own larger controls
+		for (auto& button : buttons)
+			button.second->set_active(false);
+
+		if (open)
+			rowpos = rowmax;
+#else
 		buttons[BT_OPENCHAT]->set_active(!open);
 		buttons[BT_CLOSECHAT]->set_active(open);
-#ifdef __ANDROID__
-		// The chips above the log replace the small target menu on phones
-		buttons[BT_CHATTARGETS]->set_active(false);
-#else
 		buttons[BT_CHATTARGETS]->set_active(open);
-#endif
 		buttons[BT_SCROLLUP]->set_active(open);
 		buttons[BT_SCROLLDOWN]->set_active(open);
 		buttons[BT_IMOTICON]->set_active(open);
+#endif
 
 		if (!open)
 		{
@@ -247,6 +268,10 @@ namespace ms
 	{
 		int16_t rows = (Text::emoticon_count() + EMOTE_COLS - 1) / EMOTE_COLS;
 		int16_t h = rows * EMOTE_CELL + EMOTE_PAD * 2;
+
+#ifdef __ANDROID__
+		return Point<int16_t>(touch_left(), std::max<int16_t>(TYPING_TOP, touch_bottom() - TOUCH_FIELD_H - h));
+#endif
 
 		// Sits directly above its own button so the panel never covers the
 		// chat input the user is typing into.
@@ -331,8 +356,24 @@ namespace ms
 	{
 		emoticons_open = !emoticons_open;
 
+#ifndef __ANDROID__
+		// On a phone the keyboard would cover the picker, so it waits for a pick
 		if (emoticons_open)
 			focus_chatfield();
+#endif
+	}
+
+	void UIChatBar::pick_emoticon(int32_t index)
+	{
+		Sound(Sound::Name::BUTTONCLICK).play();
+		focus_chatfield();
+		chatfield.add_string("#e" + std::to_string(index) + "#");
+		emoticons_open = false;
+
+		// The seven F1-F7 faces also play on the character, so touch
+		// players (who have no F keys) can make faces too.
+		make_face(Text::emoticon_name(index));
+		emoticon_hover = -1;
 	}
 
 	void UIChatBar::focus_chatfield()
@@ -349,6 +390,11 @@ namespace ms
 
 	void UIChatBar::draw(float inter) const
 	{
+#ifdef __ANDROID__
+		draw_touch();
+		return;
+#endif
+
 		chatspace[chatopen ? 1 : 0].draw(position);
 		chatenter.draw(position);
 
@@ -358,164 +404,16 @@ namespace ms
 
 		if (chatopen)
 		{
-#ifdef __ANDROID__
-			{
-				// Navy glass behind the log with a gold top edge, and the
-				// "send to" chips above it
-				int16_t top = getchattop();
-				int16_t h = chatrows * CHATROWHEIGHT + 4;
-
-				classic::box(0, top, 502, h, Color::Name::HUD_PANEL, 0.78f);
-				classic::box(0, top, 502, 2, Color::Name::HUD_EXP, 0.9f);
-				classic::box(0, top + 2, 502, 1, Color::Name::WHITE, 0.15f);
-				classic::box(501, top, 1, h, Color::Name::HUD_EXP, 0.45f);
-
-				const ChatTarget chip_targets[NUM_CHIPS] = { CHT_ALL, CHT_PARTY, CHT_GUILD, CHT_BUDDY };
-
-				for (size_t i = 0; i < NUM_CHIPS; i++)
-				{
-					Rectangle<int16_t> r = chip_rect(i);
-					bool lit = chattarget == chip_targets[i];
-					classic::tab(r.get_left_top(), r.width(), r.height(), lit);
-					chip_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
-					chip_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(chip_labels[i], r.top() + r.height() / 2)));
-				}
-			}
-#else
 			tapbartop.draw(Point<int16_t>(position.x() - 576, getchattop()));
 
 			chatbox.draw(DrawArgument(Point<int16_t>(0, getchattop() + 2)));
-#endif
 
-			int16_t chattop = getchattop();
-			int16_t chatbottom = chattop + chatrows * CHATROWHEIGHT;
-			Range<int16_t> chatclip(chattop + 2, chatbottom);
-
-			int16_t chatheight = CHATROWHEIGHT * chatrows;
-			int16_t yshift = -chatheight;
-
-			for (int16_t i = 0; i < chatrows; i++)
-			{
-				int16_t rowid = rowpos - i;
-
-				if (!rowtexts.count(rowid))
-					break;
-
-				int16_t lines_here = rowtexts.at(rowid).height() / CHATROWHEIGHT;
-				if (lines_here < 1)
-					lines_here = 1;
-				int16_t textheight = lines_here;
-
-				while (textheight > 0)
-				{
-					yshift += CHATROWHEIGHT;
-					textheight--;
-				}
-
-				int16_t msgy = chattop - yshift - 7;
-
-				if (msgy < chattop)
-					continue;
-
-				// Megaphone rows: paint a colored strip ALIGNED WITH the
-				// actual text row (so it sits behind the glyphs, not
-				// above or below), then draw name → icon → message.
-				auto mega_it = mega_rows.find(rowid);
-				if (mega_it != mega_rows.end())
-				{
-					const MegaRow& mr = mega_it->second;
-
-					Color::Name bg_color = Color::Name::WHITE;
-					switch (mr.icon)
-					{
-					case 0: bg_color = Color::Name::BLUE;   break; // regular
-					case 1: bg_color = Color::Name::PINK;   break; // super
-					case 2: bg_color = Color::Name::GREEN;  break; // item
-					case 3: bg_color = Color::Name::YELLOW; break; // triple
-					}
-
-					// A12M glyph top sits at msgy + (linespace - bearing) ≈
-					// msgy+5; bottom ≈ msgy+17. Strip matches that band
-					// exactly so it sits BEHIND the glyphs only, and uses
-					// a softer alpha so the text stays legible.
-					int16_t strip_top = msgy + 5;
-					int16_t strip_h   = 13;
-					ColorBox row_bg(496, strip_h, bg_color, 0.18f);
-					row_bg.draw(DrawArgument(Point<int16_t>(2, strip_top)));
-
-					int16_t x = 4;
-
-					if (!mr.namepart.empty())
-					{
-						mr.namepart.draw(
-							DrawArgument(Point<int16_t>(x, msgy)), chatclip);
-						x += mr.namepart.width() + 2;
-					}
-
-					// Center the 12-tall megaphone icon over the strip.
-					if (mr.icon >= 0 && mr.icon < 4
-						&& megaphone_icons[mr.icon].is_valid())
-					{
-						int16_t icon_y = strip_top + (strip_h - 12) / 2;
-						megaphone_icons[mr.icon].draw(
-							DrawArgument(Point<int16_t>(x, icon_y)));
-						x += megaphone_icons[mr.icon].width() + 2;
-					}
-
-					mr.msgpart.draw(
-						DrawArgument(Point<int16_t>(x, msgy)), chatclip);
-
-					ChatBalloon::draw_inline_images(
-						mr.msgpart, Point<int16_t>(x, msgy), chatclip);
-				}
-				else
-				{
-					rowtexts.at(rowid).draw(
-						DrawArgument(Point<int16_t>(4, msgy)), chatclip);
-
-					// Text::draw paints glyphs only; inline #v/#i/#q/#s/#f/#e
-					// sprites are a separate overlay, which the chat window
-					// was never doing -- so emoticons showed in speech
-					// balloons but not in the chat log.
-					ChatBalloon::draw_inline_images(
-						rowtexts.at(rowid), Point<int16_t>(4, msgy), chatclip);
-				}
-
-				if (has_selection)
-				{
-					int16_t sr, sc, er, ec;
-					ordered_sel(sr, sc, er, ec);
-
-					if (rowid >= sr && rowid <= er)
-					{
-						auto rit = rowstrings.find(rowid);
-						int16_t len = rit != rowstrings.end()
-							? static_cast<int16_t>(rit->second.size()) : 0;
-						int16_t from = (rowid == sr) ? sc : 0;
-						int16_t to = (rowid == er) ? ec : len;
-						if (to < from) to = from;
-
-						int16_t x0 = 4 + static_cast<int16_t>(rowtexts.at(rowid).advance(from));
-						int16_t x1 = 4 + static_cast<int16_t>(rowtexts.at(rowid).advance(to));
-						int16_t w = x1 - x0;
-
-						if (w > 0)
-						{
-							// Hug the glyph band (A12M top ≈ msgy+5, bottom ≈ msgy+18)
-							// so the highlight sits on the text, and keep it bold.
-							ColorBox cover(w, 13, Color::Name::WHITE, 0.55f);
-							cover.draw(DrawArgument(Point<int16_t>(x0, msgy + 5)));
-						}
-					}
-				}
-			}
+			draw_log_rows(0);
 
 			slider.draw(Point<int16_t>(position.x(), getchattop() + 5));
 
-#ifndef __ANDROID__
 			if (chattarget >= CHT_ALL && chattarget < NUM_TARGETS)
 				chattargets[chattarget].draw(DrawArgument(position + Point<int16_t>(0, 2)));
-#endif
 
 			chatcover.draw(position);
 			chatfield.draw(position);
@@ -525,64 +423,581 @@ namespace ms
 			rowtexts.at(rowmax).draw(position + Point<int16_t>(-500, -60));
 		}
 
-		if (UI::get().is_typing_on_top() && chatfield.get_state() == Textfield::State::FOCUSED)
+		if (typing_bar_shown())
+			draw_typing_bar();
+	}
+
+	void UIChatBar::draw_log_rows(int16_t left) const
+	{
+		int16_t chattop = getchattop();
+		int16_t chatbottom = chattop + chatrows * CHATROWHEIGHT;
+		Range<int16_t> chatclip(chattop + 2, chatbottom);
+
+		int16_t chatheight = CHATROWHEIGHT * chatrows;
+		int16_t yshift = -chatheight;
+
+		for (int16_t i = 0; i < chatrows; i++)
 		{
-			// A typing bar at the top of the screen, above the soft keyboard:
-			// a light field in a gold rim.
-			int16_t width = std::min<int16_t>(Constants::Constants::get().get_viewwidth() - 32, 460);
-			int16_t viewwidth = Constants::Constants::get().get_viewwidth();
+			int16_t rowid = rowpos - i;
 
-			// Below the line the scrolling notice runs along
-			Point<int16_t> bar((viewwidth - width) / 2, 30);
+			if (!rowtexts.count(rowid))
+				break;
 
-			// A light input field in a gold rim
-			if (!classic::input(bar + Point<int16_t>(-14, -4), width + 20, 36))
+			int16_t lines_here = rowtexts.at(rowid).height() / CHATROWHEIGHT;
+			if (lines_here < 1)
+				lines_here = 1;
+			int16_t textheight = lines_here;
+
+			while (textheight > 0)
 			{
-				classic::panel(bar + Point<int16_t>(-3, -3), width + 6, 34);
-				classic::box(bar.x(), bar.y(), width, 28, Color::Name::GALLERY, 0.97f);
-				classic::box(bar.x(), bar.y(), 4, 28, Color::Name::HUD_EXP);
+				yshift += CHATROWHEIGHT;
+				textheight--;
 			}
 
-			// The field's bounds start at (-435, -59) from the bar's position.
-			Point<int16_t> text_pos = bar + Point<int16_t>(14, 5);
+			int16_t msgy = chattop - yshift - 7;
 
-			if (chatfield.empty())
-				typing_hint.draw(DrawArgument(text_pos));
+			if (msgy < chattop)
+				continue;
 
-			chatfield.draw(text_pos + Point<int16_t>(435, 59));
-
-			// The keyboard covers the log, so the latest lines stay readable
-			// here, to reply to
-			constexpr int16_t RECENT_LINES = 4;
-			constexpr int16_t RECENT_W = 500;
-
-			int16_t lines = 0;
-			int16_t first = rowmax + 1;
-
-			while (rowtexts.count(first - 1))
+			// Megaphone rows: paint a colored strip ALIGNED WITH the
+			// actual text row (so it sits behind the glyphs, not
+			// above or below), then draw name → icon → message.
+			auto mega_it = mega_rows.find(rowid);
+			if (mega_it != mega_rows.end())
 			{
-				int16_t height = std::max<int16_t>(rowtexts.at(first - 1).height() / CHATROWHEIGHT, 1);
+				const MegaRow& mr = mega_it->second;
 
-				if (lines + height > RECENT_LINES)
-					break;
-
-				lines += height;
-				first--;
-			}
-
-			if (lines > 0)
-			{
-				int16_t x = (viewwidth - RECENT_W) / 2;
-				int16_t y = bar.y() + 36;
-
-				classic::box(x, y, RECENT_W, lines * CHATROWHEIGHT + 6, Color::Name::HUD_PANEL, 0.78f);
-
-				for (int16_t row = first; row <= rowmax; row++)
+				Color::Name bg_color = Color::Name::WHITE;
+				switch (mr.icon)
 				{
-					rowtexts.at(row).draw(Point<int16_t>(x + 8, y));
-					y += std::max<int16_t>(rowtexts.at(row).height() / CHATROWHEIGHT, 1) * CHATROWHEIGHT;
+				case 0: bg_color = Color::Name::BLUE;   break; // regular
+				case 1: bg_color = Color::Name::PINK;   break; // super
+				case 2: bg_color = Color::Name::GREEN;  break; // item
+				case 3: bg_color = Color::Name::YELLOW; break; // triple
+				}
+
+				// A12M glyph top sits at msgy + (linespace - bearing) ≈
+				// msgy+5; bottom ≈ msgy+17. Strip matches that band
+				// exactly so it sits BEHIND the glyphs only, and uses
+				// a softer alpha so the text stays legible.
+				int16_t strip_top = msgy + 5;
+				int16_t strip_h   = 13;
+				ColorBox row_bg(496, strip_h, bg_color, 0.18f);
+				row_bg.draw(DrawArgument(Point<int16_t>(left + 2, strip_top)));
+
+				int16_t x = left + 4;
+
+				if (!mr.namepart.empty())
+				{
+					mr.namepart.draw(
+						DrawArgument(Point<int16_t>(x, msgy)), chatclip);
+					x += mr.namepart.width() + 2;
+				}
+
+				// Center the 12-tall megaphone icon over the strip.
+				if (mr.icon >= 0 && mr.icon < 4
+					&& megaphone_icons[mr.icon].is_valid())
+				{
+					int16_t icon_y = strip_top + (strip_h - 12) / 2;
+					megaphone_icons[mr.icon].draw(
+						DrawArgument(Point<int16_t>(x, icon_y)));
+					x += megaphone_icons[mr.icon].width() + 2;
+				}
+
+				mr.msgpart.draw(
+					DrawArgument(Point<int16_t>(x, msgy)), chatclip);
+
+				ChatBalloon::draw_inline_images(
+					mr.msgpart, Point<int16_t>(x, msgy), chatclip);
+			}
+			else
+			{
+				rowtexts.at(rowid).draw(
+					DrawArgument(Point<int16_t>(left + 4, msgy)), chatclip);
+
+				// Text::draw paints glyphs only; inline #v/#i/#q/#s/#f/#e
+				// sprites are a separate overlay, which the chat window
+				// was never doing -- so emoticons showed in speech
+				// balloons but not in the chat log.
+				ChatBalloon::draw_inline_images(
+					rowtexts.at(rowid), Point<int16_t>(left + 4, msgy), chatclip);
+			}
+
+			if (has_selection)
+			{
+				int16_t sr, sc, er, ec;
+				ordered_sel(sr, sc, er, ec);
+
+				if (rowid >= sr && rowid <= er)
+				{
+					auto rit = rowstrings.find(rowid);
+					int16_t len = rit != rowstrings.end()
+						? static_cast<int16_t>(rit->second.size()) : 0;
+					int16_t from = (rowid == sr) ? sc : 0;
+					int16_t to = (rowid == er) ? ec : len;
+					if (to < from) to = from;
+
+					int16_t x0 = 4 + static_cast<int16_t>(rowtexts.at(rowid).advance(from));
+					int16_t x1 = 4 + static_cast<int16_t>(rowtexts.at(rowid).advance(to));
+					int16_t w = x1 - x0;
+
+					if (w > 0)
+					{
+						// Hug the glyph band (A12M top ≈ msgy+5, bottom ≈ msgy+18)
+						// so the highlight sits on the text, and keep it bold.
+						ColorBox cover(w, 13, Color::Name::WHITE, 0.55f);
+						cover.draw(DrawArgument(Point<int16_t>(x0, msgy + 5)));
+					}
 				}
 			}
+		}
+	}
+
+	bool UIChatBar::typing_bar_shown() const
+	{
+		return UI::get().is_typing_on_top() && chatfield.get_state() == Textfield::State::FOCUSED;
+	}
+
+	void UIChatBar::draw_typing_bar() const
+	{
+		// A typing bar at the top of the screen, above the soft keyboard:
+		// a light field in a gold rim.
+		int16_t viewwidth = Constants::Constants::get().get_viewwidth();
+
+#ifdef __ANDROID__
+		Rectangle<int16_t> field = typing_field_rect();
+		Point<int16_t> bar(field.left() + 14, field.top() + 4);
+		int16_t width = field.width() - 20;
+		int16_t bar_h = TYPING_H;
+#else
+		int16_t width = std::min<int16_t>(viewwidth - 32, 460);
+
+		// Below the line the scrolling notice runs along
+		Point<int16_t> bar((viewwidth - width) / 2, 30);
+		int16_t bar_h = 36;
+#endif
+
+		// A light input field in a gold rim
+		if (!classic::input(bar + Point<int16_t>(-14, -4), width + 20, bar_h))
+		{
+			classic::panel(bar + Point<int16_t>(-3, -3), width + 6, bar_h - 2);
+			classic::box(bar.x(), bar.y(), width, bar_h - 8, Color::Name::GALLERY, 0.97f);
+			classic::box(bar.x(), bar.y(), 4, bar_h - 8, Color::Name::HUD_EXP);
+		}
+
+		// The field's bounds start at (-435, -59) from the bar's position.
+		Point<int16_t> text_pos = bar + Point<int16_t>(14, (bar_h - 26) / 2);
+
+		if (chatfield.empty())
+			typing_hint.draw(DrawArgument(text_pos));
+
+		chatfield.draw(text_pos + Point<int16_t>(435, 59));
+
+#ifdef __ANDROID__
+		// Who the line goes to: a tap moves on to the next
+		Rectangle<int16_t> target = typing_target_rect();
+		size_t chip = chip_index();
+
+		classic::tab(target.get_left_top(), target.width(), target.height(), true);
+		chip_labels[chip].change_color(Color::Name::HUD_PANEL);
+		chip_labels[chip].draw(Point<int16_t>(target.left() + target.width() / 2, classic::text_y(chip_labels[chip], target.top() + target.height() / 2)));
+
+		// Drawn after the field, so long text stops at the button
+		Rectangle<int16_t> send = typing_send_rect();
+
+		classic::button(send.get_left_top(), send.width(), send.height());
+		send_label.change_text(chatfield.empty() ? "Close" : "Send");
+		classic::shadowed(send_label, Point<int16_t>(send.left() + send.width() / 2, classic::text_y(send_label, send.top() + send.height() / 2)));
+#endif
+
+		// The keyboard covers the log, so the latest lines stay readable
+		// here, to reply to
+		constexpr int16_t RECENT_LINES = 4;
+
+#ifdef __ANDROID__
+		int16_t recent_w = typing_rect().width();
+		int16_t recent_x = typing_rect().left();
+		int16_t recent_y = typing_rect().bottom() + 2;
+#else
+		int16_t recent_w = 500;
+		int16_t recent_x = (viewwidth - recent_w) / 2;
+		int16_t recent_y = bar.y() + 36;
+#endif
+
+		int16_t lines = 0;
+		int16_t first = rowmax + 1;
+
+		while (rowtexts.count(first - 1))
+		{
+			int16_t height = std::max<int16_t>(rowtexts.at(first - 1).height() / CHATROWHEIGHT, 1);
+
+			if (lines + height > RECENT_LINES)
+				break;
+
+			lines += height;
+			first--;
+		}
+
+		if (lines > 0)
+		{
+			int16_t y = recent_y;
+
+			classic::box(recent_x, y, recent_w, lines * CHATROWHEIGHT + 6, Color::Name::HUD_PANEL, 0.78f);
+
+			for (int16_t row = first; row <= rowmax; row++)
+			{
+				rowtexts.at(row).draw(Point<int16_t>(recent_x + 8, y));
+				y += std::max<int16_t>(rowtexts.at(row).height() / CHATROWHEIGHT, 1) * CHATROWHEIGHT;
+			}
+		}
+	}
+
+	int16_t UIChatBar::touch_left() const
+	{
+		return std::max<int16_t>((Constants::Constants::get().get_viewwidth() - TOUCH_W) / 2, 0);
+	}
+
+	int16_t UIChatBar::touch_bottom() const
+	{
+		return position.y() - TOUCH_ABOVE_DOCK;
+	}
+
+	Rectangle<int16_t> UIChatBar::line_rect() const
+	{
+		int16_t left = touch_left();
+		int16_t bottom = touch_bottom();
+
+		return Rectangle<int16_t>(left, left + TOUCH_W, bottom - TOUCH_LINE_H - TOUCH_LINE_REACH, bottom);
+	}
+
+	Rectangle<int16_t> UIChatBar::log_rect() const
+	{
+		int16_t left = touch_left();
+
+		return Rectangle<int16_t>(left, left + TOUCH_W, getchattop(), touch_bottom() - TOUCH_FIELD_H);
+	}
+
+	Rectangle<int16_t> UIChatBar::emoticon_button_rect() const
+	{
+		int16_t left = touch_left();
+		int16_t bottom = touch_bottom();
+
+		return Rectangle<int16_t>(left, left + 44, bottom - TOUCH_FIELD_H, bottom);
+	}
+
+	Rectangle<int16_t> UIChatBar::field_rect() const
+	{
+		int16_t left = touch_left();
+		int16_t bottom = touch_bottom();
+
+		return Rectangle<int16_t>(left + 44, left + TOUCH_W, bottom - TOUCH_FIELD_H, bottom);
+	}
+
+	Rectangle<int16_t> UIChatBar::log_close_rect() const
+	{
+		int16_t right = touch_left() + TOUCH_W;
+		int16_t top = getchattop() - CHIP_H - 2;
+
+		return Rectangle<int16_t>(right - 48, right, top, top + CHIP_H);
+	}
+
+	Rectangle<int16_t> UIChatBar::emoticon_panel_rect() const
+	{
+		int16_t rows = (Text::emoticon_count() + EMOTE_COLS - 1) / EMOTE_COLS;
+		Point<int16_t> origin = emoticon_origin();
+
+		return Rectangle<int16_t>(origin, origin + Point<int16_t>(EMOTE_COLS * EMOTE_CELL + EMOTE_PAD * 2, rows * EMOTE_CELL + EMOTE_PAD * 2));
+	}
+
+	Rectangle<int16_t> UIChatBar::typing_rect() const
+	{
+		int16_t viewwidth = Constants::Constants::get().get_viewwidth();
+		int16_t width = std::min<int16_t>(viewwidth - 32, TYPING_MAX_W);
+		int16_t left = std::max<int16_t>(std::min<int16_t>(TYPING_LEFT, viewwidth - width - 16), 16);
+
+		return Rectangle<int16_t>(left, left + width, TYPING_TOP, TYPING_TOP + TYPING_H);
+	}
+
+	Rectangle<int16_t> UIChatBar::typing_target_rect() const
+	{
+		Rectangle<int16_t> all = typing_rect();
+
+		return Rectangle<int16_t>(all.left(), all.left() + TYPING_BTN_W, all.top(), all.bottom());
+	}
+
+	Rectangle<int16_t> UIChatBar::typing_field_rect() const
+	{
+		Rectangle<int16_t> all = typing_rect();
+
+		return Rectangle<int16_t>(all.left() + TYPING_BTN_W + TYPING_GAP, all.right() - TYPING_BTN_W - TYPING_GAP, all.top(), all.bottom());
+	}
+
+	Rectangle<int16_t> UIChatBar::typing_send_rect() const
+	{
+		Rectangle<int16_t> all = typing_rect();
+
+		return Rectangle<int16_t>(all.right() - TYPING_BTN_W, all.right(), all.top(), all.bottom());
+	}
+
+	UIChatBar::ChatTarget UIChatBar::chip_target(size_t index)
+	{
+		const ChatTarget targets[NUM_CHIPS] = { CHT_ALL, CHT_PARTY, CHT_GUILD, CHT_BUDDY };
+
+		return targets[index];
+	}
+
+	size_t UIChatBar::chip_index() const
+	{
+		for (size_t i = 0; i < NUM_CHIPS; i++)
+			if (chip_target(i) == chattarget)
+				return i;
+
+		return 0;
+	}
+
+	void UIChatBar::draw_touch() const
+	{
+		if (chatopen)
+			draw_touch_log();
+		else
+			draw_touch_line();
+
+		draw_emoticons(emoticon_origin());
+
+		if (typing_bar_shown())
+			draw_typing_bar();
+	}
+
+	void UIChatBar::draw_touch_line() const
+	{
+		int16_t left = touch_left();
+		int16_t bottom = touch_bottom();
+		int16_t top = bottom - TOUCH_LINE_H;
+
+		classic::box(left, top, TOUCH_W, TOUCH_LINE_H, Color::Name::HUD_PANEL, 0.62f);
+		classic::box(left, top, 2, TOUCH_LINE_H, Color::Name::HUD_EXP, 0.9f);
+
+		if (rowtexts.count(rowmax))
+			rowtexts.at(rowmax).draw(DrawArgument(Point<int16_t>(left + 8, top + 3)), Range<int16_t>(top + 1, bottom - 1));
+
+		// An arrow on the right says the line opens upwards
+		int16_t cx = left + TOUCH_W - 12;
+
+		for (int16_t i = 0; i < 6; i++)
+			classic::box(cx - i, top + 12 + i, 2 * i + 1, 1, Color::Name::HUD_EXP, 0.9f);
+	}
+
+	void UIChatBar::draw_touch_log() const
+	{
+		int16_t left = touch_left();
+		Rectangle<int16_t> log = log_rect();
+
+		// Navy glass behind the log with a gold top edge, and the "send to"
+		// chips above it
+		classic::box(left, log.top(), TOUCH_W, log.height(), Color::Name::HUD_PANEL, 0.78f);
+		classic::box(left, log.top(), TOUCH_W, 2, Color::Name::HUD_EXP, 0.9f);
+
+		for (size_t i = 0; i < NUM_CHIPS; i++)
+		{
+			Rectangle<int16_t> r = chip_rect(i);
+			bool lit = chattarget == chip_target(i);
+
+			classic::tab(r.get_left_top(), r.width(), r.height(), lit);
+			chip_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
+			chip_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(chip_labels[i], r.top() + r.height() / 2)));
+		}
+
+		Rectangle<int16_t> close = log_close_rect();
+		int16_t close_size = 28;
+
+		if (!classic::close_button(Point<int16_t>(close.left() + (close.width() - close_size) / 2, close.top() + (close.height() - close_size) / 2), close_size))
+		{
+			classic::tab(close.get_left_top(), close.width(), close.height(), false);
+			touch_close.draw(Point<int16_t>(close.left() + close.width() / 2, classic::text_y(touch_close, close.top() + close.height() / 2)));
+		}
+
+		draw_log_rows(left);
+
+		// Lists scroll by swiping, so this only shows where the log is
+		if (rowmax >= chatrows)
+		{
+			int32_t track = log.height() - 8;
+			int32_t thumb = std::max<int32_t>(14, track * chatrows / (rowmax + 1));
+			int32_t y = (track - thumb) * rowpos / rowmax;
+
+			classic::box(left + TOUCH_W - 5, static_cast<int16_t>(log.top() + 4 + y), 3, static_cast<int16_t>(thumb), Color::Name::HUD_EXP, 0.6f);
+		}
+
+		// The emoticon button
+		Rectangle<int16_t> emote = emoticon_button_rect();
+
+		classic::cell(emote.get_left_top(), emote.width(), emote.height(), emoticons_open);
+
+		if (!emoticon_icons.empty() && emoticon_icons[0].is_valid())
+		{
+			emoticon_icons[0].draw(DrawArgument(emote.get_left_top() + Point<int16_t>(emote.width() / 2, emote.height() / 2)));
+		}
+
+		// The line to tap to start typing
+		Rectangle<int16_t> field = field_rect();
+
+		if (!classic::input(field.get_left_top(), field.width(), field.height()))
+			classic::box(field.left(), field.top(), field.width(), field.height(), Color::Name::GALLERY, 0.97f);
+
+		Point<int16_t> text_pos(field.left() + 18, field.top() + (field.height() - 26) / 2);
+
+		if (chatfield.empty())
+			touch_hint.draw(DrawArgument(text_pos));
+		else if (!typing_bar_shown())
+			chatfield.draw(text_pos + Point<int16_t>(435, 59));
+	}
+
+	void UIChatBar::scroll_log(bool older)
+	{
+		if (older)
+		{
+			if (rowpos > 0)
+				rowpos--;
+		}
+		else if (rowpos < rowmax)
+		{
+			rowpos++;
+		}
+	}
+
+	bool UIChatBar::touch_hit(Point<int16_t> cursorpos) const
+	{
+#ifndef __ANDROID__
+		return false;
+#else
+		if (typing_bar_shown() && typing_rect().contains(cursorpos))
+			return true;
+
+		if (emoticons_open && emoticon_panel_rect().contains(cursorpos))
+			return true;
+
+		if (!chatopen)
+			return line_rect().contains(cursorpos);
+
+		return chip_at(cursorpos) >= 0
+			|| log_close_rect().contains(cursorpos)
+			|| log_rect().contains(cursorpos)
+			|| emoticon_button_rect().contains(cursorpos)
+			|| field_rect().contains(cursorpos);
+#endif
+	}
+
+	Cursor::State UIChatBar::send_cursor_touch(bool clicking, Point<int16_t> cursorpos)
+	{
+		bool starting = clicking && !tap.is_pressed();
+		Point<int16_t> at;
+		bool tapped = tap.update(clicking, cursorpos, at);
+
+		if (starting)
+		{
+			swiping_log = chatopen && !typing_bar_shown() && log_rect().contains(cursorpos);
+			swipe_anchor_y = cursorpos.y();
+		}
+		else if (clicking && swiping_log)
+		{
+			// A finger moving down brings older lines into view
+			int16_t dy = cursorpos.y() - swipe_anchor_y;
+
+			while (std::abs(dy) >= CHATROWHEIGHT)
+			{
+				scroll_log(dy > 0);
+				dy += dy > 0 ? -CHATROWHEIGHT : CHATROWHEIGHT;
+				swipe_anchor_y += cursorpos.y() > swipe_anchor_y ? CHATROWHEIGHT : -CHATROWHEIGHT;
+				tap.cancel();
+			}
+		}
+		else if (!clicking)
+		{
+			swiping_log = false;
+		}
+
+		emoticon_hover = emoticons_open && clicking ? emoticon_at(cursorpos) : -1;
+
+		if (tapped)
+			touch_tap(at);
+
+		if (!touch_hit(cursorpos))
+			return Cursor::State::IDLE;
+
+		return clicking ? Cursor::State::CLICKING : Cursor::State::CANCLICK;
+	}
+
+	void UIChatBar::touch_tap(Point<int16_t> at)
+	{
+		if (typing_bar_shown())
+		{
+			if (typing_target_rect().contains(at))
+			{
+				Sound(Sound::Name::BUTTONCLICK).play();
+				set_chat_target(chip_target((chip_index() + 1) % NUM_CHIPS));
+			}
+			else if (typing_send_rect().contains(at))
+			{
+				Sound(Sound::Name::BUTTONCLICK).play();
+				submit_chat(chatfield.get_text());
+			}
+
+			return;
+		}
+
+		if (emoticons_open)
+		{
+			int32_t picked = emoticon_at(at);
+
+			if (picked >= 0)
+			{
+				pick_emoticon(picked);
+				return;
+			}
+
+			bool on_panel = emoticon_panel_rect().contains(at);
+
+			emoticons_open = false;
+
+			if (on_panel)
+				return;
+
+			// A tap on the button that opened it only closes it
+			if (emoticon_button_rect().contains(at))
+				return;
+		}
+
+		if (!chatopen)
+		{
+			if (line_rect().contains(at))
+			{
+				Sound(Sound::Name::BUTTONCLICK).play();
+				set_chat_open(true);
+			}
+
+			return;
+		}
+
+		int32_t chip = chip_at(at);
+
+		if (chip >= 0)
+		{
+			Sound(Sound::Name::BUTTONCLICK).play();
+			set_chat_target(chip_target(chip));
+		}
+		else if (log_close_rect().contains(at))
+		{
+			Sound(Sound::Name::BUTTONCLICK).play();
+			set_chat_open(false);
+		}
+		else if (emoticon_button_rect().contains(at))
+		{
+			Sound(Sound::Name::BUTTONCLICK).play();
+			toggle_emoticons();
+		}
+		else if (field_rect().contains(at))
+		{
+			toggle_chatfield(true);
 		}
 	}
 
@@ -592,6 +1007,15 @@ namespace ms
 		chatfield.update(position);
 
 #ifdef __ANDROID__
+		// The finger lifted somewhere else, so this touch is over
+		if (tap.is_pressed() && !UI::get().is_mouse_held())
+		{
+			tap.reset();
+			swiping_log = false;
+		}
+
+		chatfield.set_keep_focus_area(typing_rect());
+
 		if (opened_for_typing && chatfield.get_state() != Textfield::State::FOCUSED)
 		{
 			opened_for_typing = false;
@@ -625,12 +1049,26 @@ namespace ms
 				toggle_chatfield();
 			}
 			else if (escape)
+			{
+#ifdef __ANDROID__
+				if (chatfield.get_state() != Textfield::State::FOCUSED)
+				{
+					set_chat_open(false);
+					return;
+				}
+#endif
 				toggle_chatfield(false);
+			}
 		}
 	}
 
 	void UIChatBar::send_scroll(double yoffset)
 	{
+#ifdef __ANDROID__
+		// The log follows the finger itself, in send_cursor_touch
+		return;
+#endif
+
 		if (!chatopen)
 			return;
 
@@ -684,6 +1122,10 @@ namespace ms
 
 	bool UIChatBar::is_in_range(Point<int16_t> cursorpos) const
 	{
+#ifdef __ANDROID__
+		return touch_hit(cursorpos);
+#endif
+
 		if (emoticons_open)
 		{
 			int16_t rows = (Text::emoticon_count() + EMOTE_COLS - 1) / EMOTE_COLS;
@@ -694,11 +1136,6 @@ namespace ms
 			if (Rectangle<int16_t>(ep, ep + edim).contains(cursorpos))
 				return true;
 		}
-
-#ifdef __ANDROID__
-		if (chatopen && chip_at(cursorpos) >= 0)
-			return true;
-#endif
 
 		Point<int16_t> absp(0, getchattop() - 16);
 		Point<int16_t> dim(500, chatrows * CHATROWHEIGHT + CHATYOFFSET + 16);
@@ -811,6 +1248,10 @@ namespace ms
 
 	Cursor::State UIChatBar::send_cursor(bool clicking, Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		return send_cursor_touch(clicking, cursorpos);
+#endif
+
 		// The picker sits above the bar and must win over everything under it,
 		// including the chat-log selection drag.
 		if (emoticons_open)
@@ -822,41 +1263,12 @@ namespace ms
 			{
 				if (clicking)
 				{
-					Sound(Sound::Name::BUTTONCLICK).play();
-					focus_chatfield();
-					chatfield.add_string("#e" + std::to_string(hovered) + "#");
-					emoticons_open = false;
-
-					// The seven F1-F7 faces also play on the character, so touch
-					// players (who have no F keys) can make faces too.
-					make_face(Text::emoticon_name(hovered));
-					emoticon_hover = -1;
+					pick_emoticon(hovered);
 				}
 
 				return Cursor::State::CANCLICK;
 			}
 		}
-
-#ifdef __ANDROID__
-		// The "send to" chips above the log
-		if (chatopen)
-		{
-			int32_t chip = chip_at(cursorpos);
-
-			if (chip >= 0)
-			{
-				const ChatTarget chip_targets[NUM_CHIPS] = { CHT_ALL, CHT_PARTY, CHT_GUILD, CHT_BUDDY };
-
-				if (clicking && chattarget != chip_targets[chip])
-				{
-					Sound(Sound::Name::BUTTONCLICK).play();
-					set_chat_target(chip_targets[chip]);
-				}
-
-				return Cursor::State::CANCLICK;
-			}
-		}
-#endif
 
 		// Custom button handling: break after a button press fires.
 		// UIElement::send_cursor iterates ALL buttons in one loop, so when
@@ -1034,8 +1446,17 @@ namespace ms
 
 	void UIChatBar::send_line(const std::string& line, LineType type)
 	{
+		bool following = rowpos == rowmax;
+
 		rowmax++;
+
+#ifdef __ANDROID__
+		// Someone reading older lines isn't pulled away by new ones
+		if (following)
+			rowpos = rowmax;
+#else
 		rowpos = rowmax;
+#endif
 
 		slider.setrows(rowpos, chatrows, rowmax);
 
@@ -1200,19 +1621,10 @@ namespace ms
 
 	Rectangle<int16_t> UIChatBar::chip_rect(size_t index) const
 	{
-		int16_t x = 4 + static_cast<int16_t>(index) * (CHIP_W + 4);
-		int16_t y = getchattop() - CHIP_H - 4;
+		int16_t x = touch_left() + static_cast<int16_t>(index) * (CHIP_W + 4);
+		int16_t y = getchattop() - CHIP_H - 2;
 
 		return Rectangle<int16_t>(Point<int16_t>(x, y), Point<int16_t>(x + CHIP_W, y + CHIP_H));
-	}
-
-	bool UIChatBar::chip_hit(Point<int16_t> cursorpos) const
-	{
-#ifdef __ANDROID__
-		return chatopen && chip_at(cursorpos) >= 0;
-#else
-		return false;
-#endif
 	}
 
 	int32_t UIChatBar::chip_at(Point<int16_t> cursorpos) const
@@ -1564,6 +1976,10 @@ namespace ms
 
 	int16_t UIChatBar::getchattop() const
 	{
+#ifdef __ANDROID__
+		return touch_bottom() - TOUCH_FIELD_H - chatrows * CHATROWHEIGHT - 4;
+#else
 		return position.y() - chatrows * CHATROWHEIGHT - CHATYOFFSET;
+#endif
 	}
 }

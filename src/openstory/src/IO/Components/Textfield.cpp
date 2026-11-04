@@ -141,6 +141,11 @@ namespace ms
 		}
 	}
 
+	void Textfield::set_keep_focus_area(Rectangle<int16_t> area)
+	{
+		keep_focus_area = area;
+	}
+
 	void Textfield::set_enter_callback(std::function<void(std::string)> onr)
 	{
 		onreturn = onr;
@@ -358,6 +363,9 @@ namespace ms
 	{
 		if (state == State::DISABLED)
 			return Cursor::State::IDLE;
+
+		if (state == State::FOCUSED && keep_focus_area.contains(cursorpos))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::CANCLICK;
 
 		if (get_bounds().contains(cursorpos))
 		{
