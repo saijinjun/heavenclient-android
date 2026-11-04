@@ -34,6 +34,7 @@
 #include "Graphics/Text.h"
 #include "IO/Components/Icon.h"
 #include "IO/UITypes/UIChatBar.h"
+#include "IO/UITypes/UINpcTalk.h"
 #include "IO/UITypes/UIOptionMenu.h"
 #include "Net/Packets/MessagingPackets.h"
 #include "Net/Packets/PlayerPackets.h"
@@ -529,8 +530,22 @@ namespace ms
 			{
 				UI::get().send_cursor(pos);
 
+				auto npctalk = UI::get().get_element<UINpcTalk>();
+
+				if (npctalk && npctalk->is_active())
+				{
+					// A notch moves the text one line, so it follows the finger
+					constexpr int16_t LINE_H = 16;
+
+					while (std::abs(pos.y() - scroll_anchor_y) >= LINE_H)
+					{
+						bool down = pos.y() > scroll_anchor_y;
+						npctalk->send_scroll(down ? 1.0 : -1.0);
+						scroll_anchor_y += down ? LINE_H : -LINE_H;
+					}
+				}
 				// Dragging a finger scrolls lists that only take the wheel
-				if (UI::get().in_cashshop() || UI::get().in_mobile_panel())
+				else if (UI::get().in_cashshop() || UI::get().in_mobile_panel())
 				{
 					constexpr int16_t SCROLL_STEP = 60;
 					int16_t dy = pos.y() - scroll_anchor_y;

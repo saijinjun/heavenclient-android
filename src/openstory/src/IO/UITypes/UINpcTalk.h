@@ -20,6 +20,7 @@
 #include "../UIElement.h"
 
 #include "../Components/Slider.h"
+#include "../Components/TapGesture.h"
 #include "../Components/Textfield.h"
 
 #include "../../Graphics/Animation.h"
@@ -166,6 +167,7 @@ namespace ms
 		bool show_slider;
 		bool draw_text;
 		Slider slider;
+		TapGesture tap;
 		TalkType type;
 		std::string formatted_text;
 		size_t formatted_text_pos;

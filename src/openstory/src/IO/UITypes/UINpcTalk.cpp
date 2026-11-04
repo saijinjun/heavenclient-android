@@ -713,6 +713,21 @@ namespace ms
 	{
 		Point<int16_t> cursor_relative = cursorpos - position;
 
+		// With a mouse, a press picks what is under it. A finger may be on its
+		// way across the dialog to scroll it, so options and pages answer to a
+		// finished tap, and a swipe presses nothing it passes over.
+		bool press = clicked;
+		bool highlight = true;
+		Point<int16_t> point = cursorpos;
+#ifdef __ANDROID__
+		Point<int16_t> tapped_at;
+		press = tap.update(clicked, cursorpos, tapped_at);
+		highlight = press || (clicked && !tap.has_moved());
+
+		if (press)
+			point = tapped_at;
+#endif
+
 		// Handle text input field cursor for SENDGETTEXT / SENDGETNUMBER
 		if (type == TalkType::SENDGETTEXT || type == TalkType::SENDGETNUMBER)
 		{
@@ -723,7 +738,11 @@ namespace ms
 
 		if (show_slider && slider.isenabled())
 			if (Cursor::State sstate = slider.send_cursor(cursor_relative, clicked))
+			{
+				tap.cancel();
+
 				return sstate;
+			}
 
 		// Quest-progress banner hit-test (one clickable list_normal
 		// sprite per in-progress quest with this NPC). Hover swaps to
@@ -733,10 +752,10 @@ namespace ms
 		quest_banner_hovered_qid = -1;
 		for (const auto& hit : quest_banner_hits)
 		{
-			if (hit.rect.contains(cursorpos))
+			if (hit.rect.contains(point))
 			{
 				quest_banner_hovered_qid = hit.qid;
-				if (clicked)
+				if (press)
 				{
 					if (expanded_quest_ids.count(hit.qid))
 						expanded_quest_ids.erase(hit.qid);
@@ -806,12 +825,12 @@ namespace ms
 				if (show_slider && (row_bot < clip_top || row_top > clip_bot))
 					continue;
 
-				if (cursorpos.x() >= text_x && cursorpos.x() <= text_x + text_w &&
-					cursorpos.y() >= row_top && cursorpos.y() <= row_bot)
+				if (highlight && point.x() >= text_x && point.x() <= text_x + text_w &&
+					point.y() >= row_top && point.y() <= row_bot)
 				{
 					hovered_selection = static_cast<int32_t>(i);
 
-					if (clicked)
+					if (press)
 					{
 						hovered_selection = -1;
 						deactivate();
@@ -829,12 +848,12 @@ namespace ms
 #ifdef __ANDROID__
 		// Touch: a tap anywhere on the dialog (off its buttons) finishes the
 		// text at once, and on a page with only Next or OK, turns it.
-		if (clicked && Rectangle<int16_t>(position, position + dimension).contains(cursorpos))
+		if (press && Rectangle<int16_t>(position, position + dimension).contains(point))
 		{
 			bool on_button = false;
 
 			for (auto& button : buttons)
-				if (button.second->is_active() && button.second->bounds(position).contains(cursorpos))
+				if (button.second->is_active() && button.second->bounds(position).contains(point))
 					on_button = true;
 
 			if (!on_button)
@@ -864,7 +883,7 @@ namespace ms
 		}
 #endif
 
-		Cursor::State estate = UIElement::send_cursor(clicked, cursorpos);
+		Cursor::State estate = UIElement::send_cursor(clicked && !tap.has_moved(), cursorpos);
 
 		if (estate == Cursor::State::CLICKING && clicked && draw_text)
 		{
@@ -888,7 +907,18 @@ namespace ms
 	void UINpcTalk::send_scroll(double yoffset)
 	{
 		if (show_slider)
+		{
+			tap.cancel();
+
+			// Scrolling is for reading ahead, so show what is still to come
+			if (draw_text)
+			{
+				draw_text = false;
+				text.change_text(formatted_text);
+			}
+
 			slider.send_scroll(yoffset);
+		}
 	}
 
 	UIElement::Type UINpcTalk::get_type() const
@@ -1333,6 +1363,9 @@ namespace ms
 		expanded_quest_ids.clear();
 		quest_banner_hovered_qid = -1;
 		quest_banner_hits.clear();
+		// The finger that answered the last page must not count as a tap on this one
+		tap.reset();
+
 		timestep = 0;
 		draw_text = true;
 		formatted_text_pos = 0;

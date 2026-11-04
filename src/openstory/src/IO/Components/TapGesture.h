@@ -63,6 +63,12 @@ namespace ms
 			moved = false;
 		}
 
+		// This touch has become a swipe
+		bool has_moved() const
+		{
+			return pressed && moved;
+		}
+
 		bool is_pressed() const
 		{
 			return pressed;
