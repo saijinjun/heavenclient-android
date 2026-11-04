@@ -1582,7 +1582,13 @@ namespace ms
 			return Button::State::NORMAL;
 
 		case BT_SYS_GAMEQUIT:
-			UI::get().emplace<UIQuit>(stats);
+			// Without this window's art it is only a dimmed screen with no
+			// buttons to press, so ask in a plain dialog.
+			if (Texture(nl::nx::ui["UIWindow6.img"]["askReward"]["userLog"]["backgrnd"]).is_valid())
+				UI::get().emplace<UIQuit>(stats);
+			else
+				UIQuit::ask_to_quit();
+
 			remove_menus();
 			return Button::State::NORMAL;
 
