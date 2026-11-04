@@ -100,6 +100,10 @@ namespace ms
 
 		bool is_in_range(Point<int16_t> cursorpos) const override;
 
+		// Whether one of the "send to" chips (All, Party, Guild, Buddy) is
+		// at this point. They sit inside the touch stick's zone.
+		bool chip_hit(Point<int16_t> cursorpos) const;
+
 		// Windows-style chat-log text selection (drag to highlight, Ctrl+C to copy).
 		std::string get_selected_text() const;
 		void clear_selection();

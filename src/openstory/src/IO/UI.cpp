@@ -317,9 +317,13 @@ namespace ms
 
 		switch (front->get_type())
 		{
+		case UIElement::Type::CHATBAR:
+			// The chat log lies under the touch stick, but its "send to"
+			// chips must still take a tap: the stick swallowed them, so a
+			// stray thumb could set chat to Party with no way back to All
+			return static_cast<UIChatBar*>(front)->chip_hit(pos);
 		case UIElement::Type::STATUSMESSENGER:
 		case UIElement::Type::STATUSBAR:
-		case UIElement::Type::CHATBAR:
 		case UIElement::Type::BUFFLIST:
 		case UIElement::Type::MINIMAP:
 		case UIElement::Type::QUESTHELPER:
