@@ -204,6 +204,8 @@ namespace ms
 
 		bool chatopen;
 		bool chatfieldopen;
+		// The log opened only to type a line, so it closes again afterwards
+		bool opened_for_typing = false;
 		ChatTarget chattarget;
 		int32_t party_id;
 		int32_t party_leader_id;

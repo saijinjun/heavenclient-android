@@ -338,7 +338,10 @@ namespace ms
 	void UIChatBar::focus_chatfield()
 	{
 		if (!chatopen)
+		{
 			set_chat_open(true);
+			opened_for_typing = true;
+		}
 
 		chatfieldopen = true;
 		chatfield.set_state(Textfield::State::FOCUSED);
@@ -527,7 +530,10 @@ namespace ms
 			// A typing bar at the top of the screen, above the soft keyboard:
 			// a light field in a gold rim.
 			int16_t width = std::min<int16_t>(Constants::Constants::get().get_viewwidth() - 32, 460);
-			Point<int16_t> bar((Constants::Constants::get().get_viewwidth() - width) / 2, 10);
+			int16_t viewwidth = Constants::Constants::get().get_viewwidth();
+
+			// Below the line the scrolling notice runs along
+			Point<int16_t> bar((viewwidth - width) / 2, 30);
 
 			// A light input field in a gold rim
 			if (!classic::input(bar + Point<int16_t>(-14, -4), width + 20, 36))
@@ -544,6 +550,39 @@ namespace ms
 				typing_hint.draw(DrawArgument(text_pos));
 
 			chatfield.draw(text_pos + Point<int16_t>(435, 59));
+
+			// The keyboard covers the log, so the latest lines stay readable
+			// here, to reply to
+			constexpr int16_t RECENT_LINES = 4;
+			constexpr int16_t RECENT_W = 500;
+
+			int16_t lines = 0;
+			int16_t first = rowmax + 1;
+
+			while (rowtexts.count(first - 1))
+			{
+				int16_t height = std::max<int16_t>(rowtexts.at(first - 1).height() / CHATROWHEIGHT, 1);
+
+				if (lines + height > RECENT_LINES)
+					break;
+
+				lines += height;
+				first--;
+			}
+
+			if (lines > 0)
+			{
+				int16_t x = (viewwidth - RECENT_W) / 2;
+				int16_t y = bar.y() + 36;
+
+				classic::box(x, y, RECENT_W, lines * CHATROWHEIGHT + 6, Color::Name::HUD_PANEL, 0.78f);
+
+				for (int16_t row = first; row <= rowmax; row++)
+				{
+					rowtexts.at(row).draw(Point<int16_t>(x + 8, y));
+					y += std::max<int16_t>(rowtexts.at(row).height() / CHATROWHEIGHT, 1) * CHATROWHEIGHT;
+				}
+			}
 		}
 	}
 
@@ -551,6 +590,16 @@ namespace ms
 	{
 		UIElement::update();
 		chatfield.update(position);
+
+#ifdef __ANDROID__
+		if (opened_for_typing && chatfield.get_state() != Textfield::State::FOCUSED)
+		{
+			opened_for_typing = false;
+
+			if (chatopen)
+				set_chat_open(false);
+		}
+#endif
 	}
 
 	void UIChatBar::set_position(Point<int16_t> pos)
