@@ -132,13 +132,13 @@ namespace ms
 					// dialog closed. The server's own conversation lock
 					// handles the genuine "still talking" case.
 					if (!NpcResponseTracker::get().can_click_now())
-						return Cursor::State::IDLE;
+						return Cursor::State::CLICKING;
 
 					NpcResponseTracker::get().mark_clicked_now();
 					NpcResponseTracker::get().mark_pending(npc->get_npcid());
 					TalkToNPCPacket(npc->get_oid()).dispatch();
 
-					return Cursor::State::IDLE;
+					return Cursor::State::CLICKING;
 				}
 				else
 				{

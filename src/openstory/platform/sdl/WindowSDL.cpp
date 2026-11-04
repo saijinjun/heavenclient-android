@@ -490,6 +490,9 @@ namespace ms
 			if (controls && !on_window && touch.finger_down(finger.fingerId, px, py, actions))
 				break;
 
+			if (controls && !on_window && touch.is_near_control(px, py))
+				break;
+
 			if (cursor_finger_down)
 				break;
 

@@ -142,6 +142,11 @@ namespace ms
 		void transfer_player();
 
 	private:
+		// A finger on the world, until it turns out to be a tap
+		bool world_tap_armed = false;
+		uint32_t world_tap_time = 0;
+		Point<int16_t> world_tap_pos;
+
 		void load_map(int32_t mapid);
 		void respawn(int8_t portalid);
 		void check_portals();

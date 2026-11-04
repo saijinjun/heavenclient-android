@@ -37,10 +37,18 @@ namespace ms
 			Point<int16_t> absp = ochar->get_position() + viewpos;
 
 			// Use a reasonable hitbox for character sprites (~60 wide, ~80 tall)
+#ifdef __ANDROID__
+			// Tighter on a phone, where players crowd the middle of the screen
+			constexpr int16_t HALF_WIDTH = 22;
+			constexpr int16_t HEIGHT = 60;
+#else
+			constexpr int16_t HALF_WIDTH = 30;
+			constexpr int16_t HEIGHT = 70;
+#endif
 			Rectangle<int16_t> bounds(
-				absp.x() - 30,
-				absp.x() + 30,
-				absp.y() - 70,
+				absp.x() - HALF_WIDTH,
+				absp.x() + HALF_WIDTH,
+				absp.y() - HEIGHT,
 				absp.y()
 			);
 
@@ -53,13 +61,13 @@ namespace ms
 						if (box->type == 4)
 						{
 							MiniRoomVisitPacket(box->oid).dispatch();
-							return Cursor::State::IDLE;
+							return Cursor::State::CLICKING;
 						}
 					}
 
 					// Request character info from the server
 					CharInfoRequestPacket(ochar->get_oid()).dispatch();
-					return Cursor::State::IDLE;
+					return Cursor::State::CLICKING;
 				}
 				else
 				{
