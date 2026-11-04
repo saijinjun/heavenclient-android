@@ -351,6 +351,10 @@ namespace ms
 
 		numfield.change_text(std::to_string(quantity));
 
+		// Typing replaces the starting quantity: with the caret after it,
+		// entering 2 in a shop's "How many" box bought 12
+		numfield.select_all();
+
 		numfield.set_enter_callback(
 			[&](std::string numstr)
 			{

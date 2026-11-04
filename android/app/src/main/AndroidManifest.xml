@@ -32,13 +32,17 @@
             </intent-filter>
         </activity>
 
+        <!-- The game can't be restarted in place: a relaunch makes SDL wait
+             forever for the game thread to end, and the app freezes. So
+             every config change a player can make mid-game (font size,
+             display size, dark mode and so on) is handled here instead. -->
         <activity
             android:name=".GameActivity"
             android:label="@string/app_name"
             android:alwaysRetainTaskState="true"
             android:launchMode="singleInstance"
             android:screenOrientation="sensorLandscape"
-            android:configChanges="layoutDirection|locale|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
+            android:configChanges="layoutDirection|locale|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation|fontScale|density|touchscreen|colorMode|mcc|mnc"
             android:preferMinimalPostProcessing="true"
             android:exported="false" />
     </application>

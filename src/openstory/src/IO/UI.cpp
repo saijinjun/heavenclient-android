@@ -248,6 +248,9 @@ namespace ms
 
 	void UI::send_cursor(bool pressed)
 	{
+		if (pressed && !mouse_held)
+			press_count++;
+
 		mouse_held = pressed;
 		Cursor::State cursorstate = (pressed && enabled) ? Cursor::State::CLICKING : Cursor::State::IDLE;
 		Point<int16_t> cursorpos = cursor.get_position();
@@ -274,6 +277,11 @@ namespace ms
 	bool UI::is_mouse_held() const
 	{
 		return mouse_held;
+	}
+
+	uint32_t UI::get_press_count() const
+	{
+		return press_count;
 	}
 
 	void UI::rightclick()
@@ -309,9 +317,13 @@ namespace ms
 
 		switch (front->get_type())
 		{
+		case UIElement::Type::CHATBAR:
+			// The chat log lies under the touch stick, but its "send to"
+			// chips must still take a tap: the stick swallowed them, so a
+			// stray thumb could set chat to Party with no way back to All
+			return static_cast<UIChatBar*>(front)->chip_hit(pos);
 		case UIElement::Type::STATUSMESSENGER:
 		case UIElement::Type::STATUSBAR:
-		case UIElement::Type::CHATBAR:
 		case UIElement::Type::BUFFLIST:
 		case UIElement::Type::MINIMAP:
 		case UIElement::Type::QUESTHELPER:
@@ -625,6 +637,10 @@ namespace ms
 					types.emplace_back(UIElement::Type::NPCTALK);
 					types.emplace_back(UIElement::Type::CHARINFO);
 					types.emplace_back(UIElement::Type::BUDDYLIST);
+					types.emplace_back(UIElement::Type::MESSENGER);
+					types.emplace_back(UIElement::Type::MONSTERBOOK);
+					types.emplace_back(UIElement::Type::MONSTERBATTLE);
+					types.emplace_back(UIElement::Type::MONSTERLIFE);
 				}
 				else if (enter)
 				{

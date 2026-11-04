@@ -21,6 +21,7 @@
 #include "../Window.h"
 
 #include "../Components/MapleButton.h"
+#include "UINotice.h"
 
 #include "../../Character/ExpTable.h"
 #include "../../Gameplay/Stage.h"
@@ -32,6 +33,38 @@
 
 namespace ms
 {
+	void UIQuit::ask_to_quit()
+	{
+		UI::get().emplace<UIYesNo>(
+			"Do you want to quit?",
+			[](bool yes)
+			{
+				if (yes)
+				{
+					float fadestep = 0.025f;
+
+					Window::get().fadeout(
+						fadestep,
+						[]()
+						{
+							GraphicsGL::get().clear();
+							UI::get().change_state(UI::State::LOGIN);
+							UI::get().set_scrollnotice("");
+							Session::get().reconnect();
+							UI::get().enable();
+							Timer::get().start();
+							GraphicsGL::get().unlock();
+						}
+					);
+
+					GraphicsGL::get().lock();
+					Stage::get().clear();
+					Timer::get().start();
+				}
+			}
+		);
+	}
+
 	UIQuit::UIQuit(const CharStats& st) : screen_adj(212, 114), stats(st)
 	{
 		nl::node askReward = nl::nx::ui["UIWindow6.img"]["askReward"];

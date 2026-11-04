@@ -127,7 +127,11 @@ namespace ms
 
 			int32_t itemid = entry["ItemId"];
 
-			if (!ItemData::get(itemid).is_valid())
+			// Only check that the item exists: loading every listed item's
+			// icons here pulled most of Character.nx and Item.nx on a
+			// phone's first visit, freezing the game for minutes until the
+			// server dropped the connection. Icons load as cards are shown.
+			if (!ItemData::exists(itemid))
 				continue;
 
 			int32_t sn = entry["SN"];
@@ -212,6 +216,7 @@ namespace ms
 		// Your character lives on the preview stage; selecting an equip
 		// dresses it, arrow keys walk it, jump key jumps
 		preview_look = player.get_look();
+		preview_nametag = std::make_unique<NameTagStyle>(player.get_stats().get_name());
 		preview_look.set_stance(Stance::Id::STAND1);
 		cur_stance = Stance::Id::STAND1;
 
@@ -1016,9 +1021,31 @@ namespace ms
 		preview_has_pet = false;
 		preview_icon_id = 0;
 
+		// Your name, plain unless the item is a name tag ring
+		preview_nametag = std::make_unique<NameTagStyle>(Stage::get().get_player().get_stats().get_name());
+		preview_has_balloon = false;
+
 		if (itemid >= 1000000 && itemid < 2000000)
 		{
 			preview_look.add_equip(itemid);
+
+			// Label and quote rings name their plate and balloon in info
+			nl::node info = nl::nx::character["Ring"]["0" + std::to_string(itemid) + ".img"]["info"];
+
+			if (nl::node tag = info["nameTag"])
+				preview_nametag->apply_style(tag.get_integer());
+
+			if (nl::node balloon = info["chatBalloon"])
+			{
+				int64_t style = balloon.get_integer();
+
+				if (style >= 0 && style <= INT8_MAX)
+				{
+					preview_balloon = ChatBalloon(static_cast<int8_t>(style));
+					preview_balloon.change_text("Hello, Maple World!");
+					preview_has_balloon = true;
+				}
+			}
 		}
 		else if (itemid / 10000 == 500)
 		{
@@ -1198,7 +1225,8 @@ namespace ms
 		classic::frame(l.detail.left(), l.detail.top(), l.detail.width(), l.detail.height(), Color::Name::HUD_EXP, 0.4f);
 
 		classic::cell(l.stage.get_left_top(), l.stage.width(), l.stage.height(), false);
-		Point<int16_t> feet(l.stage.left() + l.stage.width() / 2, l.stage.bottom() - 12);
+		// Room under the feet for the name tag
+		Point<int16_t> feet(l.stage.left() + l.stage.width() / 2, l.stage.bottom() - 26);
 
 		if (preview_has_pet)
 		{
@@ -1217,6 +1245,15 @@ namespace ms
 		{
 			preview_look.draw(DrawArgument(feet, false), inter);
 		}
+
+		// Name tag and chat balloon, placed as in game (Char::draw)
+		Point<int16_t> wearer = feet - Point<int16_t>(preview_has_pet ? 30 : (preview_icon_id ? 50 : 0), 0);
+
+		if (preview_nametag)
+			preview_nametag->draw(wearer);
+
+		if (preview_has_balloon)
+			preview_balloon.draw(wearer - Point<int16_t>(0, 85));
 
 		int32_t itemid = mobile_itemid(m_selected);
 

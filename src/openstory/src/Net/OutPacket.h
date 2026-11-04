@@ -94,6 +94,7 @@ namespace ms
 			/// Inventory
 			GATHER_ITEMS = 69,
 			SORT_ITEMS = 70,
+			MESO_DROP = 94,
 			MOVE_ITEM = 71,
 			USE_ITEM = 72,
 			HIRED_MERCHANT_REQUEST = 63,
@@ -105,6 +106,9 @@ namespace ms
 			PET_COMMAND_SEND = 169,
 			PET_LOOT = 170,
 			USE_SUMMON_BAG = 75,
+			USE_MOUNT_FOOD = 77,
+			USE_ITEM_REWARD = 112,
+			USE_SOLOMON_ITEM = 157,
 			SCRIPTED_ITEM = 78,
 			USE_CASH_ITEM = 79,
 			USE_SKILL_BOOK = 82,

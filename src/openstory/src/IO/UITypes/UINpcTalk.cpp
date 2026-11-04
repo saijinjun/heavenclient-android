@@ -133,12 +133,33 @@ namespace ms
 	void UINpcTalk::draw(float inter) const
 	{
 		Point<int16_t> drawpos = position;
-		top.draw(drawpos);
-		drawpos.shift_y(top.height());
-		fill.draw(DrawArgument(drawpos, Point<int16_t>(0, height)));
-		drawpos.shift_y(height);
-		bottom.draw(drawpos);
-		drawpos.shift_y(bottom.height());
+
+		if (touch())
+		{
+			// Navy frame with the speaker on it, and a light page for the words.
+			// Scripts colour their text for a light background, so a dark one
+			// would lose the black and blue text.
+			int16_t frame_h = top.height() + height + bottom.height();
+			int16_t page_x = position.x() + TOUCH_PAGE_LEFT;
+			int16_t page_y = position.y() + TOUCH_PAGE_PAD;
+			int16_t page_w = top.width() - TOUCH_PAGE_LEFT - TOUCH_PAGE_PAD;
+			int16_t page_h = frame_h - TOUCH_PAGE_PAD * 2;
+
+			classic::panel(position, top.width(), frame_h);
+			classic::box(page_x, page_y, page_w, page_h, Color::Name::GALLERY, 0.97f);
+			classic::frame(page_x, page_y, page_w, page_h, Color::Name::HUD_EXP);
+
+			drawpos.shift_y(frame_h);
+		}
+		else
+		{
+			top.draw(drawpos);
+			drawpos.shift_y(top.height());
+			fill.draw(DrawArgument(drawpos, Point<int16_t>(0, height)));
+			drawpos.shift_y(height);
+			bottom.draw(drawpos);
+			drawpos.shift_y(bottom.height());
+		}
 
 		if (touch())
 			classic::panel(Point<int16_t>(position.x(), drawpos.y() + TOUCH_STRIP_GAP), top.width(), TOUCH_BUTTON_H + 12);

@@ -258,6 +258,11 @@ namespace ms
 		// Touches are read as finger events; SDL's emulated mouse would send
 		// every touch twice.
 		SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+		// Keep the game loop running while another app is in front. With
+		// SDL's default the loop froze, nothing answered the server's ping,
+		// and the server dropped the character after about 45 seconds of
+		// checking a message. The loop skips drawing while in the background.
+		SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
 
 		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER) != 0)
 		{
@@ -543,8 +548,10 @@ namespace ms
 
 			if (cursor_finger_down && finger.fingerId == cursor_finger)
 			{
-				UI::get().send_cursor(pos);
+				// Release first: a cursor move while still held counts as a click,
+				// so moving first pressed the button under the finger a second time.
 				UI::get().send_cursor(false);
+				UI::get().send_cursor(pos);
 				cursor_finger_down = false;
 			}
 
@@ -606,6 +613,14 @@ namespace ms
 				break;
 			case TouchControls::Output::SLOT:
 			{
+				if (action.id >= 0 && action.id < TouchControls::NUM_SLOTS)
+				{
+					held_slots[action.id] = action.pressed;
+
+					if (action.pressed)
+						slot_repeat_tick = SDL_GetTicks();
+				}
+
 				// Whatever the player put on the slot: a skill, a potion.
 				Keyboard::Mapping mapping = slot_mapping(static_cast<uint8_t>(action.id));
 
@@ -675,6 +690,7 @@ namespace ms
 		switch (type)
 		{
 		case SDL_APP_WILLENTERBACKGROUND:
+			backgrounded = true;
 			// Let go of anything held so the character doesn't keep walking,
 			// and save settings: Android may end the app without warning.
 			UI::get().release_held_keys();
@@ -687,6 +703,7 @@ namespace ms
 			Configuration::get().save();
 			break;
 		case SDL_APP_DIDENTERFOREGROUND:
+			backgrounded = false;
 			UI::get().send_focus(1);
 			break;
 		case SDL_APP_LOWMEMORY:
@@ -860,6 +877,11 @@ namespace ms
 		}
 	}
 
+	bool Window::is_backgrounded() const
+	{
+		return backgrounded;
+	}
+
 	bool Window::not_closed() const
 	{
 		return !closed;
@@ -933,6 +955,43 @@ namespace ms
 
 		Gamepad::get().poll();
 		poll_pad();
+		repeat_held_slots();
+	}
+
+	void Window::repeat_held_slots()
+	{
+		// A held key repeats an attack skill on a keyboard; a finger held on
+		// a quick slot sends one press. Keep attacking while it stays down,
+		// as soon as the last attack has finished.
+		constexpr uint32_t REPEAT_MS = 100;
+		uint32_t now = SDL_GetTicks();
+
+		if (now - slot_repeat_tick < REPEAT_MS)
+			return;
+
+		if (!UI::get().in_game() || UI::get().in_mobile_panel() || UI::get().has_focused_textfield())
+			return;
+
+		const Player& player = Stage::get().get_player();
+
+		if (!player.can_attack())
+			return;
+
+		for (uint8_t slot = 0; slot < TouchControls::NUM_SLOTS; slot++)
+		{
+			if (!held_slots[slot])
+				continue;
+
+			Keyboard::Mapping mapping = slot_mapping(slot);
+
+			// Buffs and potions are one press each
+			if (mapping.type != KeyType::Id::SKILL || mapping.action == 0 || !SkillData::get(mapping.action).is_attack())
+				continue;
+
+			slot_repeat_tick = now;
+			UI::get().send_action(KeyType::Id::SKILL, mapping.action, true);
+			break;
+		}
 	}
 
 	void Window::poll_pad()

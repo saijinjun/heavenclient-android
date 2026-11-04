@@ -421,6 +421,13 @@ namespace ms
 		markerpos = text.size();
 	}
 
+	void Textfield::select_all()
+	{
+		sel_anchor = 0;
+		sel_end = text.size();
+		markerpos = text.size();
+	}
+
 	size_t Textfield::index_at(int16_t cursor_x) const
 	{
 		int16_t relx = cursor_x - get_bounds().get_left_top().x();

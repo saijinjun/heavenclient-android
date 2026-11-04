@@ -269,9 +269,14 @@ namespace ms
 			}
 			else
 			{
+				// The focused window was closed (e.g. with its close button)
+				// without giving up focus. It no longer owns the keyboard, so
+				// handle this key normally instead of dropping it; otherwise
+				// the first menu button pressed after closing a panel does
+				// nothing.
 				focused = UIElement::NONE;
 
-				return;
+				return send_key(type, action, pressed, escape);
 			}
 		}
 		else
@@ -279,34 +284,7 @@ namespace ms
 			// ESC key opens the quit dialog when no other dialog is open
 			if (escape && pressed)
 			{
-				UI::get().emplace<UIYesNo>(
-					"Do you want to quit?",
-					[](bool yes)
-					{
-						if (yes)
-						{
-							float fadestep = 0.025f;
-
-							Window::get().fadeout(
-								fadestep,
-								[]()
-								{
-									GraphicsGL::get().clear();
-									UI::get().change_state(UI::State::LOGIN);
-									UI::get().set_scrollnotice("");
-									Session::get().reconnect();
-									UI::get().enable();
-									Timer::get().start();
-									GraphicsGL::get().unlock();
-								}
-							);
-
-							GraphicsGL::get().lock();
-							Stage::get().clear();
-							Timer::get().start();
-						}
-					}
-				);
+				UIQuit::ask_to_quit();
 				return;
 			}
 

@@ -67,6 +67,9 @@ namespace ms
 		void send_cursor(bool pressed);
 		void send_cursor(Point<int16_t> cursorpos, Cursor::State cursorstate);
 		bool is_mouse_held() const;
+		// Counts presses (a finger or button going down), so a window can
+		// tell a new press from one still held since before it opened
+		uint32_t get_press_count() const;
 		// Current mouse-cursor position (used by scroll dispatch so
 		// the wheel routes to the UI under the cursor).
 		Point<int16_t> get_cursor_position() const;
@@ -150,5 +153,6 @@ namespace ms
 		bool quitted;
 		bool caps_lock_enabled = false;
 		bool mouse_held = false;
+		uint32_t press_count = 0;
 	};
 }

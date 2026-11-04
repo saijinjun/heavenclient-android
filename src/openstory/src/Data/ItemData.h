@@ -21,6 +21,11 @@
 #include "../Template/BoolPair.h"
 #include "../Template/Cache.h"
 
+namespace nl
+{
+	class node;
+}
+
 namespace ms
 {
 	// Class that represents an item loaded from the game's files
@@ -28,6 +33,11 @@ namespace ms
 	class ItemData : public Cache<ItemData>
 	{
 	public:
+		// Returns whether the game's files have this item, without loading
+		// its icons. Far cheaper than get(itemid).is_valid() when checking
+		// many items, since on a phone each icon may be a download.
+		static bool exists(int32_t itemid);
+
 		// Returns whether the item was loaded correctly
 		bool is_valid() const;
 		// Returns whether the item is tradable or not
@@ -63,9 +73,12 @@ namespace ms
 		// Creates an item from the game's Item file with the specified id
 		ItemData(int32_t itemid);
 
-		std::string get_eqcategory(int32_t itemid) const;
-		int32_t get_prefix(int32_t itemid) const;
-		int32_t get_item_prefix(int32_t itemid) const;
+		// Finds the item's info node and its String entry
+		static void find_nodes(int32_t itemid, std::string& category, nl::node& src, nl::node& strsrc);
+
+		static std::string get_eqcategory(int32_t itemid);
+		static int32_t get_prefix(int32_t itemid);
+		static int32_t get_item_prefix(int32_t itemid);
 		int8_t get_item_gender(int32_t itemid) const;
 
 		BoolPair<Texture> icons;

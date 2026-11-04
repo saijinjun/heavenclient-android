@@ -41,10 +41,19 @@ namespace ms
 		cover = src["cover"];
 		placeholder = src["default"];
 
-		buttons[BT_CLOSE] = std::make_unique<MapleButton>(src["btClose"],
-			Point<int16_t>(bg.x() - 26, 6));
-		buttons[BT_REMOVE] = std::make_unique<MapleButton>(src["btModify"],
-			Point<int16_t>(bg.x() - 96, bg.y() - 30));
+		buttons[BT_CLOSE] = std::make_unique<MapleButton>(src["btClose"]);
+		buttons[BT_REMOVE] = std::make_unique<MapleButton>(src["btModify"]);
+
+		// This art's origins point well outside the window, and a tap only
+		// reaches a window inside its own bounds. Place the drawn corners.
+		const auto place = [&](uint16_t id, Point<int16_t> corner)
+		{
+			Point<int16_t> drawn = buttons[id]->bounds(Point<int16_t>()).get_left_top();
+			buttons[id]->set_position(corner - drawn);
+		};
+
+		place(BT_CLOSE, Point<int16_t>(bg.x() - 26, 6));
+		place(BT_REMOVE, Point<int16_t>(bg.x() - 96, bg.y() - 30));
 
 		title_label = Text(Text::Font::A12B, Text::Alignment::LEFT, Color::Name::WHITE);
 		status_label = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::WHITE);
@@ -254,7 +263,7 @@ namespace ms
 	void UIMonsterLife::send_key(int32_t keycode, bool pressed, bool escape)
 	{
 		if (pressed && escape)
-			deactivate();
+			button_pressed(BT_CLOSE);
 	}
 
 	Button::State UIMonsterLife::button_pressed(uint16_t buttonid)

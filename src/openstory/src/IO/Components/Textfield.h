@@ -51,6 +51,8 @@ namespace ms
 
 		void set_state(State state);
 		void change_text(const std::string& text);
+		// Selects the whole text, so the next key typed replaces it
+		void select_all();
 		void set_cryptchar(int8_t character);
 		// Wrap typed text at the given pixel width (0 = single line)
 		void set_wrap(uint16_t width);

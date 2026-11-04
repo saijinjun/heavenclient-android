@@ -88,6 +88,8 @@ namespace ms
 		meso = Text(Text::Font::A13B, Text::Alignment::LEFT, Color::Name::HUD_EXP);
 		action_label = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE);
 		drop_label = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Drop");
+		sort_label = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Sort");
+		drop_meso_label = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Drop mesos");
 		classic_label = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, "Classic view");
 		close_label = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "X");
 		for (const auto& worn : WORN)
@@ -145,6 +147,11 @@ namespace ms
 			int16_t y = l.action.top() - 8 - (2 - row) * SLOT_BTN_H - (1 - row) * 6;
 			l.quick[i] = rect(l.detail.left() + 10 + col * (quick_w + 6), y, quick_w, SLOT_BTN_H);
 		}
+
+		// The footer: mesos on the left, then Drop mesos and Sort on the right
+		int16_t foot_y = py + ph - FOOT_H - 4;
+		l.sort = rect(px + pw - MARGIN - 80, foot_y, 80, FOOT_H - 2);
+		l.drop_meso = rect(l.sort.left() - 8 - 110, foot_y, 110, FOOT_H - 2);
 
 		return l;
 	}
@@ -453,6 +460,15 @@ namespace ms
 
 		meso.draw(Point<int16_t>(meso_x, meso_y));
 
+		classic::button(l.drop_meso.get_left_top(), l.drop_meso.width(), l.drop_meso.height());
+		draw_label(drop_meso_label, l.drop_meso);
+
+		if (can_sort())
+		{
+			classic::button(l.sort.get_left_top(), l.sort.width(), l.sort.height());
+			draw_label(sort_label, l.sort);
+		}
+
 		UIElement::draw(inter);
 	}
 
@@ -613,6 +629,28 @@ namespace ms
 		}
 	}
 
+	void UIMobileInventory::drop_meso()
+	{
+		UIItemInventory::prompt_meso_drop(inventory.get_meso());
+	}
+
+	bool UIMobileInventory::can_sort() const
+	{
+		return !worn_tab();
+	}
+
+	void UIMobileInventory::sort_tab()
+	{
+		// Stack what fits together, then order by item, like the classic
+		// window's two buttons in one tap
+		InventoryType::Id type = tab_type();
+		selected = 0;
+		first_row = 0;
+		counts.clear();
+		GatherItemsPacket(type).dispatch();
+		SortItemsPacket(type).dispatch();
+	}
+
 	bool UIMobileInventory::can_quick_slot() const
 	{
 		// Potions, scrolls, chairs and cash items go on quick slots; equips
@@ -762,6 +800,18 @@ namespace ms
 
 				return Cursor::State::CLICKING;
 			}
+		}
+
+		if (l.drop_meso.contains(cursorpos))
+		{
+			drop_meso();
+			return Cursor::State::CLICKING;
+		}
+
+		if (can_sort() && l.sort.contains(cursorpos))
+		{
+			sort_tab();
+			return Cursor::State::CLICKING;
 		}
 
 		if (item_at(selected) && can_quick_slot())

@@ -1157,6 +1157,15 @@ namespace ms
 		return Rectangle<int16_t>(Point<int16_t>(x, y), Point<int16_t>(x + CHIP_W, y + CHIP_H));
 	}
 
+	bool UIChatBar::chip_hit(Point<int16_t> cursorpos) const
+	{
+#ifdef __ANDROID__
+		return chatopen && chip_at(cursorpos) >= 0;
+#else
+		return false;
+#endif
+	}
+
 	int32_t UIChatBar::chip_at(Point<int16_t> cursorpos) const
 	{
 		for (size_t i = 0; i < NUM_CHIPS; i++)

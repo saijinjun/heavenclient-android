@@ -29,6 +29,9 @@ namespace ms
 	class UIQuit : public UIElement
 	{
 	public:
+		// Asks in a plain dialog, and goes back to the login screen on yes
+		static void ask_to_quit();
+
 		static constexpr Type TYPE = UIElement::Type::QUIT;
 		static constexpr bool FOCUSED = true;
 		static constexpr bool TOGGLED = false;
