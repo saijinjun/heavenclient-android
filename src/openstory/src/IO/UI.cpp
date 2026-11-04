@@ -360,6 +360,12 @@ namespace ms
 		if (shop && shop->is_active())
 			return true;
 
+		// The dock's menu is a window to tap, with nothing to steer behind it
+		auto statusbar = ui.get_element<UIStatusBar>();
+
+		if (statusbar && statusbar->is_more_open())
+			return true;
+
 		// ... and so does storage
 		auto storage = ui.get_element<UIStorage>();
 

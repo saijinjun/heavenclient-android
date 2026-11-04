@@ -249,6 +249,34 @@ namespace ms
 		}
 	}
 
+	namespace
+	{
+		constexpr int16_t HUD_MORE_COLS = 4;
+		constexpr int16_t HUD_MORE_CELL_W = 136;
+		constexpr int16_t HUD_MORE_CELL_H = 52;
+		constexpr int16_t HUD_MORE_GAP = 8;
+		constexpr int16_t HUD_MORE_MARGIN = 20;
+		constexpr int16_t HUD_MORE_TOP = 44;
+		constexpr int16_t HUD_MORE_W = HUD_MORE_MARGIN * 2 + HUD_MORE_COLS * HUD_MORE_CELL_W + (HUD_MORE_COLS - 1) * HUD_MORE_GAP;
+		constexpr int16_t HUD_MORE_H = HUD_MORE_TOP + 3 * HUD_MORE_CELL_H + 2 * HUD_MORE_GAP + 20;
+	}
+
+	// Everything the full bar offered that has no shortcut of its own
+	const UIStatusBar::HudMoreItem UIStatusBar::HUD_MORE[UIStatusBar::HUD_MORE_ITEMS] = {
+		{ "Cash Shop", BT_CASHSHOP },
+		{ "Guide", BT_TRADE },
+		{ "Community", BT_MENU_COMMUNITY },
+		{ "Messenger", BT_MENU_MSN },
+		{ "Event", BT_MENU_EVENT },
+		{ "Rankings", BT_MENU_RANK },
+		{ "Monster Book", BT_MENU_EPISODBOOK },
+		{ "Channel", BT_SYS_CHANNEL },
+		{ "Options", BT_SYS_OPTION },
+		{ "Key Settings", BT_SYS_KEYSETTING },
+		{ "Joypad", BT_SYS_JOYPAD },
+		{ "Quit", BT_SYS_GAMEQUIT }
+	};
+
 	UIStatusBar::UIStatusBar(const CharStats& st) : stats(st)
 	{
 		int16_t VWIDTH = Constants::Constants::get().get_viewwidth();
@@ -296,6 +324,12 @@ namespace ms
 		v83_menu_label = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::WHITE);
 
 		modern_hud = Setting<ModernHud>::get().load();
+
+		hud_more_title = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "More");
+
+		for (size_t i = 0; i < HUD_MORE_ITEMS; i++)
+			hud_more_labels[i] = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, HUD_MORE[i].label);
+
 		hud_hp_shown = hud_hp_trail = gethppercent();
 		hud_mp_shown = hud_mp_trail = getmppercent();
 		hud_exp_shown = getexppercent();
@@ -999,6 +1033,10 @@ namespace ms
 		if (hud_collapsed())
 		{
 			draw_hud();
+
+			if (hud_more_open)
+				draw_hud_more();
+
 			return;
 		}
 
@@ -1734,6 +1772,10 @@ namespace ms
 
 	bool UIStatusBar::is_in_range(Point<int16_t> cursorpos) const
 	{
+		// A tap outside the menu closes it, and reaches nothing behind it
+		if (hud_more_open)
+			return true;
+
 		if (hud_collapsed())
 			return hud_dock_bounds().contains(cursorpos);
 
@@ -1804,6 +1846,8 @@ namespace ms
 
 	void UIStatusBar::remove_menus()
 	{
+		hud_more_open = false;
+
 		if (show_menu)
 			toggle_menu();
 
@@ -1813,7 +1857,18 @@ namespace ms
 
 	bool UIStatusBar::is_menu_active()
 	{
-		return show_menu || show_system;
+		return show_menu || show_system || hud_more_open;
+	}
+
+	bool UIStatusBar::is_more_open() const
+	{
+		return hud_more_open;
+	}
+
+	void UIStatusBar::remove_cursor()
+	{
+		UIElement::remove_cursor();
+		hud_more_tap.reset();
 	}
 
 	float UIStatusBar::getexppercent() const
@@ -2053,6 +2108,18 @@ namespace ms
 
 	Cursor::State UIStatusBar::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
+		if (hud_more_open)
+		{
+			hud_pressed = clicked;
+
+			Point<int16_t> at;
+
+			if (hud_more_tap.update(clicked, cursorpos, at))
+				tap_hud_more(at);
+
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+		}
+
 		if (modern_hud)
 		{
 			bool on_dock = hud_collapsed() && hud_dock_bounds().contains(cursorpos);
@@ -2067,7 +2134,14 @@ namespace ms
 					if (on_tab)
 						remove_menus();
 
+#ifdef __ANDROID__
+					// The full bar's small old buttons don't suit a phone
+					hud_more_open = true;
+					hud_more_tap.reset();
+					UI::get().bring_to_front(get_type(), false);
+#else
 					hud_expanded = on_dock;
+#endif
 				}
 
 				return clicked ? Cursor::State::CLICKING : Cursor::State::CANCLICK;
@@ -2450,6 +2524,71 @@ namespace ms
 			bool alert = i == 0 && has_notification;
 			ColorBox(alert ? 5 : 3, alert ? 5 : 3, alert ? Color::Name::TORCHRED : Color::Name::WHITE, alert ? 1.0f : 0.55f)
 				.draw(DrawArgument(Point<int16_t>(alert ? dx - 1 : dx, dy + i * 6 - (alert ? 1 : 0))));
+		}
+	}
+
+	Point<int16_t> UIStatusBar::hud_more_pos() const
+	{
+		int16_t vw = Constants::Constants::get().get_viewwidth();
+		int16_t vh = Constants::Constants::get().get_viewheight();
+
+		return Point<int16_t>((vw - HUD_MORE_W) / 2, (vh - HUD_MORE_H) / 2);
+	}
+
+	Rectangle<int16_t> UIStatusBar::hud_more_cell(size_t index) const
+	{
+		int16_t col = static_cast<int16_t>(index % HUD_MORE_COLS);
+		int16_t row = static_cast<int16_t>(index / HUD_MORE_COLS);
+		Point<int16_t> tl = hud_more_pos() + Point<int16_t>(
+			HUD_MORE_MARGIN + col * (HUD_MORE_CELL_W + HUD_MORE_GAP),
+			HUD_MORE_TOP + row * (HUD_MORE_CELL_H + HUD_MORE_GAP));
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(HUD_MORE_CELL_W, HUD_MORE_CELL_H));
+	}
+
+	Rectangle<int16_t> UIStatusBar::hud_more_close() const
+	{
+		Point<int16_t> tl = hud_more_pos() + Point<int16_t>(HUD_MORE_W - 40, 4);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(34, 34));
+	}
+
+	void UIStatusBar::tap_hud_more(Point<int16_t> at)
+	{
+		hud_more_open = false;
+
+		if (hud_more_close().contains(at))
+			return;
+
+		for (size_t i = 0; i < HUD_MORE_ITEMS; i++)
+		{
+			if (hud_more_cell(i).contains(at))
+			{
+				button_pressed(HUD_MORE[i].button);
+				return;
+			}
+		}
+	}
+
+	void UIStatusBar::draw_hud_more() const
+	{
+		Point<int16_t> pos = hud_more_pos();
+
+		classic::panel(pos, HUD_MORE_W, HUD_MORE_H);
+		classic::shadowed(hud_more_title, pos + Point<int16_t>(HUD_MORE_W / 2, 6));
+
+		Rectangle<int16_t> close = hud_more_close();
+
+		classic::close_button(close.get_left_top(), close.width());
+
+		for (size_t i = 0; i < HUD_MORE_ITEMS; i++)
+		{
+			Rectangle<int16_t> cell = hud_more_cell(i);
+			int16_t cx = cell.left() + cell.width() / 2;
+			int16_t cy = cell.top() + cell.height() / 2;
+
+			classic::button(cell.get_left_top(), cell.width(), cell.height());
+			classic::shadowed(hud_more_labels[i], Point<int16_t>(cx, classic::text_y(hud_more_labels[i], cy)));
 		}
 	}
 
