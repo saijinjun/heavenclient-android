@@ -23,8 +23,15 @@ namespace ms
 {
 	StatusInfo::StatusInfo(const std::string& str, Color::Name color)
 	{
-		text = Text(Text::Font::A12M, Text::Alignment::RIGHT, color, str);
-		shadow = Text(Text::Font::A12M, Text::Alignment::RIGHT, Color::Name::BLACK, str);
+#ifdef __ANDROID__
+		// Centered (see update_screen), since the right edge is under the
+		// touch buttons
+		constexpr Text::Alignment ALIGN = Text::Alignment::CENTER;
+#else
+		constexpr Text::Alignment ALIGN = Text::Alignment::RIGHT;
+#endif
+		text = Text(Text::Font::A12M, ALIGN, color, str);
+		shadow = Text(Text::Font::A12M, ALIGN, Color::Name::BLACK, str);
 
 		opacity.set(1.0f);
 	}
@@ -74,7 +81,14 @@ namespace ms
 	{
 		int16_t y_adj = (new_width > 800) ? 37 : 0;
 
+#ifdef __ANDROID__
+		// On a phone the bottom-right corner belongs to the attack, jump and
+		// skill buttons, which hid messages like "A beginner can't create a
+		// party." Draw them right of the chat log, between the touch buttons.
+		position = Point<int16_t>(new_width * 3 / 5, new_height - 145 + y_adj);
+#else
 		position = Point<int16_t>(new_width - 6, new_height - 145 + y_adj);
+#endif
 	}
 
 	UIElement::Type UIStatusMessenger::get_type() const
