@@ -23,6 +23,7 @@
 #include "../Components/Gauge.h"
 #include "../Components/Icon.h"
 #include "../Components/MobGage.h"
+#include "../Components/TapGesture.h"
 #include "../KeyConfig.h"
 #include "../KeyType.h"
 
@@ -55,6 +56,10 @@ namespace ms
 		bool send_icon(const Icon& icon, Point<int16_t> cursorpos) override;
 		Cursor::State send_cursor(bool clicked, Point<int16_t> cursorpos) override;
 		void send_key(int32_t keycode, bool pressed, bool escape) override;
+		void remove_cursor() override;
+
+		// The menu a phone's dock opens instead of the full bar
+		bool is_more_open() const;
 
 		UIElement::Type get_type() const override;
 
@@ -366,6 +371,26 @@ namespace ms
 		void update_hud();
 		void draw_hud() const;
 		void draw_hud_tab() const;
+
+		struct HudMoreItem
+		{
+			const char* label;
+			uint16_t button;
+		};
+
+		static constexpr size_t HUD_MORE_ITEMS = 12;
+		static const HudMoreItem HUD_MORE[HUD_MORE_ITEMS];
+
+		bool hud_more_open = false;
+		TapGesture hud_more_tap;
+		Text hud_more_title;
+		Text hud_more_labels[HUD_MORE_ITEMS];
+
+		Point<int16_t> hud_more_pos() const;
+		Rectangle<int16_t> hud_more_cell(size_t index) const;
+		Rectangle<int16_t> hud_more_close() const;
+		void tap_hud_more(Point<int16_t> at);
+		void draw_hud_more() const;
 
 		void build_v83();
 		// Recomputes every width-dependent v83 position. Cheap, and re-run
