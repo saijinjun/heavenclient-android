@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `25fa1cd` | ok |
-| client | `d374641` | ok |
+| client | `70d9112` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-04 09:18 · client · ✅ deployed `70d9112` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 01:33 · client · ✅ deployed `d374641` - wasm rebuilt, web services restarted; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 01:31 · client · Onyx approved `d374641` (web/server.py, web/ws_proxy.py)
 - 2026-11-03 21:45 · client · **HELD for Onyx review** `7732617..d374641` - sensitive: web/server.py, web/ws_proxy.py
