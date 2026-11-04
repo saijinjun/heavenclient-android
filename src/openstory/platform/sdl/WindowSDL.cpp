@@ -344,6 +344,7 @@ namespace ms
 		SDL_GL_SetSwapInterval(vsync ? 1 : 0);
 
 		touch.set_layout(Setting<TouchLayout>::get().load());
+		touch.set_auto_loot(Setting<AutoPickup>::get().load());
 
 		bool want_haptic = Setting<TouchVibration>::get().load() || Setting<EventVibration>::get().load();
 
@@ -619,6 +620,19 @@ namespace ms
 					UI::get().emplace<UIOptionMenu>();
 
 				break;
+			case TouchControls::Output::LOOT_TOGGLE:
+			{
+				bool on = !Setting<AutoPickup>::get().load();
+
+				Setting<AutoPickup>::get().save(on);
+				Configuration::get().save();
+				touch.set_auto_loot(on);
+
+				if (auto chatbar = UI::get().get_element<UIChatBar>())
+					chatbar->send_chatline(on ? "Auto loot on" : "Auto loot off. Hold the button to pick up.", UIChatBar::LineType::YELLOW);
+
+				break;
+			}
 			case TouchControls::Output::SOLO_MENU:
 				// The server answers the command with its menu NPC.
 				if (action.pressed)
