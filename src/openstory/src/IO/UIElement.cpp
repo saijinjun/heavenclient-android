@@ -20,13 +20,14 @@
 #include <algorithm>
 
 #include "../Audio/Audio.h"
+#include "UI.h"
 #include "UIScale.h"
 
 namespace ms
 {
-	UIElement::UIElement(Point<int16_t> p, Point<int16_t> d, bool a) : position(p), dimension(d), active(a), scale_mode(ScaleMode::NONE) {}
+	UIElement::UIElement(Point<int16_t> p, Point<int16_t> d, bool a) : position(p), dimension(d), active(a), scale_mode(ScaleMode::NONE), button_press(UI::get().get_press_count()) {}
 	UIElement::UIElement(Point<int16_t> p, Point<int16_t> d) : UIElement(p, d, true) {}
-	UIElement::UIElement(Point<int16_t> p, Point<int16_t> d, ScaleMode mode) : position(p), dimension(d), active(true), scale_mode(mode) {}
+	UIElement::UIElement(Point<int16_t> p, Point<int16_t> d, ScaleMode mode) : position(p), dimension(d), active(true), scale_mode(mode), button_press(UI::get().get_press_count()) {}
 	UIElement::UIElement() : UIElement(Point<int16_t>(), Point<int16_t>()) {}
 
 	Point<int16_t> UIElement::get_draw_position() const
@@ -185,10 +186,19 @@ namespace ms
 				btit.second->set_state(Button::State::NORMAL);
 		}
 
+		// A button fires once per press, and never for a press that began
+		// before this window existed. The focused window is sent every move
+		// of a held finger as a click, so a dialog that opened under the
+		// finger (Drop's "How many?" after its OK) had its own OK pressed by
+		// the same tap, dropping the whole stack.
+		uint32_t press = UI::get().get_press_count();
+		bool pressed = down && press != button_press;
+
 		if (hit)
 		{
-			if (down)
+			if (pressed)
 			{
+				button_press = press;
 				Sound(Sound::Name::BUTTONCLICK).play();
 
 				Button::State after = button_pressed(hitid);

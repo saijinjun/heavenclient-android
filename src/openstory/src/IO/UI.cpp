@@ -248,6 +248,9 @@ namespace ms
 
 	void UI::send_cursor(bool pressed)
 	{
+		if (pressed && !mouse_held)
+			press_count++;
+
 		mouse_held = pressed;
 		Cursor::State cursorstate = (pressed && enabled) ? Cursor::State::CLICKING : Cursor::State::IDLE;
 		Point<int16_t> cursorpos = cursor.get_position();
@@ -274,6 +277,11 @@ namespace ms
 	bool UI::is_mouse_held() const
 	{
 		return mouse_held;
+	}
+
+	uint32_t UI::get_press_count() const
+	{
+		return press_count;
 	}
 
 	void UI::rightclick()
