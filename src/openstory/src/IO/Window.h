@@ -79,6 +79,10 @@ namespace ms
 		// Android lifecycle: the app went to the background or came back.
 		void on_app_event(uint32_t type);
 
+		// Shows a line of text on black, for a load that blocks the main
+		// loop. The screen keeps it until the next frame is drawn.
+		void show_message(const std::string& message) const;
+
 		// Plays one vibration pulse if the device has a rumble motor.
 		void rumble(float strength, uint32_t ms) const;
 

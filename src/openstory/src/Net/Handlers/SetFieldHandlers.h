@@ -28,7 +28,7 @@ namespace ms
 		void handle(InPacket& recv) const override;
 
 	private:
-		void transition(int32_t mapid, uint8_t portalid) const;
+		void transition(int32_t mapid, uint8_t portalid, bool entering_game) const;
 		void change_map(InPacket& recv, int32_t map_id) const;
 		void set_field(InPacket& recv) const;
 	};

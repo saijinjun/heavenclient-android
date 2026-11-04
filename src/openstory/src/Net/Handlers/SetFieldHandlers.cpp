@@ -35,15 +35,23 @@
 
 namespace ms
 {
-	void SetFieldHandler::transition(int32_t mapid, uint8_t portalid) const
+	void SetFieldHandler::transition(int32_t mapid, uint8_t portalid, bool entering_game) const
 	{
 		float fadestep = 0.025f;
 
 		Window::get().fadeout(
 			fadestep,
-			[mapid, portalid]()
+			[mapid, portalid, entering_game]()
 			{
 				GraphicsGL::get().clear();
+
+#if defined(PLATFORM_SDL)
+				// Stage::load blocks the main loop, for over a minute on a
+				// phone's first run. Without this the last frame of the fade
+				// just sits there and the game looks frozen.
+				if (entering_game)
+					Window::get().show_message("Loading...");
+#endif
 
 				Stage::get().load(mapid, portalid);
 
@@ -90,7 +98,7 @@ namespace ms
 		int32_t mapid = recv.read_int();
 		int8_t portalid = recv.read_byte();
 
-		transition(mapid, portalid);
+		transition(mapid, portalid, false);
 	}
 
 	void SetFieldHandler::set_field(InPacket& recv) const
@@ -152,7 +160,7 @@ namespace ms
 		uint8_t portalid = player.get_stats().get_portal();
 		int32_t mapid = player.get_stats().get_mapid();
 
-		transition(mapid, portalid);
+		transition(mapid, portalid, true);
 
 		Sound(Sound::Name::GAMESTART).play();
 
