@@ -403,6 +403,16 @@ namespace ms
 			for (; accumulator >= timestep; accumulator -= timestep)
 				update();
 
+#ifdef PLATFORM_SDL
+			// In the background there is nothing to draw on; keep reading
+			// the network (and answering pings) at a low rate instead.
+			if (Window::get().is_backgrounded())
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				continue;
+			}
+#endif
+
 			// Draw the game. Interpolate to account for remaining time.
 			float alpha = static_cast<float>(accumulator) / timestep;
 			draw(alpha);

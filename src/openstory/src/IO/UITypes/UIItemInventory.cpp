@@ -375,6 +375,11 @@ namespace ms
 			}
 			case Buttons::BT_COIN:
 			case Buttons::BT_COIN_SM:
+			{
+				prompt_meso_drop(inventory.get_meso());
+
+				return Button::State::NORMAL;
+			}
 			case Buttons::BT_POINT:
 			case Buttons::BT_POINT_SM:
 			case Buttons::BT_POT:
@@ -422,6 +427,25 @@ namespace ms
 			use_item(inventory, tab, slot);
 	}
 
+	void UIItemInventory::prompt_meso_drop(int64_t meso)
+	{
+		if (meso < 10)
+		{
+			UI::get().emplace<UIOk>("You need at least 10 mesos to drop.", [](bool) {});
+			return;
+		}
+
+		auto most = static_cast<int32_t>(std::min<int64_t>(meso, 50000));
+
+		UI::get().emplace<UIEnterNumber>("How many mesos will you drop?\\n(10 to " + std::to_string(most) + ")",
+			[](int32_t amount)
+			{
+				if (amount >= 10)
+					MesoDropPacket(amount).dispatch();
+			},
+			most, std::min<int32_t>(most, 1000));
+	}
+
 	void UIItemInventory::use_item(const Inventory& inventory, InventoryType::Id tab, int16_t slot)
 	{
 		{
@@ -431,7 +455,11 @@ namespace ms
 				// use (the server only shows it to other players, so do it here
 				// for ourselves). Persistent auras come from equipped rings, not
 				// from consumables.
-				if (nl::nx::effect["ItemEff.img"][std::to_string(item_id)])
+				// (Use items only when the tap really sends them: a star or a
+				// scroll does nothing on a tap and must not look used.)
+				bool has_effect = static_cast<bool>(nl::nx::effect["ItemEff.img"][std::to_string(item_id)]);
+
+				if (has_effect && tab != InventoryType::Id::USE)
 					Stage::get().get_player().show_item_use_effect(item_id);
 
 				switch (tab)
@@ -455,6 +483,9 @@ namespace ms
 						}
 						else if (opcode == OutPacket::Opcode::USE_ITEM)
 						{
+							if (has_effect)
+								Stage::get().get_player().show_item_use_effect(item_id);
+
 							UseItemPacket(slot, item_id).dispatch();
 						}
 						else if (opcode != 0)

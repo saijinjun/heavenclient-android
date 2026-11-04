@@ -48,6 +48,18 @@ namespace ms
 		}
 	};
 
+	// Throws mesos on the ground (the server takes 10 to 50,000)
+	// Opcode: MESO_DROP(94)
+	class MesoDropPacket : public OutPacket
+	{
+	public:
+		MesoDropPacket(int32_t amount) : OutPacket(OutPacket::Opcode::MESO_DROP)
+		{
+			write_time();
+			write_int(amount);
+		}
+	};
+
 	// Packet which requests that an item is moved
 	// Opcode: MOVE_ITEM(71)
 	class MoveItemPacket : public OutPacket
@@ -95,42 +107,30 @@ namespace ms
 	};
 
 	// Use-tab items that have their own handler on the server. Same
-	// payload as USE_ITEM: timestamp, short slot, int itemid.
+	// payload as USE_ITEM (timestamp, short slot, int itemid), except the
+	// reward box handler, which reads no timestamp.
 	//   Summon bags (210xxxx): USE_SUMMON_BAG
+	//   Mount food (226xxxx): USE_MOUNT_FOOD
 	//   Skill and mastery books (228xxxx, 229xxxx): USE_SKILL_BOOK
+	//   Songs of Solomon (237xxxx): USE_SOLOMON_ITEM
 	//   Scripted items (243xxxx): SCRIPTED_ITEM
+	//   Boxes and bags with a reward list (mostly 202xxxx): USE_ITEM_REWARD
 	class UseItemByTypePacket : public OutPacket
 	{
 	public:
 		UseItemByTypePacket(int16_t opcode, int16_t slot, int32_t itemid) : OutPacket(opcode)
 		{
-			write_time();
+			if (opcode != OutPacket::Opcode::USE_ITEM_REWARD)
+				write_time();
+
 			write_short(slot);
 			write_int(itemid);
 		}
 
 		// The opcode for a use-tab item, or 0 when nothing on the
-		// server uses it by a tap (scrolls, stars, arrows...)
-		static int16_t opcode_for(int32_t itemid)
-		{
-			int32_t prefix = itemid / 10000;
-
-			// Potions, food, return scrolls, cures and transformation
-			// potions: the server's use handler
-			if (prefix <= 203 || prefix == 205 || prefix == 221)
-				return OutPacket::Opcode::USE_ITEM;
-
-			if (prefix == 210)
-				return OutPacket::Opcode::USE_SUMMON_BAG;
-
-			if (prefix == 228 || prefix == 229)
-				return OutPacket::Opcode::USE_SKILL_BOOK;
-
-			if (prefix == 243)
-				return OutPacket::Opcode::SCRIPTED_ITEM;
-
-			return 0;
-		}
+		// server uses it by a tap (scrolls, stars, arrows...).
+		// Defined in InventoryPackets.cpp, since it reads the item data.
+		static int16_t opcode_for(int32_t itemid);
 	};
 
 	// Use a cash item that needs no extra input, or one line of text

@@ -79,6 +79,11 @@ namespace ms
 		// Android lifecycle: the app went to the background or came back.
 		void on_app_event(uint32_t type);
 
+		// True while Android has the app in the background: there is no
+		// surface to draw on, but the game keeps running so it can answer
+		// the server's pings and stay logged in.
+		bool is_backgrounded() const;
+
 		// Plays one vibration pulse if the device has a rumble motor.
 		void rumble(float strength, uint32_t ms) const;
 
@@ -90,6 +95,7 @@ namespace ms
 		// The controller's extras on top of Gamepad's button mapping:
 		// quick slots on the bumpers and triggers, a cursor on the right stick.
 		void poll_pad();
+		void repeat_held_slots();
 		void update_viewport();
 		void update_text_input();
 		Point<int16_t> to_view(int32_t x, int32_t y) const;
@@ -120,10 +126,15 @@ namespace ms
 		int32_t view_h = 1;
 		bool touch_seen;
 		bool touch_editing;
+		bool backgrounded = false;
 		SDL_Haptic* haptic;
 		SDL_GameController* pad = nullptr;
 		bool pad_slots[4] = {};
 		bool pad_click = false;
+		// Quick slots held down (touch or controller), and when a held
+		// attack skill on one was last sent again
+		std::array<bool, TouchControls::NUM_SLOTS> held_slots = {};
+		uint32_t slot_repeat_tick = 0;
 		uint32_t pad_tick = 0;
 		float pad_cursor_x = 0.0f;
 		float pad_cursor_y = 0.0f;
