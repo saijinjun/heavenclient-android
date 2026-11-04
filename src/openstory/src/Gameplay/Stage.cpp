@@ -29,6 +29,7 @@
 #include "../Graphics/GraphicsGL.h"
 #include "DayNight.h"
 
+#include <cstdlib>
 #include <ctime>
 
 #include "../IO/UI.h"
@@ -470,6 +471,37 @@ namespace ms
 				return statusbar->send_cursor(pressed, position);
 		}
 
+#ifdef __ANDROID__
+		// A thumb that slid off a button or rests on the screen is not meant
+		// for whoever stands under it, so only a finished tap counts here.
+		constexpr uint32_t TAP_MS = 500;
+		constexpr int16_t TAP_SLOP = 18;
+
+		if (pressed)
+		{
+			world_tap_armed = true;
+			world_tap_time = SDL_GetTicks();
+			world_tap_pos = position;
+			pressed = false;
+		}
+		else if (world_tap_armed)
+		{
+			bool still = std::abs(position.x() - world_tap_pos.x()) <= TAP_SLOP
+				&& std::abs(position.y() - world_tap_pos.y()) <= TAP_SLOP;
+
+			if (!still || SDL_GetTicks() - world_tap_time > TAP_MS)
+			{
+				world_tap_armed = false;
+			}
+			else if (!UI::get().is_mouse_held())
+			{
+				world_tap_armed = false;
+				pressed = true;
+				position = world_tap_pos;
+			}
+		}
+#endif
+
 		Point<int16_t> mappos = position - camera.position();
 
 		if (const auto* m = HiredMerchants::get().find_at(mappos))
@@ -482,6 +514,17 @@ namespace ms
 
 			return Cursor::State::CANCLICK;
 		}
+
+#ifdef __ANDROID__
+		// NPCs first on a phone: they are what a tap is usually for, and a
+		// crowd of players stands in front of them.
+		Cursor::State touch_state = npcs.send_cursor(pressed, position, camera.position());
+
+		if (touch_state == Cursor::State::IDLE)
+			touch_state = chars.send_cursor(pressed, position, camera.position());
+
+		return pressed ? Cursor::State::IDLE : touch_state;
+#endif
 
 		// Check characters first, then NPCs
 		Cursor::State char_state = chars.send_cursor(pressed, position, camera.position());

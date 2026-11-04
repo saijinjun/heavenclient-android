@@ -110,6 +110,9 @@ namespace ms
 		// The quick slot under a point, filled or not; used to drop skills
 		// and items dragged from their windows onto a slot.
 		bool slot_at(float x, float y, uint8_t& slot) const;
+		// On or just beside a control, empty slots included: a touch here was
+		// meant for the controls, not for the world behind them
+		bool is_near_control(float x, float y) const;
 
 		// Starts the layout editor, letting go of anything held
 		void start_editing(std::vector<Action>& actions);

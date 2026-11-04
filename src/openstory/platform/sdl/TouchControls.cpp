@@ -209,6 +209,21 @@ namespace ms
 		return near_home || (x < STICK_ZONE_RIGHT * unit() && y > STICK_ZONE_TOP * unit());
 	}
 
+	bool TouchControls::is_near_control(float x, float y) const
+	{
+		constexpr float NEAR_SLACK = 1.6f;
+
+		for (uint8_t i = ATTACK; i < NUM_CONTROLS; i++)
+		{
+			Circle circle = area(static_cast<Control>(i));
+
+			if (std::hypot(x - circle.x, y - circle.y) <= circle.radius * NEAR_SLACK)
+				return true;
+		}
+
+		return false;
+	}
+
 	bool TouchControls::control_at(float x, float y, Control& control) const
 	{
 		// The closest button wins when the slack around two of them overlaps.
