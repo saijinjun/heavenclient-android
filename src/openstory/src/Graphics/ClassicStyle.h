@@ -135,7 +135,9 @@ namespace ms
 				t.draw(DrawArgument(Point<int16_t>(x, y), Point<int16_t>(x, y), Point<int16_t>(w, h), 1.0f, 1.0f, alpha, 0.0f));
 		}
 
-		// Caps keep their shape at height h; the middle stretches.
+		// Caps keep their shape at height h; the middle repeats. A single
+		// stretched middle is magnified so far that its ends pick up whatever
+		// sits next to it in the atlas, which shows as a colored seam.
 		inline void three_slice(const Texture* parts, Point<int16_t> tl, int16_t w, int16_t h)
 		{
 			int16_t l = static_cast<int16_t>(parts[0].width() * h / std::max<int16_t>(parts[0].height(), 1));
@@ -144,7 +146,14 @@ namespace ms
 			r = std::min<int16_t>(r, w / 2);
 
 			stretch(parts[0], tl.x(), tl.y(), l, h);
-			stretch(parts[1], tl.x() + l, tl.y(), w - l - r, h);
+
+			int16_t middle = w - l - r;
+			int16_t natural = static_cast<int16_t>(parts[1].width() * h / std::max<int16_t>(parts[1].height(), 1));
+			int16_t piece = std::min<int16_t>(std::max<int16_t>(natural, 4), std::max<int16_t>(parts[1].width(), 1));
+
+			for (int16_t x = 0; x < middle; x += piece)
+				stretch(parts[1], tl.x() + l + x, tl.y(), std::min<int16_t>(piece, middle - x), h);
+
 			stretch(parts[2], tl.x() + w - r, tl.y(), r, h);
 		}
 
