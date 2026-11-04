@@ -140,23 +140,10 @@ namespace ms
 			int32_t hint_id = recv.read_int();
 			int32_t duration = recv.read_int();
 
-			(void)duration;
-
-			nl::node hint = nl::nx::ui["tutorial.img"][std::to_string(hint_id)];
-
-			if (!hint)
-				hint = nl::nx::ui["UIWindow.img"]["tutorial"][std::to_string(hint_id)];
-
-			// Only the text form is surfaced; the authored hint art needs a
-			// tutorial-balloon UI that does not exist, and inventing one would
-			// place it wrongly. A named-but-missing hint still says something
-			// happened rather than silently doing nothing.
-			std::string text = hint ? hint["text"].get_string() : std::string();
-
-			chat::log(text.empty()
-				? "[Guide] Hint " + std::to_string(hint_id)
-				: "[Guide] " + text,
-				chat::LineType::YELLOW);
+			// The hints are pictures with the text drawn in (UI.wz/tutorial.img),
+			// shown as a balloon over the character, the way the Cygnus guide
+			// and the tutorial quests teach the controls.
+			Stage::get().show_guide_hint(hint_id, duration);
 		}
 	}
 

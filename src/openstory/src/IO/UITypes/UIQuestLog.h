@@ -30,6 +30,8 @@ namespace ms
 {
 	// Quest text from the NX data with MapleStory's # format codes removed
 	std::string strip_quest_codes(const std::string& desc);
+	// Fills #R<quest id># with that quest's record from the quest log
+	std::string fill_quest_records(const std::string& text, const QuestLog& questlog);
 	// Whether text is untranslated Chinese, Japanese or Korean
 	bool has_cjk(const std::string& s);
 

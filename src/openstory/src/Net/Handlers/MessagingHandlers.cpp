@@ -606,8 +606,8 @@ namespace ms
 			recv.read_string(); // path
 			recv.read_int();
 			break;
-		case 18: // Show intro
-			recv.read_string(); // path
+		case 18: // Show intro: a story cutscene that ends by moving to the next map
+			Stage::get().play_direction(recv.read_string());
 			break;
 		case 21: // Wheel of Destiny
 			recv.read_byte(); // wheels left
