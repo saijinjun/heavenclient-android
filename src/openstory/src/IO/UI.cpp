@@ -306,6 +306,11 @@ namespace ms
 		return state_id == State::CASHSHOP;
 	}
 
+	bool UI::element_at(Point<int16_t> pos)
+	{
+		return state_id == State::GAME && state->get_front(pos) != nullptr;
+	}
+
 	bool UI::window_at(Point<int16_t> pos)
 	{
 		if (state_id != State::GAME)

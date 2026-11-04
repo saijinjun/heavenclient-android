@@ -186,6 +186,14 @@ namespace ms
 
 	Cursor::State Slider::send_cursor(Point<int16_t> cursor, bool pressed)
 	{
+#ifdef __ANDROID__
+		// The bar is only 8 wide, so a finger beside it counts as on it
+		constexpr int16_t REACH = 14;
+
+		if (cursor.x() >= x - REACH && cursor.x() <= x + 8 + REACH)
+			cursor = Point<int16_t>(x + 4, cursor.y());
+#endif
+
 		Point<int16_t> relative = cursor - start;
 
 		if (scrolling)

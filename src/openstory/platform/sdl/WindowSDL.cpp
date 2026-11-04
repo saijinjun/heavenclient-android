@@ -36,6 +36,7 @@
 #include "IO/UITypes/UIChatBar.h"
 #include "IO/UITypes/UINpcTalk.h"
 #include "IO/UITypes/UIOptionMenu.h"
+#include "IO/UITypes/UINpcTalk.h"
 #include "Net/Packets/MessagingPackets.h"
 #include "Net/Packets/PlayerPackets.h"
 
@@ -500,6 +501,7 @@ namespace ms
 			cursor_finger_down = true;
 			cursor_finger = finger.fingerId;
 			scroll_anchor_y = pos.y();
+			scroll_on_window = UI::get().element_at(pos);
 			finger_down_time = SDL_GetTicks();
 			finger_down_pos = pos;
 			long_press_sent = false;
@@ -554,6 +556,22 @@ namespace ms
 					int16_t dy = pos.y() - scroll_anchor_y;
 
 					if (std::abs(dy) >= SCROLL_STEP)
+					{
+						UI::get().send_scroll(dy > 0 ? 1.0 : -1.0);
+						scroll_anchor_y = pos.y();
+					}
+				}
+
+				// The older windows' lists scroll too (the NPC dialog has its own
+				// line by line scrolling, and a drag on the map scrolls nothing)
+				auto talk = UI::get().get_element<UINpcTalk>();
+
+				if (scroll_on_window && !UI::get().in_cashshop() && !UI::get().in_mobile_panel() && !(talk && talk->is_active()))
+				{
+					constexpr int16_t ROW_STEP = 24;
+					int16_t dy = pos.y() - scroll_anchor_y;
+
+					if (std::abs(dy) >= ROW_STEP)
 					{
 						UI::get().send_scroll(dy > 0 ? 1.0 : -1.0);
 						scroll_anchor_y = pos.y();
