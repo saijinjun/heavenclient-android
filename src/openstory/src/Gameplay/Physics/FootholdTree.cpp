@@ -19,6 +19,8 @@
 
 #include "../MapleMap/Layer.h"
 
+#include <cmath>
+
 namespace ms
 {
 	FootholdTree::FootholdTree(nl::node src)
@@ -185,7 +187,7 @@ namespace ms
 
 		if (phobj.vspeed == 0.0 && checkslope)
 		{
-			double vdelta = abs(phobj.fhslope);
+			double vdelta = std::abs(phobj.fhslope);   // plain abs() is the int version and cut every slope under 45 degrees to 0
 
 			if (phobj.fhslope < 0.0)
 				vdelta *= (ground - y);

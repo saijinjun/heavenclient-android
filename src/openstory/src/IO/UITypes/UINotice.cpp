@@ -563,9 +563,14 @@ namespace ms
 
 	void UIEnterText::send_key(int32_t keycode, bool pressed, bool escape)
 	{
+		// The old body had no braces, so deactivate() ran on every key event (even a key release)
+		// and closed the box with its text field still focused, which left the phone keyboard up.
+		// Enter is handled by the text field's own enter callback.
 		if (pressed && escape)
+		{
 			textfield.set_state(Textfield::State::DISABLED);
 			deactivate();
+		}
 	}
 
 	UIElement::Type UIEnterText::get_type() const

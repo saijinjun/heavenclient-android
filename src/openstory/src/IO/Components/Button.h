@@ -60,10 +60,11 @@ namespace ms
 		bool is_pressed() const;
 
 	protected:
-		State state;
+		// Defaults so a subclass that doesn't set them never reads garbage (several didn't set pressed).
+		State state = State::NORMAL;
 		Point<int16_t> position;
-		bool active;
-		bool pressed;
+		bool active = true;
+		bool pressed = false;
 		float btn_scale = 1.0f;
 	};
 }

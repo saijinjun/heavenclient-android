@@ -109,7 +109,7 @@ namespace ms
 
 		world_dimensions = Texture(selectWorld).get_dimensions();
 
-		uint16_t world;
+		uint16_t world = 0;
 		uint8_t world_id = Configuration::get().get_worldid();
 		uint8_t channel_id = Configuration::get().get_channelid();
 

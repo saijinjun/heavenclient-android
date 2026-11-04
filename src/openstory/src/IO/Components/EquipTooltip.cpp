@@ -139,7 +139,7 @@ namespace ms
 			const EquipData& equipdata = EquipData::get(item_id);
 			EquipSlot::Id eqslot = equipdata.get_eqslot();
 
-			if (inventory.has_equipped(eqslot));
+			if (inventory.has_equipped(eqslot))
 			{
 				auto eequip = inventory.get_equip(InventoryType::Id::EQUIPPED, eqslot);
 
