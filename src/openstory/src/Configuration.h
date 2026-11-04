@@ -500,7 +500,13 @@ namespace ms
 	// The default position of UIPartyHUD
 	struct PosPARTYHUD : public Configuration::PointEntry
 	{
+#ifdef __ANDROID__
+		// Further left on a phone: at 560 it covers the left edge of the
+		// Game Menu and System lists when they open above the status bar.
+		PosPARTYHUD() : PointEntry("PosPARTYHUD", "(400,320)") {}
+#else
 		PosPARTYHUD() : PointEntry("PosPARTYHUD", "(560,320)") {}
+#endif
 	};
 
 	// The default position of UIWorldMap

@@ -303,6 +303,8 @@ namespace ms
 		// (StatusBar2.img/mainBar/{Menu,System}/backgrnd/0..2).
 		Texture menu_bg_top, menu_bg_mid, menu_bg_bot;
 		Texture sys_bg_top,  sys_bg_mid,  sys_bg_bot;
+		// The System panel's art is titled GAME MENU, so its title is redrawn.
+		Text sys_title;
 		// Fade alpha for each sub-panel (0 hidden .. 1 fully visible).
 		float menu_fade = 0.0f;
 		float sys_fade  = 0.0f;
