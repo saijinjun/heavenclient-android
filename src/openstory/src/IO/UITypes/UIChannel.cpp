@@ -25,6 +25,7 @@
 #include "../../Audio/Audio.h"
 #include "UIChatBar.h"
 
+#include <algorithm>
 #include <chrono>
 #include "../../Configuration.h"
 #include "../../Net/ChannelLoadData.h"
@@ -81,7 +82,11 @@ namespace ms
 			ch_pos.shift_y(STRIDE_VERT);
 		}
 
-		dimension = Point<int16_t>(WIDTH, HEIGHT);
+		// Size the window by its art: the Change and Cancel buttons sit below
+		// HEIGHT, so with the fixed size taps on them landed outside the
+		// window and went to the game behind it instead
+		Point<int16_t> art = Texture(source["backgrnd"]).get_dimensions();
+		dimension = Point<int16_t>(std::max(WIDTH, art.x()), std::max(HEIGHT, art.y()));
 		dragarea = Point<int16_t>(WIDTH, DRAG_HEIGHT);
 	}
 
