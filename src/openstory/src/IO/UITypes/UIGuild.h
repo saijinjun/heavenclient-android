@@ -17,6 +17,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "../Components/TapGesture.h"
 #include "../UIDragElement.h"
 #include "../Components/Charset.h"
 
@@ -44,6 +45,9 @@ namespace ms
 		void send_key(int32_t keycode, bool pressed, bool escape) override;
 		Cursor::State send_cursor(bool clicked, Point<int16_t> cursorpos) override;
 		void send_scroll(double yoffset) override;
+#ifdef __ANDROID__
+		void remove_cursor() override;
+#endif
 
 		UIElement::Type get_type() const override;
 
@@ -74,6 +78,33 @@ namespace ms
 	private:
 		void change_tab(uint16_t tabid);
 
+#ifdef __ANDROID__
+		static constexpr int16_t PHONE_W = 620;
+		static constexpr int16_t PHONE_H = 430;
+		static constexpr int16_t PHONE_ROW_H = 36;
+		static constexpr int16_t PHONE_ROW_STEP = 38;
+		static constexpr int16_t PHONE_ROWS_Y = 144;
+		static constexpr size_t PHONE_TABS = 4;
+
+		void draw_phone() const;
+		void draw_phone_members() const;
+		void draw_phone_profile() const;
+		void scroll_by(int16_t rows);
+		Cursor::State phone_tap(Point<int16_t> at);
+		Rectangle<int16_t> phone_close() const;
+		Rectangle<int16_t> phone_tab(size_t index) const;
+		Rectangle<int16_t> phone_leave() const;
+		uint16_t phone_tab_id(size_t index) const;
+
+		TapGesture gesture;
+		int16_t swipe_y = 0;
+		Text phone_title;
+		Text phone_empty;
+		Text phone_leave_label;
+		Text phone_tab_labels[PHONE_TABS];
+		mutable Text phone_label;
+#endif
+
 		enum Buttons : uint16_t
 		{
 			BT_CLOSE,
@@ -101,7 +132,11 @@ namespace ms
 		static constexpr int16_t CONTENT_X = 12;
 		static constexpr int16_t CONTENT_Y = 116;
 
+#ifdef __ANDROID__
+		static constexpr int16_t MAX_VISIBLE_MEMBERS = 7;
+#else
 		static constexpr int16_t MAX_VISIBLE_MEMBERS = 10;
+#endif
 		static constexpr int16_t MEMBER_ROW_HEIGHT = 22;
 		static constexpr int16_t MEMBER_LIST_Y = 152;
 

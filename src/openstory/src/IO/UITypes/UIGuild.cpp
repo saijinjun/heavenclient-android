@@ -26,7 +26,9 @@
 #include "../UI.h"
 
 #include "../../Character/Job.h"
+#include "../../Constants.h"
 #include "../../Gameplay/Stage.h"
+#include "../../Graphics/ClassicStyle.h"
 #include "../../Net/Packets/SocialPackets.h"
 
 #ifdef USE_NX
@@ -100,11 +102,39 @@ namespace ms
 
 		dimension = Point<int16_t>(W, H);
 
+#ifdef __ANDROID__
+		// Drawn and tapped by hand, in the navy style of the phone panels
+		sprites.clear();
+		buttons.clear();
+
+		dimension = Point<int16_t>(PHONE_W, PHONE_H);
+		dragarea = Point<int16_t>(0, 0);
+		position = Point<int16_t>(
+			(Constants::Constants::get().get_viewwidth() - PHONE_W) / 2,
+			(Constants::Constants::get().get_viewheight() - PHONE_H) / 2);
+
+		guild_notice = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::WHITE, "", PHONE_W - 90);
+		phone_title = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Guild");
+		phone_empty = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, "You are not in a guild.");
+		phone_leave_label = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, "Leave guild");
+		phone_label = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::WHITE);
+
+		const char* tab_names[PHONE_TABS] = { "Members", "Profile", "Board", "Alliance" };
+
+		for (size_t i = 0; i < PHONE_TABS; i++)
+			phone_tab_labels[i] = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, tab_names[i]);
+#endif
+
 		change_tab(TAB_MEMBERS);
 	}
 
 	void UIGuild::draw(float inter) const
 	{
+#ifdef __ANDROID__
+		draw_phone();
+		return;
+#endif
+
 		UIElement::draw_sprites(inter);
 
 		// Flag with the guild level, mark placeholder and name
@@ -409,6 +439,33 @@ namespace ms
 
 	Cursor::State UIGuild::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		// A swipe on the member list scrolls it a row at a time
+		if (clicked && !gesture.is_pressed())
+		{
+			swipe_y = cursorpos.y();
+		}
+		else if (clicked && tab == TAB_MEMBERS)
+		{
+			int16_t rows = (swipe_y - cursorpos.y()) / PHONE_ROW_STEP;
+
+			if (rows != 0)
+			{
+				scroll_by(rows);
+				swipe_y -= rows * PHONE_ROW_STEP;
+				gesture.cancel();
+			}
+		}
+
+		// Act when the finger lifts where it landed
+		Point<int16_t> at;
+
+		if (!gesture.update(clicked, cursorpos, at))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+
+		return phone_tap(at);
+#endif
+
 		Cursor::State dstate = UIDragElement::send_cursor(clicked, cursorpos);
 
 		if (dragged)
@@ -537,6 +594,206 @@ namespace ms
 
 		scroll_offset = 0;
 
-		buttons[BT_LEAVE]->set_active(tab == TAB_PROFILE);
+		auto leave_it = buttons.find(BT_LEAVE);
+
+		if (leave_it != buttons.end() && leave_it->second)
+			leave_it->second->set_active(tab == TAB_PROFILE);
 	}
+
+#ifdef __ANDROID__
+	void UIGuild::remove_cursor()
+	{
+		gesture.reset();
+		UIDragElement::remove_cursor();
+	}
+
+	Rectangle<int16_t> UIGuild::phone_close() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(PHONE_W - 36, 6);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(30, 30));
+	}
+
+	Rectangle<int16_t> UIGuild::phone_tab(size_t index) const
+	{
+		constexpr int16_t TAB_W = 144;
+		constexpr int16_t GAP = 6;
+
+		Point<int16_t> tl = position + Point<int16_t>(12 + static_cast<int16_t>(index) * (TAB_W + GAP), 104);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(TAB_W, 32));
+	}
+
+	Rectangle<int16_t> UIGuild::phone_leave() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(PHONE_W - 152, PHONE_H - 50);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(136, 36));
+	}
+
+	uint16_t UIGuild::phone_tab_id(size_t index) const
+	{
+		const uint16_t ids[PHONE_TABS] = { TAB_MEMBERS, TAB_PROFILE, TAB_BOARD, TAB_ALLIANCE };
+
+		return ids[index];
+	}
+
+	void UIGuild::scroll_by(int16_t rows)
+	{
+		send_scroll(-rows);
+	}
+
+	void UIGuild::draw_phone() const
+	{
+		classic::panel(position, PHONE_W, PHONE_H);
+		phone_title.draw(position + Point<int16_t>(PHONE_W / 2, 6));
+
+		Rectangle<int16_t> close = phone_close();
+
+		if (!classic::close_button(close.get_left_top(), close.width()))
+			classic::button(close.get_left_top(), close.width(), close.height());
+
+		// The guild's mark, name, notice and head count
+		Point<int16_t> mark_pos = position + Point<int16_t>(28, 76);
+
+		if (emblem_bg.is_valid())
+			emblem_bg.draw(DrawArgument(mark_pos));
+
+		if (emblem_mark.is_valid())
+			emblem_mark.draw(DrawArgument(mark_pos));
+
+		guild_name.draw(position + Point<int16_t>(72, 42));
+		guild_notice.draw(position + Point<int16_t>(72, 64));
+
+		if (has_guild())
+			member_count_text.draw(position + Point<int16_t>(PHONE_W - 48, 42));
+
+		for (size_t i = 0; i < PHONE_TABS; i++)
+		{
+			Rectangle<int16_t> r = phone_tab(i);
+
+			classic::tab(r.get_left_top(), r.width(), r.height(), phone_tab_id(i) == tab);
+			phone_tab_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(phone_tab_labels[i], r.top() + r.height() / 2)));
+		}
+
+		if (!has_guild())
+		{
+			phone_empty.draw(position + Point<int16_t>(PHONE_W / 2, PHONE_H / 2 + 30));
+			return;
+		}
+
+		if (tab == TAB_PROFILE)
+			draw_phone_profile();
+		else
+			draw_phone_members();
+	}
+
+	void UIGuild::draw_phone_members() const
+	{
+		int16_t row_w = PHONE_W - 44;
+		int16_t total = static_cast<int16_t>(members.size());
+
+		for (int16_t i = 0; i < MAX_VISIBLE_MEMBERS && i + scroll_offset < total; i++)
+		{
+			const MemberEntry& m = members[i + scroll_offset];
+			Point<int16_t> tl = position + Point<int16_t>(14, PHONE_ROWS_Y + i * PHONE_ROW_STEP);
+			int16_t y = classic::text_y(phone_label, tl.y() + PHONE_ROW_H / 2);
+			float alpha = m.online ? 1.0f : 0.55f;
+
+			classic::row(tl, row_w, PHONE_ROW_H, false);
+
+			auto column = [&](const std::string& text, int16_t x)
+			{
+				phone_label.change_text(text);
+				phone_label.draw(DrawArgument(Point<int16_t>(tl.x() + x, y), alpha));
+			};
+
+			column(m.name, 18);
+			column(Job(m.job).get_name(), 170);
+			column("Lv. " + std::to_string(m.level), 320);
+			column(rank_title(m.rank), 396);
+
+			classic::box(tl.x() + row_w - 26, tl.y() + PHONE_ROW_H / 2 - 5, 10, 10,
+				m.online ? Color::Name::HUD_EXP : Color::Name::SILVERCHALICE, m.online ? 1.0f : 0.5f);
+		}
+
+		if (total > MAX_VISIBLE_MEMBERS)
+		{
+			int16_t track_h = MAX_VISIBLE_MEMBERS * PHONE_ROW_STEP - 2;
+			int16_t thumb_h = std::max<int16_t>(track_h * MAX_VISIBLE_MEMBERS / total, 24);
+			int16_t top = position.y() + PHONE_ROWS_Y;
+			int16_t thumb_y = top + (track_h - thumb_h) * scroll_offset / (total - MAX_VISIBLE_MEMBERS);
+
+			classic::scrollbar(position.x() + PHONE_W - 24, top, 8, track_h, thumb_y, thumb_h);
+		}
+	}
+
+	void UIGuild::draw_phone_profile() const
+	{
+		std::string master = "-";
+		std::string myrank = "-";
+		int32_t mycid = Stage::get().get_player().get_oid();
+
+		for (const auto& m : members)
+		{
+			if (m.rank == 1)
+				master = m.name;
+
+			if (m.cid == mycid)
+				myrank = rank_title(m.rank);
+		}
+
+		const std::string rows[5][2] = {
+			{ "Guild master", master },
+			{ "Members", std::to_string(members.size()) + "/" + std::to_string(capacity) },
+			{ "Level", std::to_string(guildlevel) },
+			{ "Guild points", std::to_string(gp_value) },
+			{ "My rank", myrank }
+		};
+
+		for (int16_t i = 0; i < 5; i++)
+		{
+			Point<int16_t> at = position + Point<int16_t>(36, PHONE_ROWS_Y + 8 + i * 34);
+
+			phone_label.change_color(Color::Name::HUD_EXP);
+			phone_label.change_text(rows[i][0]);
+			phone_label.draw(at);
+
+			phone_label.change_color(Color::Name::WHITE);
+			phone_label.change_text(rows[i][1]);
+			phone_label.draw(at + Point<int16_t>(140, 0));
+		}
+
+		Rectangle<int16_t> leave = phone_leave();
+
+		classic::button(leave.get_left_top(), leave.width(), leave.height());
+		classic::shadowed(phone_leave_label, Point<int16_t>(leave.left() + leave.width() / 2, classic::text_y(phone_leave_label, leave.top() + leave.height() / 2)));
+	}
+
+	Cursor::State UIGuild::phone_tap(Point<int16_t> at)
+	{
+		if (phone_close().contains(at))
+		{
+			deactivate();
+			return Cursor::State::IDLE;
+		}
+
+		for (size_t i = 0; i < PHONE_TABS; i++)
+		{
+			if (phone_tab(i).contains(at))
+			{
+				change_tab(phone_tab_id(i));
+				return Cursor::State::CLICKING;
+			}
+		}
+
+		if (tab == TAB_PROFILE && has_guild() && phone_leave().contains(at))
+		{
+			button_pressed(BT_LEAVE);
+			return Cursor::State::CLICKING;
+		}
+
+		return Cursor::State::IDLE;
+	}
+#endif
 }
