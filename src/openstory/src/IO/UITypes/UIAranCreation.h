@@ -42,6 +42,7 @@ namespace ms
 		float cloudfx;
 		Texture nameboard;
 		Text botname;
+		Text haircolorname;
 		Text gendername;
 	};
 }
