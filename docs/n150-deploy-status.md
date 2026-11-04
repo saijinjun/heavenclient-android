@@ -11,6 +11,11 @@
 
 ## Recent events (newest first)
 
+- 2026-11-04 17:40 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
 - 2026-11-04 16:21 · client · ✅ deployed `0956b35` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 14:18 · client · ✅ deployed `7d197ab` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 13:15 · client · ✅ deployed `40128bb` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -30,8 +35,3 @@
 - 2026-11-03 17:59 · server · ✅ deployed `706c5b3` - online, 8484 open
 - 2026-11-03 01:17 · server · ✅ deployed `fbc2d6b` - online, 8484 open
 - 2026-11-02 23:24 · server · ✅ deployed `5f58618` - online, 8484 open
-- 2026-10-31 06:47 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: Connection timed out
-fatal: Could not read from remote repository.
-
-Please make sure you have the correct access rights
-and the repository exists.
