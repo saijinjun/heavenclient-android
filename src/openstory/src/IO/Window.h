@@ -141,6 +141,8 @@ namespace ms
 		// attack skill on one was last sent again
 		std::array<bool, TouchControls::NUM_SLOTS> held_slots = {};
 		uint32_t slot_repeat_tick = 0;
+		uint32_t potion_repeat_tick = 0;
+		uint32_t jump_repeat_tick = 0;
 		uint32_t pad_tick = 0;
 		float pad_cursor_x = 0.0f;
 		float pad_cursor_y = 0.0f;
