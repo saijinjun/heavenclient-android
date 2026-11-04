@@ -102,7 +102,11 @@ namespace ms
 			if (banner->is_active())
 				banner->draw(alpha);
 
+#ifndef __ANDROID__
+		// A finger is the pointer on a phone. A hand left where the last tap
+		// landed only covers what's under it.
 		cursor.draw(alpha);
+#endif
 	}
 
 	void UI::update()
@@ -354,6 +358,13 @@ namespace ms
 			return true;
 
 #ifdef __ANDROID__
+		// The world map takes taps ahead of the touch controls, so showing
+		// them on top of it only makes them look live.
+		auto worldmap = ui.get_element<UIWorldMap>();
+
+		if (worldmap && worldmap->is_active())
+			return true;
+
 		// The shop fills the screen on phones
 		auto shop = ui.get_element<UIShop>();
 
