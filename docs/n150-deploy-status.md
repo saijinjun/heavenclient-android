@@ -11,6 +11,11 @@
 
 ## Recent events (newest first)
 
+- 2026-11-05 05:53 · client · ⚠ deploy check errored: git fetch -q origin main -> 128: channel 0: open failed: administratively prohibited: 
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
 - 2026-11-05 04:57 · client · ✅ deployed `c1e8e0c` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 03:38 · client · ✅ deployed `e8b2806` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 03:38 · server · ✅ deployed `64a5b67` - online, 8484 open
@@ -34,4 +39,3 @@ and the repository exists.
 - 2026-11-04 01:31 · client · Onyx approved `d374641` (web/server.py, web/ws_proxy.py)
 - 2026-11-03 21:45 · client · **HELD for Onyx review** `7732617..d374641` - sensitive: web/server.py, web/ws_proxy.py
 - 2026-11-03 20:16 · server · ✅ deployed `25fa1cd` - online, 8484 open
-- 2026-11-03 20:14 · server · Onyx approved `25fa1cd` (docker-compose.override.yml)
