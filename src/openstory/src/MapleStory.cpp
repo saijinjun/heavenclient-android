@@ -34,6 +34,13 @@
 #include "IO/UITypes/UILogo.h"
 #include "IO/Window.h"
 #include "Net/Session.h"
+#include "Net/Packets/CommonPackets.h"
+
+#if defined(NX_LAZY_FILES) && !defined(MS_PLATFORM_WASM)
+#include <LazyFS/LazyFileBackend.h>
+
+#include <chrono>
+#endif
 #include "Util/CrashLog.h"
 #include "Util/HardwareInfo.h"
 #include "Util/ScreenResolution.h"
@@ -241,8 +248,38 @@ namespace ms
 	}
 #endif
 
+#if defined(NX_LAZY_FILES) && !defined(MS_PLATFORM_WASM)
+	std::thread::id game_thread_id;
+
+	// Streamed .nx pieces download on the game thread, so a first visit to a
+	// map or the Cash Shop can block it for minutes. Nothing answers the
+	// server's ping meanwhile and it drops the player "due to idling" after
+	// ~45 s. Send a keep-alive every 10 s while pieces keep arriving.
+	void keep_session_alive_while_fetching()
+	{
+		if (std::this_thread::get_id() != game_thread_id)
+			return;	// another thread must never touch the session's crypto state
+
+		static std::chrono::steady_clock::time_point last_sent{};
+		auto now = std::chrono::steady_clock::now();
+
+		if (now - last_sent < std::chrono::seconds(10))
+			return;
+
+		last_sent = now;
+
+		if (Session::get().is_connected())
+			PongPacket().dispatch();
+	}
+#endif
+
 	Error init()
 	{
+#if defined(NX_LAZY_FILES) && !defined(MS_PLATFORM_WASM)
+		game_thread_id = std::this_thread::get_id();
+		LazyFS::set_fetch_hook(&keep_session_alive_while_fetching);
+#endif
+
 		std::cout << "[Init] Connecting to server..." << std::endl;
 
 		if (Error error = Session::get().init())

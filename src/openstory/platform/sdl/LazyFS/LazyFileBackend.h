@@ -171,4 +171,11 @@ namespace LazyFS
 		std::unique_ptr<LazyFileBackend> backend_;
 	};
 
+#ifndef MS_PLATFORM_WASM
+	// Called after every piece downloaded on demand. A first visit to a map or
+	// the Cash Shop can pull hundreds of pieces in one go on the game thread;
+	// the game uses this to keep its server connection alive meanwhile.
+	void set_fetch_hook(void (*hook)());
+#endif
+
 } // namespace LazyFS

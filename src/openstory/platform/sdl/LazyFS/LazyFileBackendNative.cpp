@@ -7,6 +7,7 @@
 #include <LazyFS/HttpRange.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <iostream>
 
@@ -18,6 +19,8 @@ namespace LazyFS
 {
 	namespace
 	{
+		std::atomic<void (*)()> fetch_hook{ nullptr };
+
 		constexpr size_t META_HEADER = sizeof(uint64_t);
 		// A dropped Wi-Fi packet should not blank a texture; try a few times.
 		constexpr int FETCH_ATTEMPTS = 3;
@@ -279,6 +282,9 @@ namespace LazyFS
 
 			present_[index] = 1;
 			present_count_++;
+
+			if (auto hook = fetch_hook.load())
+				hook();
 		}
 
 		finish_if_complete();
@@ -304,6 +310,11 @@ namespace LazyFS
 			std::remove(meta.c_str());
 			remote_ = false;
 		}
+	}
+
+	void set_fetch_hook(void (*hook)())
+	{
+		fetch_hook.store(hook);
 	}
 }
 
