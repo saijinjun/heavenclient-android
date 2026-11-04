@@ -30,6 +30,7 @@
 #include "Data/SkillData.h"
 #include "Gameplay/MapleMap/MapInfo.h"
 #include "Gameplay/Stage.h"
+#include "Graphics/Text.h"
 #include "IO/Components/Icon.h"
 #include "IO/UITypes/UIChatBar.h"
 #include "Net/Packets/MessagingPackets.h"
@@ -1097,6 +1098,26 @@ namespace ms
 			draw_touch_controls();
 
 		SDL_GL_SwapWindow(glwnd);
+	}
+
+	void Window::show_message(const std::string& message) const
+	{
+		// Runs mid-fade with graphics locked and the window's opacity at zero,
+		// so this draws at full opacity and restores the lock afterwards.
+		GraphicsGL& graphics = GraphicsGL::get();
+		graphics.unlock();
+		graphics.clearscene();
+
+		Point<int16_t> center(
+			static_cast<int16_t>(Constants::Constants::get().get_viewwidth() / 2),
+			static_cast<int16_t>(Constants::Constants::get().get_viewheight() / 2 - 10));
+
+		Text(Text::Font::A18M, Text::Alignment::CENTER, Color::Name::WHITE, message).draw(center);
+		graphics.flush(1.0f);
+		SDL_GL_SwapWindow(glwnd);
+
+		graphics.clearscene();
+		graphics.lock();
 	}
 
 	void Window::fadeout(float step, std::function<void()> fadeproc)

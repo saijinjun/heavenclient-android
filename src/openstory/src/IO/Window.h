@@ -79,6 +79,10 @@ namespace ms
 		// Android lifecycle: the app went to the background or came back.
 		void on_app_event(uint32_t type);
 
+		// Shows a line of text on black, for a load that blocks the main
+		// loop. The screen keeps it until the next frame is drawn.
+		void show_message(const std::string& message) const;
+
 		// True while Android has the app in the background: there is no
 		// surface to draw on, but the game keeps running so it can answer
 		// the server's pings and stay logged in.
