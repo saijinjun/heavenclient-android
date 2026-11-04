@@ -362,6 +362,7 @@ namespace ms
 			KeyAction::Id::ESCAPE,
 			[&]()
 			{
+				numfield.set_state(Textfield::State::DISABLED);
 				deactivate();
 			}
 		);
@@ -402,10 +403,12 @@ namespace ms
 		if (keycode == KeyAction::Id::RETURN)
 		{
 			handlestring(numfield.get_text());
+			numfield.set_state(Textfield::State::DISABLED);
 			deactivate();
 		}
 		else if (escape)
 		{
+			numfield.set_state(Textfield::State::DISABLED);
 			deactivate();
 		}
 	}
@@ -423,6 +426,7 @@ namespace ms
 			handlestring(numfield.get_text());
 			break;
 		case Buttons::CANCEL:
+			numfield.set_state(Textfield::State::DISABLED);
 			deactivate();
 			break;
 		}
@@ -464,6 +468,7 @@ namespace ms
 		else
 		{
 			numhandler(num);
+			numfield.set_state(Textfield::State::DISABLED);
 			deactivate();
 		}
 
@@ -506,6 +511,7 @@ namespace ms
 				if (!str.empty())
 				{
 					texthandler(str);
+					textfield.set_state(Textfield::State::DISABLED);
 					deactivate();
 				}
 			}
@@ -515,6 +521,7 @@ namespace ms
 			KeyAction::Id::ESCAPE,
 			[&]()
 			{
+				textfield.set_state(Textfield::State::DISABLED);
 				deactivate();
 			}
 		);
@@ -553,6 +560,7 @@ namespace ms
 	void UIEnterText::send_key(int32_t keycode, bool pressed, bool escape)
 	{
 		if (pressed && escape)
+			textfield.set_state(Textfield::State::DISABLED);
 			deactivate();
 	}
 
@@ -571,11 +579,13 @@ namespace ms
 			if (!str.empty())
 			{
 				texthandler(str);
+				textfield.set_state(Textfield::State::DISABLED);
 				deactivate();
 			}
 			break;
 		}
 		case Buttons::CANCEL:
+			textfield.set_state(Textfield::State::DISABLED);
 			deactivate();
 			break;
 		}
