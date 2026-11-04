@@ -1148,11 +1148,13 @@ namespace ms
 			bool lit = i == m_selected;
 
 			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
-			mobile_draw_icon(itemid, m_rect(r.left() + 20, r.top() + 6, r.width() - 40, 62));
+			mobile_draw_icon(itemid, m_rect(r.left() + 20, r.top() + 8, r.width() - 40, 56));
 
-			Text& name = mobile_name(itemid, r.width() - 10);
+			// Name and price sit above the light line in the card art's
+			// bottom strip; the price used to land on it and looked crossed out
+			Text& name = mobile_name(itemid, r.width() - 18);
 			name.change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
-			name.draw(Point<int16_t>(r.left() + r.width() / 2, r.top() + 72));
+			name.draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(name, r.top() + 73)));
 
 			std::string under;
 
@@ -1174,7 +1176,7 @@ namespace ms
 					price = Text(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::HUD_EXP, under);
 
 				price.change_color(lit ? Color::Name::HUD_PANEL : Color::Name::HUD_EXP);
-				price.draw(Point<int16_t>(r.left() + r.width() / 2, r.top() + 92));
+				price.draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(price, r.top() + 90)));
 			}
 		}
 

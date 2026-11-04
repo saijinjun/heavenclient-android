@@ -319,11 +319,14 @@ namespace ms
 
 			Text& name = const_cast<Text&>(mobile_name(itemid));
 			name.change_color(classic::row_text(lit, Color::Name::WHITE));
-			name.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 6));
+			// Name in the upper half and price in the lower, both clear of
+			// the gold line at the row art's bottom edge (the price used to
+			// sit on it and looked crossed out)
+			name.draw(Point<int16_t>(r.left() + ROW_H + 4, classic::text_y(name, r.top() + 15)));
 
 			Text& price = const_cast<Text&>(mobile_price(i));
 			price.change_color(classic::row_text(lit, Color::Name::HUD_EXP));
-			price.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 27));
+			price.draw(Point<int16_t>(r.left() + ROW_H + 4, classic::text_y(price, r.top() + 32)));
 
 			// How many of it the character has, for things that stack
 			if (m_sell && sellstate.tab != InventoryType::Id::EQUIP)

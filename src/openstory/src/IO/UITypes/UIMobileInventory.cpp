@@ -293,16 +293,16 @@ namespace ms
 
 			if (itemid == 0)
 			{
-				// Empty worn slots show a faint outline of what goes there
-				// and its name, or just the name without the picture
+				// Empty worn slots show a faint outline of what goes there,
+				// or its name where there is no picture. Both at once didn't
+				// fit a finger-sized slot: the name ran over the picture and
+				// out of the slot.
 				if (worn_tab())
 				{
 					const char* outline = WORN_ICONS[slot - 1];
-					int16_t size = r.height() - 22;
+					int16_t size = r.height() - 16;
 
-					if (outline && classic::icon(outline, Point<int16_t>(r.left() + (r.width() - size) / 2, r.top() + 4), size, 0.3f))
-						worn_labels[slot - 1].draw(Point<int16_t>(r.left() + r.width() / 2, r.bottom() - 16));
-					else
+					if (!outline || !classic::icon(outline, Point<int16_t>(r.left() + (r.width() - size) / 2, r.top() + (r.height() - size) / 2), size, 0.35f))
 						draw_label(worn_labels[slot - 1], r);
 				}
 

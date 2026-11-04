@@ -21,6 +21,7 @@
 
 #include "../UI.h"
 
+#include "../Components/ClassicButton.h"
 #include "../Components/MapleButton.h"
 
 #include "../../Gameplay/Stage.h"
@@ -29,6 +30,7 @@
 
 #include "../../Data/ItemData.h"
 #include "../../Constants.h"
+#include "../../Graphics/ClassicStyle.h"
 #include "../../Graphics/Geometry.h"
 
 #include <cctype>
@@ -83,6 +85,20 @@ namespace ms
 		buttons[Buttons::QCNO] = std::make_unique<MapleButton>(UtilDlgEx["BtQCNo"]);
 		buttons[Buttons::QGIVEUP] = std::make_unique<MapleButton>(UtilDlgEx["BtQGiveup"]);
 
+		if (touch())
+		{
+			// Phones: the dialog's buttons are finger-sized navy+gold buttons
+			// in a strip under the dialog, not the small desktop ones
+			Point<int16_t> size(TOUCH_BUTTON_W, TOUCH_BUTTON_H);
+
+			buttons[Buttons::CLOSE] = std::make_unique<ClassicButton>("End chat", Point<int16_t>(), size);
+			buttons[Buttons::NEXT] = std::make_unique<ClassicButton>("Next", Point<int16_t>(), size);
+			buttons[Buttons::NO] = std::make_unique<ClassicButton>("No", Point<int16_t>(), size);
+			buttons[Buttons::OK] = std::make_unique<ClassicButton>("OK", Point<int16_t>(), size);
+			buttons[Buttons::PREV] = std::make_unique<ClassicButton>("Back", Point<int16_t>(), size);
+			buttons[Buttons::YES] = std::make_unique<ClassicButton>("Yes", Point<int16_t>(), size);
+		}
+
 		name = Text(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::WHITE);
 
 		// Quest-state icons painted next to SENDSIMPLE option rows:
@@ -123,6 +139,9 @@ namespace ms
 		drawpos.shift_y(height);
 		bottom.draw(drawpos);
 		drawpos.shift_y(bottom.height());
+
+		if (touch())
+			classic::panel(Point<int16_t>(position.x(), drawpos.y() + TOUCH_STRIP_GAP), top.width(), TOUCH_BUTTON_H + 12);
 
 		UIElement::draw(inter);
 
@@ -1502,6 +1521,38 @@ namespace ms
 		int16_t vh = Constants::Constants::get().get_viewheight();
 		position = Point<int16_t>(vw / 2 - top.width() / 2, vh / 2 - height / 2);
 		dimension = Point<int16_t>(top.width(), height + 120);
+
+		if (touch())
+		{
+			// The buttons go in a strip under the frame: End chat on the
+			// left, the answers on the right, as in the classic layout
+			int16_t strip_y = top.height() + height + bottom.height() + TOUCH_STRIP_GAP + 6;
+			int16_t right = top.width() - 8 - TOUCH_BUTTON_W;
+			int16_t step = TOUCH_BUTTON_W + 12;
+
+			buttons[Buttons::CLOSE]->set_position(Point<int16_t>(8, strip_y));
+
+			std::vector<uint16_t> answers;
+
+			for (uint16_t id : { Buttons::PREV, Buttons::YES, Buttons::NO, Buttons::NEXT, Buttons::OK })
+				if (buttons[id]->is_active())
+					answers.push_back(id);
+
+			for (size_t i = 0; i < answers.size(); i++)
+				buttons[answers[i]]->set_position(Point<int16_t>(right - static_cast<int16_t>(answers.size() - 1 - i) * step, strip_y));
+
+			dimension = Point<int16_t>(top.width(), strip_y + TOUCH_BUTTON_H + 12);
+			position = Point<int16_t>(vw / 2 - top.width() / 2, std::max<int16_t>(4, (vh - dimension.y()) / 2));
+		}
+	}
+
+	bool UINpcTalk::touch()
+	{
+#ifdef __ANDROID__
+		return true;
+#else
+		return false;
+#endif
 	}
 
 	// The dialogue is always centred in the view, so re-derive it from the new
@@ -1514,6 +1565,9 @@ namespace ms
 		position = Point<int16_t>(
 			new_width / 2 - dimension.x() / 2,
 			new_height / 2 - height / 2);
+
+		if (touch())
+			position = Point<int16_t>(new_width / 2 - dimension.x() / 2, std::max<int16_t>(4, (new_height - dimension.y()) / 2));
 	}
 
 	void UINpcTalk::set_number_bounds(int32_t def, int32_t lo, int32_t hi)

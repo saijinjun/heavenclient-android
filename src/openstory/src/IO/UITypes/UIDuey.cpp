@@ -304,7 +304,7 @@ namespace ms
 			}
 			else
 			{
-				name.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 6));
+				name.draw(Point<int16_t>(r.left() + ROW_H + 4, classic::text_y(name, r.top() + 15)));
 
 				auto& entry = subtitles[i];
 				int32_t key = static_cast<int32_t>(std::hash<std::string>()(sub));
@@ -316,7 +316,7 @@ namespace ms
 				}
 
 				entry.second.change_color(lit ? Color::Name::HUD_PANEL : Color::Name::HUD_EXP);
-				entry.second.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 27));
+				entry.second.draw(Point<int16_t>(r.left() + ROW_H + 4, classic::text_y(entry.second, r.top() + 32)));
 			}
 
 			if (amount > 1)

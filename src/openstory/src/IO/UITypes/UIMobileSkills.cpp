@@ -366,7 +366,9 @@ namespace ms
 
 			Text& name_text = row_name(row.id);
 			name_text.change_color(classic::row_text(lit, row.level > 0 ? Color::Name::WHITE : Color::Name::SILVERCHALICE));
-			name_text.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 6));
+			// Name above, level below, both clear of the gold line at the
+			// row art's bottom edge (the level text used to be cut by it)
+			name_text.draw(Point<int16_t>(r.left() + ROW_H + 4, classic::text_y(name_text, r.top() + 15)));
 
 			auto& lv = levels[row.id];
 
@@ -377,7 +379,7 @@ namespace ms
 			}
 
 			lv.second.change_color(classic::row_text(lit, Color::Name::SILVERCHALICE));
-			lv.second.draw(Point<int16_t>(r.left() + ROW_H + 4, r.top() + 27));
+			lv.second.draw(Point<int16_t>(r.left() + ROW_H + 4, classic::text_y(lv.second, r.top() + 32)));
 
 			if (can_raise(row))
 			{
