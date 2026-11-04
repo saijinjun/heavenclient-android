@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `64a5b67` | ok |
-| client | `5251579` | ok |
+| client | `4cd02e0` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-05 06:31 · client · ✅ deployed `4cd02e0` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 06:25 · client · ✅ deployed `5251579` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 05:53 · client · ⚠ deploy check errored: git fetch -q origin main -> 128: channel 0: open failed: administratively prohibited: 
 fatal: Could not read from remote repository.
@@ -38,4 +39,3 @@ and the repository exists.
 - 2026-11-04 09:18 · client · ✅ deployed `70d9112` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 01:33 · client · ✅ deployed `d374641` - wasm rebuilt, web services restarted; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 01:31 · client · Onyx approved `d374641` (web/server.py, web/ws_proxy.py)
-- 2026-11-03 21:45 · client · **HELD for Onyx review** `7732617..d374641` - sensitive: web/server.py, web/ws_proxy.py
