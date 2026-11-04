@@ -28,6 +28,7 @@
 #include "../../Configuration.h"
 #include "../../Constants.h"
 #include "../../Gameplay/Stage.h"
+#include "../../Graphics/ClassicStyle.h"
 
 #ifdef USE_NX
 #include <nlnx/nx.hpp>
@@ -147,10 +148,123 @@ namespace ms
 			slider_labels[i] = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::BLACK);
 
 		load_settings();
+
+#ifdef __ANDROID__
+		// Drawn and tapped by hand, in the navy style of the phone panels.
+		// Resolution, windowed mode, mouse speed and the desktop hotkeys don't
+		// apply on a phone, so they aren't offered; their values are kept.
+		sprites.clear();
+		buttons.clear();
+
+		dimension = Point<int16_t>(PHONE_W, PHONE_H);
+		dragarea = Point<int16_t>(0, 0);
+		position = Point<int16_t>((screen_w - PHONE_W) / 2, (screen_h - PHONE_H) / 2);
+
+		for (int i = 0; i < NUM_SLIDERS; i++)
+			slider_labels[i] = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::WHITE);
+
+		auto label = [](const char* text, Color::Name color = Color::Name::WHITE)
+		{
+			return Text(Text::Font::A11B, Text::Alignment::CENTER, color, text);
+		};
+
+		phone_title = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Options");
+		phone_hint = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::SILVERCHALICE, "Lit means other players can do this.");
+		phone_ok = label("OK");
+		phone_cancel = label("Cancel");
+		phone_mute = label("Mute");
+		phone_mute_on = label("Mute", Color::Name::HUD_PANEL);
+		phone_shake = label("Screen shake");
+		phone_shake_on = label("Screen shake", Color::Name::HUD_PANEL);
+		phone_minimap = label("Simple minimap");
+		phone_minimap_on = label("Simple minimap", Color::Name::HUD_PANEL);
+		phone_tabs[0] = label("Game");
+		phone_tabs[1] = label("Social");
+
+		const char* slider_names[PHONE_SLIDERS] = { "Graphics", "Effects", "Music", "Sound", "HP warning", "MP warning" };
+
+		for (size_t i = 0; i < PHONE_SLIDERS; i++)
+			phone_slider_names[i] = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::HUD_EXP, slider_names[i]);
+
+		const char* social_names[PHONE_SOCIAL] = {
+			"Whisper", "Friend chat", "Chat invite", "Trade request", "Party invite", "Expedition invite",
+			"Guild chat", "Guild invite", "Alliance chat", "Alliance invite", "Family invite", "Follow"
+		};
+
+		for (size_t i = 0; i < PHONE_SOCIAL; i++)
+		{
+			phone_social_names[i] = label(social_names[i]);
+			phone_social_names_on[i] = label(social_names[i], Color::Name::HUD_PANEL);
+		}
+#endif
 	}
 
 	void UIOptionMenu::draw(float inter) const
 	{
+#ifdef __ANDROID__
+		classic::panel(position, PHONE_W, PHONE_H);
+		phone_title.draw(position + Point<int16_t>(PHONE_W / 2, 6));
+
+		for (size_t i = 0; i < PHONE_TABS; i++)
+		{
+			Rectangle<int16_t> r = phone_tab_rect(i);
+
+			classic::tab(r.get_left_top(), r.width(), r.height(), i == phone_tab);
+			draw_label(r, phone_tabs[i]);
+		}
+
+		if (phone_tab == 0)
+		{
+			for (size_t i = 0; i < PHONE_SLIDERS; i++)
+			{
+				SliderType slider = phone_slider(i);
+				int16_t cy = position.y() + phone_slider_y(i);
+				int16_t track_x = position.x() + PHONE_TRACK_X;
+				int16_t filled = static_cast<int16_t>(slider_val[slider] * PHONE_TRACK_W / 100);
+
+				phone_slider_names[i].draw(Point<int16_t>(position.x() + 24, classic::text_y(phone_slider_names[i], cy)));
+
+				classic::box(track_x, cy - 3, PHONE_TRACK_W, 6, Color::Name::HUD_TRACK, 0.95f);
+				classic::box(track_x, cy - 3, filled, 6, Color::Name::HUD_EXP);
+				classic::button(Point<int16_t>(track_x + filled - 10, cy - 14), 20, 28, active_slider == slider);
+
+				slider_labels[slider].change_text(std::to_string(slider_val[slider]) + "%");
+				slider_labels[slider].draw(Point<int16_t>(track_x + PHONE_TRACK_W + 16, classic::text_y(slider_labels[slider], cy)));
+
+				if (slider == SL_BGM || slider == SL_SFX)
+				{
+					bool muted = check_val[slider == SL_BGM ? CHK_MUTE_BGM : CHK_MUTE_SFX];
+
+					draw_toggle(phone_mute_rect(i), muted ? phone_mute_on : phone_mute, muted);
+				}
+			}
+
+			draw_toggle(phone_shake_rect(), check_val[CHK_SCREEN_SHAKE] ? phone_shake_on : phone_shake, check_val[CHK_SCREEN_SHAKE]);
+			draw_toggle(phone_minimap_rect(), check_val[CHK_MINIMAP_SIMPLE] ? phone_minimap_on : phone_minimap, check_val[CHK_MINIMAP_SIMPLE]);
+		}
+		else
+		{
+			phone_hint.draw(position + Point<int16_t>(24, 76));
+
+			for (size_t i = 0; i < PHONE_SOCIAL; i++)
+			{
+				bool on = check_val[phone_social(i)];
+
+				draw_toggle(phone_social_rect(i), on ? phone_social_names_on[i] : phone_social_names[i], on);
+			}
+		}
+
+		Rectangle<int16_t> ok = phone_ok_rect();
+		Rectangle<int16_t> cancel = phone_cancel_rect();
+
+		classic::button(ok.get_left_top(), ok.width(), ok.height());
+		classic::shadowed(phone_ok, Point<int16_t>(ok.left() + ok.width() / 2, classic::text_y(phone_ok, ok.top() + ok.height() / 2)));
+		classic::button(cancel.get_left_top(), cancel.width(), cancel.height());
+		classic::shadowed(phone_cancel, Point<int16_t>(cancel.left() + cancel.width() / 2, classic::text_y(phone_cancel, cancel.top() + cancel.height() / 2)));
+
+		return;
+#endif
+
 		UIElement::draw_sprites(inter);
 
 		// Draw all slider thumbs and percentage labels
@@ -203,6 +317,44 @@ namespace ms
 
 	Cursor::State UIOptionMenu::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		if (active_slider != SL_NONE)
+		{
+			if (clicked)
+			{
+				set_slider(active_slider, cursorpos.x());
+				return Cursor::State::CLICKING;
+			}
+
+			active_slider = SL_NONE;
+			gesture.reset();
+
+			return Cursor::State::IDLE;
+		}
+
+		// A slider moves with the finger from the moment it lands
+		if (clicked && !gesture.is_pressed() && phone_tab == 0)
+		{
+			SliderType slider = slider_at(cursorpos);
+
+			if (slider != SL_NONE)
+			{
+				active_slider = slider;
+				set_slider(slider, cursorpos.x());
+
+				return Cursor::State::CLICKING;
+			}
+		}
+
+		// Everything else acts when the finger lifts where it landed
+		Point<int16_t> at;
+
+		if (!gesture.update(clicked, cursorpos, at))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+
+		return phone_tap(at);
+#endif
+
 		// Continue slider drag
 		if (clicked && active_slider != SL_NONE)
 		{
@@ -426,6 +578,206 @@ namespace ms
 		for (int i = 0; i < NUM_CHECKS; i++)
 			check_orig[i] = check_val[i];
 	}
+
+#ifdef __ANDROID__
+	void UIOptionMenu::remove_cursor()
+	{
+		active_slider = SL_NONE;
+		gesture.reset();
+		UIDragElement::remove_cursor();
+	}
+
+	UIOptionMenu::SliderType UIOptionMenu::phone_slider(size_t index) const
+	{
+		const SliderType sliders[PHONE_SLIDERS] = { SL_GRAPHICS, SL_EFFECTS, SL_BGM, SL_SFX, SL_HP_WARNING, SL_MP_WARNING };
+
+		return sliders[index];
+	}
+
+	uint16_t UIOptionMenu::phone_social(size_t index) const
+	{
+		const uint16_t checks[PHONE_SOCIAL] = {
+			CHK_WHISPER, CHK_FRIEND_CHAT, CHK_CHAT_INVITE, CHK_TRADE_REQUEST, CHK_PARTY_INVITE, CHK_EXPEDITION_INVITE,
+			CHK_GUILD_CHAT, CHK_GUILD_INVITE, CHK_ALLIANCE_CHAT, CHK_ALLIANCE_INVITE, CHK_FAMILY_INVITE, CHK_FOLLOW
+		};
+
+		return checks[index];
+	}
+
+	int16_t UIOptionMenu::phone_slider_y(size_t index) const
+	{
+		return PHONE_ROWS_Y + static_cast<int16_t>(index) * PHONE_ROW_STEP + 12;
+	}
+
+	Rectangle<int16_t> UIOptionMenu::phone_tab_rect(size_t index) const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(12 + static_cast<int16_t>(index) * 126, 36);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(120, 32));
+	}
+
+	Rectangle<int16_t> UIOptionMenu::phone_mute_rect(size_t index) const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(PHONE_W - 100, phone_slider_y(index) - 17);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(84, 34));
+	}
+
+	Rectangle<int16_t> UIOptionMenu::phone_shake_rect() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(24, PHONE_ROWS_Y + static_cast<int16_t>(PHONE_SLIDERS) * PHONE_ROW_STEP);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(150, 34));
+	}
+
+	Rectangle<int16_t> UIOptionMenu::phone_minimap_rect() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(186, PHONE_ROWS_Y + static_cast<int16_t>(PHONE_SLIDERS) * PHONE_ROW_STEP);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(150, 34));
+	}
+
+	Rectangle<int16_t> UIOptionMenu::phone_social_rect(size_t index) const
+	{
+		constexpr int16_t W = 300;
+		constexpr int16_t H = 42;
+		constexpr int16_t STEP = 48;
+
+		int16_t col = static_cast<int16_t>(index % 2);
+		int16_t row = static_cast<int16_t>(index / 2);
+		Point<int16_t> tl = position + Point<int16_t>(24 + col * (W + 12), 100 + row * STEP);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(W, H));
+	}
+
+	Rectangle<int16_t> UIOptionMenu::phone_ok_rect() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(PHONE_W - 256, PHONE_H - 46);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(116, 36));
+	}
+
+	Rectangle<int16_t> UIOptionMenu::phone_cancel_rect() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(PHONE_W - 132, PHONE_H - 46);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(116, 36));
+	}
+
+	void UIOptionMenu::draw_label(Rectangle<int16_t> r, const Text& label) const
+	{
+		label.draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(label, r.top() + r.height() / 2)));
+	}
+
+	void UIOptionMenu::draw_toggle(Rectangle<int16_t> r, const Text& label, bool on) const
+	{
+		classic::cell(r.get_left_top(), r.width(), r.height(), on);
+		draw_label(r, label);
+	}
+
+	UIOptionMenu::SliderType UIOptionMenu::slider_at(Point<int16_t> cursorpos) const
+	{
+		constexpr int16_t REACH = 20;
+
+		int16_t x = cursorpos.x() - position.x();
+		int16_t y = cursorpos.y() - position.y();
+
+		if (x < PHONE_TRACK_X - REACH || x > PHONE_TRACK_X + PHONE_TRACK_W + REACH)
+			return SL_NONE;
+
+		for (size_t i = 0; i < PHONE_SLIDERS; i++)
+			if (std::abs(y - phone_slider_y(i)) <= REACH)
+				return phone_slider(i);
+
+		return SL_NONE;
+	}
+
+	void UIOptionMenu::set_slider(SliderType slider, int16_t cursor_x)
+	{
+		int16_t x = cursor_x - position.x() - PHONE_TRACK_X;
+
+		if (x < 0)
+			x = 0;
+
+		if (x > PHONE_TRACK_W)
+			x = PHONE_TRACK_W;
+
+		slider_val[slider] = static_cast<uint8_t>(x * 100 / PHONE_TRACK_W);
+
+		if (slider == SL_BGM && !check_val[CHK_MUTE_BGM])
+			Music::set_bgmvolume(slider_val[SL_BGM]);
+		else if (slider == SL_SFX && !check_val[CHK_MUTE_SFX])
+			Sound::set_sfxvolume(slider_val[SL_SFX]);
+	}
+
+	void UIOptionMenu::toggle(uint16_t check)
+	{
+		check_val[check] = !check_val[check];
+
+		if (check == CHK_MINIMAP_SIMPLE)
+			check_val[CHK_MINIMAP_NORMAL] = !check_val[CHK_MINIMAP_SIMPLE];
+		else if (check == CHK_MUTE_BGM)
+			Music::set_bgmvolume(check_val[CHK_MUTE_BGM] ? 0 : slider_val[SL_BGM]);
+		else if (check == CHK_MUTE_SFX)
+			Sound::set_sfxvolume(check_val[CHK_MUTE_SFX] ? 0 : slider_val[SL_SFX]);
+	}
+
+	Cursor::State UIOptionMenu::phone_tap(Point<int16_t> at)
+	{
+		if (phone_ok_rect().contains(at))
+		{
+			button_pressed(BT_OK);
+			return Cursor::State::IDLE;
+		}
+
+		if (phone_cancel_rect().contains(at))
+		{
+			button_pressed(BT_CANCEL);
+			return Cursor::State::IDLE;
+		}
+
+		for (size_t i = 0; i < PHONE_TABS; i++)
+		{
+			if (phone_tab_rect(i).contains(at))
+			{
+				phone_tab = static_cast<uint8_t>(i);
+				return Cursor::State::CLICKING;
+			}
+		}
+
+		if (phone_tab == 1)
+		{
+			for (size_t i = 0; i < PHONE_SOCIAL; i++)
+			{
+				if (phone_social_rect(i).contains(at))
+				{
+					toggle(phone_social(i));
+					return Cursor::State::CLICKING;
+				}
+			}
+
+			return Cursor::State::IDLE;
+		}
+
+		for (size_t i = 0; i < PHONE_SLIDERS; i++)
+		{
+			SliderType slider = phone_slider(i);
+
+			if ((slider == SL_BGM || slider == SL_SFX) && phone_mute_rect(i).contains(at))
+			{
+				toggle(slider == SL_BGM ? CHK_MUTE_BGM : CHK_MUTE_SFX);
+				return Cursor::State::CLICKING;
+			}
+		}
+
+		if (phone_shake_rect().contains(at))
+			toggle(CHK_SCREEN_SHAKE);
+		else if (phone_minimap_rect().contains(at))
+			toggle(CHK_MINIMAP_SIMPLE);
+
+		return Cursor::State::CLICKING;
+	}
+#endif
 
 	void UIOptionMenu::revert_settings()
 	{
