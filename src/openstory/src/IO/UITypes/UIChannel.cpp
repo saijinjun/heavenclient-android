@@ -182,7 +182,7 @@ namespace ms
 			hint.change_text(now);
 
 		for (size_t i = 0; i < ch_labels.size(); i++)
-			ch_labels[i].change_color(classic::row_text(i == selected_channel, i == current_channel ? Color::Name::HUD_EXP : Color::Name::WHITE));
+			ch_labels[i].change_color(i == selected_channel ? Color::Name::HUD_PANEL : i == current_channel ? Color::Name::HUD_EXP : Color::Name::WHITE);
 #endif
 
 		for (auto& sprite : ch_sprites)
