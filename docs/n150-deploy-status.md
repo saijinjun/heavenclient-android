@@ -6,11 +6,13 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `afa1f53` | ok |
-| client | `45c8ee3` | ok |
+| server | `64a5b67` | ok |
+| client | `e8b2806` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-05 03:38 · client · ✅ deployed `e8b2806` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
+- 2026-11-05 03:38 · server · ✅ deployed `64a5b67` - online, 8484 open
 - 2026-11-05 00:48 · client · ✅ deployed `45c8ee3` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 00:48 · server · ✅ deployed `afa1f53` - online, 8484 open
 - 2026-11-04 23:45 · client · ✅ deployed `1889e53` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -33,5 +35,3 @@ and the repository exists.
 - 2026-11-03 20:16 · server · ✅ deployed `25fa1cd` - online, 8484 open
 - 2026-11-03 20:14 · server · Onyx approved `25fa1cd` (docker-compose.override.yml)
 - 2026-11-03 20:04 · server · **HELD for Onyx review** `c577aa7..25fa1cd` - sensitive: docker-compose.override.yml
-- 2026-11-03 19:36 · client · **HELD for Onyx review** `7732617..772ee78` - sensitive: web/server.py, web/ws_proxy.py
-- 2026-11-03 19:31 · client · **HELD for Onyx review** `7732617..aaebd1c` - sensitive: web/server.py, web/ws_proxy.py
