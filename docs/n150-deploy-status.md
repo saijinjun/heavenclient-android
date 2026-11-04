@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `e70652f` | ok |
-| client | `0956b35` | ok |
+| client | `c5ac379` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-04 18:26 · client · ✅ deployed `c5ac379` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 17:40 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: git@github.com: Permission denied (publickey).
 fatal: Could not read from remote repository.
 
@@ -34,4 +35,3 @@ and the repository exists.
 - 2026-11-03 19:04 · server · ✅ deployed `c577aa7` - online, 8484 open
 - 2026-11-03 17:59 · server · ✅ deployed `706c5b3` - online, 8484 open
 - 2026-11-03 01:17 · server · ✅ deployed `fbc2d6b` - online, 8484 open
-- 2026-11-02 23:24 · server · ✅ deployed `5f58618` - online, 8484 open
