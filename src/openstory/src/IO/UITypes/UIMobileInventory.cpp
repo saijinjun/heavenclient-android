@@ -61,9 +61,9 @@ namespace ms
 
 		constexpr int16_t MARGIN = 12;
 		constexpr int16_t TITLE_H = 26;
-		constexpr int16_t TAB_H = 32;
+		constexpr int16_t TAB_H = 40;
 		constexpr int16_t DETAIL_W = 230;
-		constexpr int16_t SLOT_BTN_H = 30;
+		constexpr int16_t SLOT_BTN_H = 36;
 		constexpr size_t NUM_QUICK = 6;
 		constexpr int16_t FOOT_H = 30;
 		constexpr int16_t SLOT = 50;

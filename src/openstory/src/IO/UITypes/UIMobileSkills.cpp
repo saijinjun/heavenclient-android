@@ -27,12 +27,12 @@ namespace ms
 	{
 		constexpr int16_t MARGIN = 12;
 		constexpr int16_t TITLE_H = 26;
-		constexpr int16_t TAB_H = 32;
+		constexpr int16_t TAB_H = 40;
 		constexpr int16_t DETAIL_W = 220;
 		constexpr int16_t FOOT_H = 30;
 		constexpr int16_t ROW_H = 50;
 		constexpr int16_t GAP = 6;
-		constexpr int16_t SLOT_H = 34;
+		constexpr int16_t SLOT_H = 38;
 
 		Rectangle<int16_t> rect(int16_t x, int16_t y, int16_t w, int16_t h)
 		{

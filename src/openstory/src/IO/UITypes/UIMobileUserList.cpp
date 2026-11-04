@@ -36,9 +36,9 @@ namespace ms
 		const char* DEFAULT_GROUP = "Default Group";
 
 		constexpr int16_t MARGIN = 16;
-		constexpr int16_t ROW_H = 40;
+		constexpr int16_t ROW_H = 48;
 		constexpr int16_t GAP = 4;
-		constexpr int16_t TAB_H = 32;
+		constexpr int16_t TAB_H = 40;
 		constexpr int16_t BUTTON_H = 42;
 		constexpr int16_t BUTTON_MAX_W = 200;
 		constexpr int16_t BUTTON_GAP = 8;
