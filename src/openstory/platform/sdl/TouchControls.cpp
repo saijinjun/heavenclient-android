@@ -261,12 +261,6 @@ namespace ms
 			return false;
 		}
 
-		if (control == MENU_LAYOUT)
-		{
-			start_editing(finger, actions);
-			return true;
-		}
-
 		if (control == STICK && fingers_on(STICK) > 0)
 		{
 			// A second thumb in the stick area does not move the stick, but
@@ -460,6 +454,8 @@ namespace ms
 			return { Output::CHAT, 0, pressed };
 		case MENU_SOLO:
 			return { Output::SOLO_MENU, 0, pressed };
+		case MENU_LAYOUT:
+			return { Output::OPTIONS, 0, pressed };
 		default:
 			return { Output::SLOT, control - SLOT0, pressed };
 		}
@@ -644,8 +640,10 @@ namespace ms
 				bool usable = selected < NUM_CONTROLS || (tool != TOOL_SMALLER && tool != TOOL_BIGGER);
 				float face = usable ? 0.8f : 0.35f;
 
+				bool armed = tool == TOOL_RESET && reset_armed;
+
 				sprite(DISC, circle.x, circle.y, circle.radius,
-					done ? 0.30f : DR, done ? 0.72f : DG, done ? 0.40f : DB, face);
+					armed ? 0.85f : (done ? 0.30f : DR), armed ? 0.20f : (done ? 0.72f : DG), armed ? 0.20f : (done ? 0.40f : DB), armed ? 1.0f : face);
 				sprite(RING, circle.x, circle.y, circle.radius, 1.0f, 1.0f, 1.0f, 0.6f);
 				sprite(TOOL_ICONS[i], circle.x, circle.y, circle.radius * 0.6f, 1.0f, 1.0f, 1.0f, usable ? 1.0f : 0.4f);
 			}
@@ -654,7 +652,7 @@ namespace ms
 		return result;
 	}
 
-	void TouchControls::start_editing(int64_t finger, std::vector<Action>& actions)
+	void TouchControls::start_editing(std::vector<Action>& actions)
 	{
 		// Let go of everything held, so the character stops while the
 		// controls are rearranged. Fingers already down are ignored until
@@ -670,9 +668,9 @@ namespace ms
 		{
 			entry.second = NUM_CONTROLS;
 		}
-		fingers[finger] = NUM_CONTROLS;
 
 		editing = true;
+		reset_armed = false;
 		selected = NUM_CONTROLS;
 		edit_finger = -1;
 	}
@@ -708,6 +706,7 @@ namespace ms
 
 		if (found < NUM_CONTROLS && best < HIT_SLACK)
 		{
+			reset_armed = false;
 			Circle circle = area(found);
 			selected = found;
 			edit_finger = finger;
@@ -720,6 +719,15 @@ namespace ms
 
 	void TouchControls::use_tool(Tool tool)
 	{
+		// Reset loses every change, so the first tap only asks
+		if (tool == TOOL_RESET && !reset_armed)
+		{
+			reset_armed = true;
+			return;
+		}
+
+		reset_armed = false;
+
 		switch (tool)
 		{
 		case TOOL_SMALLER:
@@ -773,6 +781,11 @@ namespace ms
 		adjustments[control].dx = (x - home.x) / u;
 		adjustments[control].dy = (y - home.y) / u;
 		layout_changed = true;
+	}
+
+	bool TouchControls::is_reset_armed() const
+	{
+		return reset_armed;
 	}
 
 	bool TouchControls::is_editing() const

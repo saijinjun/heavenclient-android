@@ -53,7 +53,8 @@ namespace ms
 			// Opens the chat field, or sends it away when it is open.
 			CHAT,
 			// Opens the server's solo menu (the @solo command).
-			SOLO_MENU
+			SOLO_MENU,
+			OPTIONS
 		};
 
 		struct Action
@@ -110,7 +111,11 @@ namespace ms
 		// and items dragged from their windows onto a slot.
 		bool slot_at(float x, float y, uint8_t& slot) const;
 
+		// Starts the layout editor, letting go of anything held
+		void start_editing(std::vector<Action>& actions);
 		bool is_editing() const;
+		// True after one tap on reset, which needs a second to take effect
+		bool is_reset_armed() const;
 		// The layout as text for the settings file, and back. Unknown or
 		// broken parts of the text are ignored.
 		std::string get_layout() const;
@@ -190,7 +195,6 @@ namespace ms
 		void set_button(Control control, bool pressed, std::vector<Action>& actions);
 		void send_held_keys(std::vector<Action>& actions);
 		uint8_t fingers_on(Control control) const;
-		void start_editing(int64_t finger, std::vector<Action>& actions);
 		bool edit_down(int64_t finger, float x, float y);
 		void use_tool(Tool tool);
 		void move_control(Control control, float x, float y);
@@ -218,6 +222,7 @@ namespace ms
 		float opacity = 1.0f;
 		bool editing = false;
 		bool layout_changed = false;
+		bool reset_armed = false;
 		// The control being edited, and the finger dragging it and where on
 		// the control it grabbed.
 		Control selected = NUM_CONTROLS;

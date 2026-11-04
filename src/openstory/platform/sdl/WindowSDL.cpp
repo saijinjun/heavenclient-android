@@ -30,9 +30,11 @@
 #include "Data/SkillData.h"
 #include "Gameplay/MapleMap/MapInfo.h"
 #include "Gameplay/Stage.h"
+#include "Graphics/ClassicStyle.h"
 #include "Graphics/Text.h"
 #include "IO/Components/Icon.h"
 #include "IO/UITypes/UIChatBar.h"
+#include "IO/UITypes/UIOptionMenu.h"
 #include "Net/Packets/MessagingPackets.h"
 #include "Net/Packets/PlayerPackets.h"
 
@@ -572,6 +574,13 @@ namespace ms
 		}
 	}
 
+	void Window::edit_touch_controls()
+	{
+		std::vector<TouchControls::Action> actions;
+		touch.start_editing(actions);
+		send_touch_actions(actions);
+	}
+
 	void Window::send_touch_actions(const std::vector<TouchControls::Action>& actions)
 	{
 		for (const TouchControls::Action& action : actions)
@@ -603,6 +612,11 @@ namespace ms
 							chatbar->focus_chatfield();
 					}
 				}
+
+				break;
+			case TouchControls::Output::OPTIONS:
+				if (action.pressed)
+					UI::get().emplace<UIOptionMenu>();
 
 				break;
 			case TouchControls::Output::SOLO_MENU:
@@ -1092,6 +1106,22 @@ namespace ms
 
 	void Window::end() const
 	{
+		if (touch_seen && touch.is_editing())
+		{
+			// Says what the editor's unlabeled buttons do
+			static const Text hint(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE,
+				"Drag a control to move it. Buttons, left to right: smaller, bigger, fade, reset, done.");
+			static const Text confirm(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE,
+				"Tap reset again to put every control back where it started.");
+
+			int16_t center = Constants::Constants::get().get_viewwidth() / 2;
+			constexpr int16_t HINT_W = 640;
+			constexpr int16_t HINT_Y = 84;
+
+			classic::panel(Point<int16_t>(center - HINT_W / 2, HINT_Y), HINT_W, 30);
+			(touch.is_reset_armed() ? confirm : hint).draw(Point<int16_t>(center, classic::text_y(hint, HINT_Y + 15)));
+		}
+
 		GraphicsGL::get().flush(opacity);
 
 		if (touch_seen && UI::get().in_game() && !UI::get().in_mobile_panel())
