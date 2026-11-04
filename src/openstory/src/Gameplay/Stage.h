@@ -166,6 +166,8 @@ namespace ms
 		State state;
 		// False from a map change until up is let go (see Stage::update).
 		bool portal_armed = false;
+		// The current press of up has been logged (see Stage::check_portals).
+		bool portal_logged = false;
 		int32_t mapid;
 
 		MapInfo mapinfo;
