@@ -269,9 +269,14 @@ namespace ms
 			}
 			else
 			{
+				// The focused window was closed (e.g. with its close button)
+				// without giving up focus. It no longer owns the keyboard, so
+				// handle this key normally instead of dropping it; otherwise
+				// the first menu button pressed after closing a panel does
+				// nothing.
 				focused = UIElement::NONE;
 
-				return;
+				return send_key(type, action, pressed, escape);
 			}
 		}
 		else
