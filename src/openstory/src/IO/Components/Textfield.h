@@ -61,6 +61,9 @@ namespace ms
 		void set_enter_callback(std::function<void(std::string)> onreturn);
 		void set_key_callback(KeyAction::Id key, std::function<void(void)> action);
 		void set_text_callback(std::function<void(void)> action);
+		// A press here, outside the field, keeps it focused. For buttons that
+		// belong to the field, such as Send.
+		void set_keep_focus_area(Rectangle<int16_t> area);
 
 		Cursor::State send_cursor(Point<int16_t> cursorpos, bool clicked);
 
@@ -108,5 +111,6 @@ namespace ms
 		std::function<void(std::string)> onreturn;
 		std::map<int32_t, std::function<void(void)>> callbacks;
 		std::function<void(void)> ontext;
+		Rectangle<int16_t> keep_focus_area;
 	};
 }

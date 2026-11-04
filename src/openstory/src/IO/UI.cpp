@@ -324,10 +324,7 @@ namespace ms
 		switch (front->get_type())
 		{
 		case UIElement::Type::CHATBAR:
-			// The chat log lies under the touch stick, but its "send to"
-			// chips must still take a tap: the stick swallowed them, so a
-			// stray thumb could set chat to Party with no way back to All
-			return static_cast<UIChatBar*>(front)->chip_hit(pos);
+			return static_cast<UIChatBar*>(front)->touch_hit(pos);
 		case UIElement::Type::STATUSMESSENGER:
 		case UIElement::Type::STATUSBAR:
 		case UIElement::Type::BUFFLIST:
@@ -363,6 +360,12 @@ namespace ms
 		auto shop = ui.get_element<UIShop>();
 
 		if (shop && shop->is_active())
+			return true;
+
+		// The dock's menu is a window to tap, with nothing to steer behind it
+		auto statusbar = ui.get_element<UIStatusBar>();
+
+		if (statusbar && statusbar->is_more_open())
 			return true;
 
 		// ... and so does storage

@@ -753,6 +753,14 @@ namespace ms
 		// Show the soft keyboard exactly while a text field has focus.
 		bool wanted = UI::get().has_focused_textfield();
 
+		// Back hides the keyboard and SDL stops the text input itself, so
+		// stop typing too or the field stays waiting with no way to type
+		if (wanted && text_input && !SDL_IsTextInputActive())
+		{
+			UI::get().remove_textfield();
+			wanted = false;
+		}
+
 		// The keyboard covers the bottom of the screen, where the chat field
 		// is, so the chat bar mirrors what is typed at the top.
 		UI::get().set_typing_on_top(wanted && touch_seen);
