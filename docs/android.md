@@ -16,6 +16,9 @@ merging. When a commit goes green, the n150 builds the OpenStory APK (arm64,
 pointed at the n150 server) and sends it to the project's Telegram, so nobody
 needs to build or upload APKs by hand.
 
+Server setup and deploy notes for the n150 are kept in the private server
+repo, not here: this repo is public and holds only client code.
+
 Each PR description has a **Phone test** checklist: what to tap and what you
 should see. Test from it and report back on the PR's thread.
 
