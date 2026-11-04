@@ -79,8 +79,12 @@ namespace ms
 
 		sprites_lookboard.emplace_back(CustomizeChar["charSet"], DrawArgument(lay(473, 103), ui_scale, ui_scale));
 
-		for (size_t i = 0; i <= 8; i++)
-			sprites_lookboard.emplace_back(CustomizeChar["avatarSel"][i]["normal"], DrawArgument(lay(504, static_cast<int16_t>(187 + (i * 18))), ui_scale, ui_scale));
+		// The board art has seven labels (face, hair style, skin, top, bottom,
+		// shoes, weapon) but the scroll has nine rows, so skip hair color and gender.
+		const int16_t label_rows[] = { 0, 1, 3, 4, 5, 6, 7 };
+
+		for (size_t i = 0; i < 7; i++)
+			sprites_lookboard.emplace_back(CustomizeChar["avatarSel"][i]["normal"], DrawArgument(lay(504, static_cast<int16_t>(187 + (label_rows[i] * 18))), ui_scale, ui_scale));
 
 		// rows: 0 face, 1 hair style, 2 hair color, 3 skin, 4 top, 5 bottom,
 		// 6 shoes, 7 weapon, 8 gender
@@ -129,6 +133,7 @@ namespace ms
 
 		facename = Text(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::BLACK);
 		hairname = Text(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::BLACK);
+		haircolorname = Text(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::BLACK, "Hair color");
 		bodyname = Text(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::BLACK);
 		topname = Text(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::BLACK);
 		botname = Text(Text::Font::A11M, Text::Alignment::CENTER, Color::Name::BLACK);
@@ -231,6 +236,7 @@ namespace ms
 
 			facename.draw(lay(647, 183 + (0 * 18)));
 			hairname.draw(lay(647, 183 + (1 * 18)));
+			haircolorname.draw(lay(647, 183 + (2 * 18)));
 			bodyname.draw(lay(647, 183 + (3 * 18)));
 			topname.draw(lay(647, 183 + (4 * 18)));
 			botname.draw(lay(647, 183 + (5 * 18)));
