@@ -35,6 +35,7 @@
 
 #include "UITypes/UIMobileInventory.h"
 #include "UITypes/UIMobileStats.h"
+#include "UITypes/UIMobileUserList.h"
 #include "UITypes/UIMobileSkills.h"
 #include "UITypes/UIMobileQuests.h"
 #include "UITypes/UIDuey.h"
@@ -352,6 +353,12 @@ namespace ms
 
 		if (storage && storage->is_active())
 			return true;
+
+		// ... and so does the buddy and party list
+		auto userlist = ui.get_element<UIMobileUserList>();
+
+		if (userlist && userlist->is_active())
+			return true;
 #endif
 
 		return false;
@@ -622,6 +629,7 @@ namespace ms
 					types.emplace_back(UIElement::Type::SKILLBOOK);
 					types.emplace_back(UIElement::Type::QUESTLOG);
 					types.emplace_back(UIElement::Type::USERLIST);
+					types.emplace_back(UIElement::Type::MOBILEUSERLIST);
 					types.emplace_back(UIElement::Type::NPCTALK);
 					types.emplace_back(UIElement::Type::CHARINFO);
 					types.emplace_back(UIElement::Type::BUDDYLIST);

@@ -42,6 +42,7 @@
 #include "UITypes/UIItemInventory.h"
 #include "UITypes/UIMobileInventory.h"
 #include "UITypes/UIMobileStats.h"
+#include "UITypes/UIMobileUserList.h"
 #include "UITypes/UIMobileSkills.h"
 #include "UITypes/UIMobileQuests.h"
 #include "UITypes/UIKeyConfig.h"
@@ -388,6 +389,13 @@ namespace ms
 							case KeyAction::Id::PARTY:
 							case KeyAction::Id::BOSSPARTY:
 							{
+#ifdef __ANDROID__
+								emplace<UIMobileUserList>(
+									action == KeyAction::Id::FRIENDS
+										? UIMobileUserList::Tab::BUDDIES
+										: UIMobileUserList::Tab::PARTY
+									);
+#else
 								UIUserList::Tab tab;
 
 								switch (action)
@@ -416,6 +424,7 @@ namespace ms
 									if (userlist && userlist->get_tab() != tab && userlist->is_active())
 										userlist->change_tab(tab);
 								}
+#endif
 
 								break;
 							}
