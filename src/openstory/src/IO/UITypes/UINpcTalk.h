@@ -20,6 +20,7 @@
 #include "../UIElement.h"
 
 #include "../Components/Slider.h"
+#include "../Components/TapGesture.h"
 #include "../Components/Textfield.h"
 
 #include "../../Graphics/Animation.h"
@@ -84,6 +85,9 @@ namespace ms
 	private:
 		// Phones get finger-sized buttons in a strip under the dialog
 		static bool touch();
+		// Extra room between lines of an option list on a phone, as a text
+		// line_adj (negative spreads the lines)
+		int16_t option_line_adj() const;
 		static constexpr int16_t TOUCH_BUTTON_W = 104;
 		static constexpr int16_t TOUCH_BUTTON_H = 40;
 		static constexpr int16_t TOUCH_STRIP_GAP = 4;
@@ -166,6 +170,7 @@ namespace ms
 		bool show_slider;
 		bool draw_text;
 		Slider slider;
+		TapGesture tap;
 		TalkType type;
 		std::string formatted_text;
 		size_t formatted_text_pos;
