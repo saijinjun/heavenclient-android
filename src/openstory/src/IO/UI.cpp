@@ -625,6 +625,10 @@ namespace ms
 					types.emplace_back(UIElement::Type::NPCTALK);
 					types.emplace_back(UIElement::Type::CHARINFO);
 					types.emplace_back(UIElement::Type::BUDDYLIST);
+					types.emplace_back(UIElement::Type::MESSENGER);
+					types.emplace_back(UIElement::Type::MONSTERBOOK);
+					types.emplace_back(UIElement::Type::MONSTERBATTLE);
+					types.emplace_back(UIElement::Type::MONSTERLIFE);
 				}
 				else if (enter)
 				{
