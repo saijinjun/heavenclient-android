@@ -183,6 +183,16 @@ namespace ms
 		(
 			[&](std::string msg)
 			{
+#ifdef __ANDROID__
+				// The keyboard's Enter is the only way to the next field on a phone, so
+				// it must not sign in before the password has been typed.
+				if (password.get_text().empty())
+				{
+					account.set_state(Textfield::State::NORMAL);
+					password.set_state(Textfield::State::FOCUSED);
+					return;
+				}
+#endif
 				login();
 			}
 		);
