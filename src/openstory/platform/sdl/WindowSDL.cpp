@@ -542,8 +542,10 @@ namespace ms
 
 			if (cursor_finger_down && finger.fingerId == cursor_finger)
 			{
-				UI::get().send_cursor(pos);
+				// Release first: a cursor move while still held counts as a click,
+				// so moving first pressed the button under the finger a second time.
 				UI::get().send_cursor(false);
+				UI::get().send_cursor(pos);
 				cursor_finger_down = false;
 			}
 
