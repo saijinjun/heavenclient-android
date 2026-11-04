@@ -154,7 +154,7 @@ namespace ms
 		// arrows) still hits the nearest one.
 		if (!hit)
 		{
-			constexpr int16_t SLOP = 8;
+			constexpr int16_t SLOP = 12;
 			int32_t best = SLOP * SLOP * 2 + 1;
 
 			for (auto& btit : buttons)
@@ -194,11 +194,15 @@ namespace ms
 		uint32_t press = UI::get().get_press_count();
 		bool pressed = down && press != button_press;
 
+		// Only where the press lands counts. A finger that came down beside a
+		// button and slid onto it, swiping a list, was not pressing it.
+		if (down)
+			button_press = press;
+
 		if (hit)
 		{
 			if (pressed)
 			{
-				button_press = press;
 				Sound(Sound::Name::BUTTONCLICK).play();
 
 				Button::State after = button_pressed(hitid);

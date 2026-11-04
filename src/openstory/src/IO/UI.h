@@ -50,6 +50,8 @@ namespace ms
 		// A full-screen touch panel (the mobile inventory) is open: the
 		// touch controls step aside and a swipe scrolls it
 		bool in_mobile_panel() const;
+		// A window of any kind lies under this point, on the game screen
+		bool element_at(Point<int16_t> pos);
 		// A window (not the HUD) is under this point, so a touch there is
 		// for the window and not for the touch controls drawn under it
 		bool window_at(Point<int16_t> pos);

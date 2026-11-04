@@ -118,6 +118,7 @@ namespace ms
 		Point<int16_t> finger_down_pos;
 		// Where the cursor finger last scrolled a list from
 		int16_t scroll_anchor_y = 0;
+		bool scroll_on_window = false;
 		bool long_press_sent;
 		uint32_t last_tap_time;
 		Point<int16_t> last_tap_pos;
