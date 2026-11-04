@@ -131,6 +131,14 @@ namespace ms
 			BT_SYS_OPTION,
 		};
 
+#ifdef __ANDROID__
+		// The server has neither Monster Battle nor Monster Life, so phones
+		// don't offer two menu rows that open an empty window
+		static constexpr uint16_t LAST_MENU_ROW = BT_MENU_MSN;
+#else
+		static constexpr uint16_t LAST_MENU_ROW = BT_MENU_MONSTERLIFE;
+#endif
+
 		const CharStats& stats;
 
 		// Boss HP gauge (top-centre) — shown while a boss reports its HP.

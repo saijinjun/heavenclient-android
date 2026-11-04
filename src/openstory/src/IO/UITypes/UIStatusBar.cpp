@@ -521,7 +521,7 @@ namespace ms
 		// Bar top is at -84 relative to position. Panel sits just above that.
 		// v83-visible: Stat, Skill, Quest, Item, Equip, Community, Event, Rank, EpisodBook, MSN
 		constexpr int16_t MENU_STEP = 26;
-		constexpr int16_t MENU_VISIBLE = 12;
+		constexpr int16_t MENU_VISIBLE = LAST_MENU_ROW - BT_MENU_STAT + 1;
 		constexpr int16_t MENU_PANEL_H = MENU_VISIBLE * MENU_STEP + 8;
 
 		int16_t menu_x = 188;
@@ -785,7 +785,7 @@ namespace ms
 			static_cast<int16_t>(-QS83_PANEL_H - 2));
 
 		// Pop-up columns grow upward from the top edge of the bar.
-		constexpr size_t MENU_ROWS = BT_MENU_MONSTERLIFE - BT_MENU_STAT + 1;
+		constexpr size_t MENU_ROWS = LAST_MENU_ROW - BT_MENU_STAT + 1;
 		constexpr size_t SYS_ROWS = 5;
 
 		int16_t menu_top = static_cast<int16_t>(
@@ -945,7 +945,7 @@ namespace ms
 			v83_skill_ani.draw(DrawArgument(position + v83_skillkey_pos), alpha);
 
 		// Pop-ups last so they sit over everything else in the bar.
-		constexpr size_t MENU_ROWS = BT_MENU_MONSTERLIFE - BT_MENU_STAT + 1;
+		constexpr size_t MENU_ROWS = LAST_MENU_ROW - BT_MENU_STAT + 1;
 		uint16_t menu_ids[MENU_ROWS];
 
 		for (size_t i = 0; i < MENU_ROWS; i++)
@@ -1271,11 +1271,11 @@ namespace ms
 		if (menu_fade > 0.0f)
 		{
 			draw_subpanel(*buttons.at(BT_MENU_STAT),
-			              *buttons.at(BT_MENU_MONSTERLIFE),
+			              *buttons.at(LAST_MENU_ROW),
 			              menu_bg_top, menu_bg_mid, menu_bg_bot, menu_fade);
 			// Fade the buttons alongside the backdrop (alpha overload
 			// ignores the `active` flag so the visual fade is smooth).
-			for (uint16_t i = BT_MENU_STAT; i <= BT_MENU_MONSTERLIFE; i++)
+			for (uint16_t i = BT_MENU_STAT; i <= LAST_MENU_ROW; i++)
 				static_cast<MapleButton*>(buttons.at(i).get())->draw(position, menu_fade);
 		}
 
@@ -1396,8 +1396,8 @@ namespace ms
 		buttons[BT_MENU_RANK]      ->set_active(menu_live);
 		buttons[BT_MENU_EPISODBOOK]->set_active(menu_live);
 		buttons[BT_MENU_MSN]       ->set_active(menu_live);
-		buttons[BT_MENU_MONSTERBATTLE]->set_active(menu_live);
-		buttons[BT_MENU_MONSTERLIFE]->set_active(menu_live);
+		buttons[BT_MENU_MONSTERBATTLE]->set_active(menu_live && BT_MENU_MONSTERBATTLE <= LAST_MENU_ROW);
+		buttons[BT_MENU_MONSTERLIFE]->set_active(menu_live && BT_MENU_MONSTERLIFE <= LAST_MENU_ROW);
 
 		bool sys_live = (sys_fade >= 1.0f);
 		buttons[BT_SYS_CHANNEL]   ->set_active(sys_live);
