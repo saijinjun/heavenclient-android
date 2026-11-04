@@ -72,6 +72,11 @@ namespace ms
 
 		Point<int16_t> tl = position;
 
+		// The frame's middle is nearly see-through, so white text vanished
+		// over bright scenery. Darken what's behind it.
+		ColorBox(WIDTH - 10, panel_h - 11, Color::Name::BLACK, 0.6f)
+			.draw(DrawArgument(tl + Point<int16_t>(5, 5)));
+
 		frame.draw(tl + Point<int16_t>(WIDTH / 2, panel_h - 6), WIDTH - 19, panel_h - 17);
 
 		// title: the leader's party

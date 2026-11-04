@@ -385,6 +385,12 @@ namespace ms
 			// one tooltip-frame panel spanning header + content
 			int16_t w = header_tex.is_valid() ? header_tex.get_dimensions().x() : 200;
 			int16_t total_h = static_cast<int16_t>(header_h + content_h + 8);
+
+			// The frame's middle is nearly see-through, so its text vanished
+			// over bright scenery. Darken what's behind it.
+			ColorBox(w - 10, total_h - 11, Color::Name::BLACK, 0.6f)
+				.draw(DrawArgument(position + Point<int16_t>(5, 5)));
+
 			tip_frame.draw(position + Point<int16_t>(w / 2, total_h - 6), w - 19, total_h - 17);
 
 			// white divider under the title, before the quests
