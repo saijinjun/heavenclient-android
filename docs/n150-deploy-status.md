@@ -6,11 +6,13 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `25fa1cd` | ok |
-| client | `70d9112` | ok |
+| server | `e70652f` | ok |
+| client | `4238243` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-04 12:38 · client · ✅ deployed `4238243` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
+- 2026-11-04 12:38 · server · ✅ deployed `e70652f` - online, 8484 open
 - 2026-11-04 09:18 · client · ✅ deployed `70d9112` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 01:33 · client · ✅ deployed `d374641` - wasm rebuilt, web services restarted; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 01:31 · client · Onyx approved `d374641` (web/server.py, web/ws_proxy.py)
@@ -45,4 +47,3 @@ fatal: Could not read from remote repository.
 
 Please make sure you have the correct access rights
 and the repository exists.
-- 2026-10-29 00:03 · server · ✅ deployed `13531d9` - no runtime change (container not recreated), 8484 open
