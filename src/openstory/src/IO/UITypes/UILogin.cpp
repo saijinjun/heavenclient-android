@@ -183,6 +183,16 @@ namespace ms
 		(
 			[&](std::string msg)
 			{
+#ifdef __ANDROID__
+				// The keyboard's Enter is the only way to the next field on a phone, so
+				// it must not sign in before the password has been typed.
+				if (password.get_text().empty())
+				{
+					account.set_state(Textfield::State::NORMAL);
+					password.set_state(Textfield::State::FOCUSED);
+					return;
+				}
+#endif
 				login();
 			}
 		);
@@ -214,6 +224,15 @@ namespace ms
 		password.set_cryptchar('*');
 #pragma endregion
 
+#ifdef __ANDROID__
+		// A focused field opens the phone keyboard, which would cover the
+		// sign-in board before the player has even seen it. On a phone the
+		// fields start unfocused and a tap on one opens the keyboard.
+		constexpr Textfield::State initial_focus = Textfield::State::NORMAL;
+#else
+		constexpr Textfield::State initial_focus = Textfield::State::FOCUSED;
+#endif
+
 		saveid = Setting<SaveLogin>::get().load();
 
 		if (saveid)
@@ -228,12 +247,12 @@ namespace ms
 			}
 			else
 			{
-				password.set_state(Textfield::State::FOCUSED);
+				password.set_state(initial_focus);
 			}
 		}
 		else
 		{
-			account.set_state(Textfield::State::FOCUSED);
+			account.set_state(initial_focus);
 		}
 
 
