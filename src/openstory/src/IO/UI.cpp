@@ -180,10 +180,10 @@ namespace ms
 		if (focused)
 		{
 			// The window gained input focus
-			uint8_t sfxvolume = Setting<SFXVolume>::get().load();
+			uint8_t sfxvolume = Setting<SFXMuted>::get().load() ? 0 : Setting<SFXVolume>::get().load();
 			Sound::set_sfxvolume(sfxvolume);
 
-			uint8_t bgmvolume = Setting<BGMVolume>::get().load();
+			uint8_t bgmvolume = Setting<BGMMuted>::get().load() ? 0 : Setting<BGMVolume>::get().load();
 			Music::set_bgmvolume(bgmvolume);
 		}
 		else
@@ -370,6 +370,12 @@ namespace ms
 		auto userlist = ui.get_element<UIMobileUserList>();
 
 		if (userlist && userlist->is_active())
+			return true;
+
+		// Options is a full window too, with nothing to steer behind it
+		auto options = ui.get_element<UIOptionMenu>();
+
+		if (options && options->is_active())
 			return true;
 #endif
 

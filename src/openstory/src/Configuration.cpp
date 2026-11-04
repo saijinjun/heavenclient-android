@@ -48,6 +48,8 @@ namespace ms
 		settings.emplace<FontPathHebrew>();
 		settings.emplace<BGMVolume>();
 		settings.emplace<SFXVolume>();
+		settings.emplace<BGMMuted>();
+		settings.emplace<SFXMuted>();
 		settings.emplace<SaveLogin>();
 		settings.emplace<DefaultAccount>();
 		settings.emplace<DefaultPassword>();
@@ -190,7 +192,7 @@ namespace ms
 			{ "Connection",  { "ServerIP", "ServerPort", "AssetsUrl", "SaveLogin", "Account", "Password",
 			                   "World", "Channel", "Character", "Region" } },
 			{ "Display",     { "Width", "Height", "Fullscreen", "VSync" } },
-			{ "Audio",       { "BGMVolume", "SFXVolume" } },
+			{ "Audio",       { "BGMVolume", "SFXVolume", "BGMMuted", "SFXMuted" } },
 			{ "Quality",     { "GraphicsQuality", "EffectsQuality", "ScreenShake" } },
 			{ "Input",       { "MouseSpeed", "Chatopen" } },
 			{ "Warnings",    { "HPWarning", "MPWarning" } },
