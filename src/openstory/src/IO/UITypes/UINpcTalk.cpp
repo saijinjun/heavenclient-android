@@ -305,7 +305,7 @@ namespace ms
 					else pref_escaped += c;
 				}
 				Text prefix_text(Text::Font::A12M, Text::Alignment::LEFT,
-					Color::Name::DARKGREY, Text::Background::NONE, pref_escaped, 320, true);
+					Color::Name::DARKGREY, Text::Background::NONE, pref_escaped, 320, true, option_line_adj());
 
 				int16_t base_y = position.y() + 19 - offset * SCROLL_STEP;
 				int16_t row_y = base_y + prefix_text.height() - 16;
@@ -351,7 +351,7 @@ namespace ms
 					}
 					Text prefix_text(Text::Font::A12M, Text::Alignment::LEFT,
 						Color::Name::DARKGREY, Text::Background::NONE,
-						pref_escaped, 320, true);
+						pref_escaped, 320, true, option_line_adj());
 					// height() returns the baseline y of the next row after
 					// the prefix; subtract linespace so row_y points at the
 					// TOP of the option's row (where list_bg/dot sprites
@@ -789,7 +789,7 @@ namespace ms
 				: (position.y() + 48);
 			int16_t text_w = 320;
 			int16_t line_h = 16; // approximate line height for A12M font
-			int16_t band_pad = 4; // extra px above/below each option row
+			int16_t band_pad = touch() ? 11 : 4; // extra px above/below each option row
 
 			// Visible clip band (slider mode) — options scrolled out of view
 			// must not be clickable/hoverable.
@@ -816,7 +816,7 @@ namespace ms
 				}
 				Text prefix_text(Text::Font::A12M, Text::Alignment::LEFT,
 					Color::Name::DARKGREY, Text::Background::NONE,
-					pref_escaped, 320, true);
+					pref_escaped, 320, true, option_line_adj());
 
 				// prefix_text.height() is the baseline-y of where THIS
 				// option's glyphs render. Glyphs extend roughly from
@@ -1412,7 +1412,7 @@ namespace ms
 		}
 
 		text = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::DARKGREY,
-			Text::Background::NONE, formatted_text, 320, true);
+			Text::Background::NONE, formatted_text, 320, true, option_line_adj());
 
 		int16_t text_height = text.height();
 
@@ -1458,9 +1458,12 @@ namespace ms
 
 		if (needed > height)
 		{
-			if (needed > MAX_HEIGHT)
+			// A phone has the room, and the spread out options need it
+			int16_t max_height = touch() ? 340 : MAX_HEIGHT;
+
+			if (needed > max_height)
 			{
-				height = MAX_HEIGHT;
+				height = max_height;
 				show_slider = true;
 				offset = 0;
 
@@ -1612,6 +1615,11 @@ namespace ms
 			dimension = Point<int16_t>(top.width(), strip_y + TOUCH_BUTTON_H + 12);
 			position = Point<int16_t>(vw / 2 - top.width() / 2, std::max<int16_t>(4, (vh - dimension.y()) / 2));
 		}
+	}
+
+	int16_t UINpcTalk::option_line_adj() const
+	{
+		return touch() && type == TalkType::SENDSIMPLE ? -14 : 0;
 	}
 
 	bool UINpcTalk::touch()
