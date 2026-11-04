@@ -153,7 +153,6 @@ namespace ms
 #else
 		typing_hint = Text(Text::A12M, Text::LEFT, Color::Name::DUSTYGRAY, "Say something, then press Enter to send");
 #endif
-		touch_hint = Text(Text::A12M, Text::LEFT, Color::Name::DUSTYGRAY, "Tap here to type");
 		touch_close = Text(Text::A12B, Text::CENTER, Color::Name::WHITE, "X");
 		send_label = Text(Text::A12B, Text::CENTER, Color::Name::WHITE, "Send");
 
@@ -270,7 +269,11 @@ namespace ms
 		int16_t h = rows * EMOTE_CELL + EMOTE_PAD * 2;
 
 #ifdef __ANDROID__
-		return Point<int16_t>(touch_left(), std::max<int16_t>(TYPING_TOP, touch_bottom() - TOUCH_FIELD_H - h));
+		// Under the typing bar and above the keyboard, or over the log
+		if (typing_bar_shown())
+			return Point<int16_t>(typing_rect().left(), typing_rect().bottom() + 2);
+
+		return Point<int16_t>(touch_left(), std::max<int16_t>(TYPING_TOP, touch_bottom() - h));
 #endif
 
 		// Sits directly above its own button so the panel never covers the
@@ -602,12 +605,20 @@ namespace ms
 		chip_labels[chip].change_color(Color::Name::HUD_PANEL);
 		chip_labels[chip].draw(Point<int16_t>(target.left() + target.width() / 2, classic::text_y(chip_labels[chip], target.top() + target.height() / 2)));
 
+		draw_emoticon_button(typing_emoticon_rect());
+
 		// Drawn after the field, so long text stops at the button
 		Rectangle<int16_t> send = typing_send_rect();
 
 		classic::button(send.get_left_top(), send.width(), send.height());
 		send_label.change_text(chatfield.empty() ? "Close" : "Send");
 		classic::shadowed(send_label, Point<int16_t>(send.left() + send.width() / 2, classic::text_y(send_label, send.top() + send.height() / 2)));
+#endif
+
+#ifdef __ANDROID__
+		// The picker opens where the recent lines go
+		if (emoticons_open)
+			return;
 #endif
 
 		// The keyboard covers the log, so the latest lines stay readable
@@ -674,23 +685,15 @@ namespace ms
 	{
 		int16_t left = touch_left();
 
-		return Rectangle<int16_t>(left, left + TOUCH_W, getchattop(), touch_bottom() - TOUCH_FIELD_H);
+		return Rectangle<int16_t>(left, left + TOUCH_W, getchattop(), touch_bottom());
 	}
 
 	Rectangle<int16_t> UIChatBar::emoticon_button_rect() const
 	{
-		int16_t left = touch_left();
-		int16_t bottom = touch_bottom();
+		// In the chips' row, beside the close button
+		Rectangle<int16_t> close = log_close_rect();
 
-		return Rectangle<int16_t>(left, left + 44, bottom - TOUCH_FIELD_H, bottom);
-	}
-
-	Rectangle<int16_t> UIChatBar::field_rect() const
-	{
-		int16_t left = touch_left();
-		int16_t bottom = touch_bottom();
-
-		return Rectangle<int16_t>(left + 44, left + TOUCH_W, bottom - TOUCH_FIELD_H, bottom);
+		return Rectangle<int16_t>(close.left() - 4 - EMOTE_BTN_W, close.left() - 4, close.top(), close.bottom());
 	}
 
 	Rectangle<int16_t> UIChatBar::log_close_rect() const
@@ -729,7 +732,15 @@ namespace ms
 	{
 		Rectangle<int16_t> all = typing_rect();
 
-		return Rectangle<int16_t>(all.left() + TYPING_BTN_W + TYPING_GAP, all.right() - TYPING_BTN_W - TYPING_GAP, all.top(), all.bottom());
+		return Rectangle<int16_t>(all.left() + TYPING_BTN_W + EMOTE_BTN_W + TYPING_GAP * 2, all.right() - TYPING_BTN_W - TYPING_GAP, all.top(), all.bottom());
+	}
+
+	Rectangle<int16_t> UIChatBar::typing_emoticon_rect() const
+	{
+		Rectangle<int16_t> all = typing_rect();
+		int16_t left = all.left() + TYPING_BTN_W + TYPING_GAP;
+
+		return Rectangle<int16_t>(left, left + EMOTE_BTN_W, all.top(), all.bottom());
 	}
 
 	Rectangle<int16_t> UIChatBar::typing_send_rect() const
@@ -828,28 +839,15 @@ namespace ms
 			classic::box(left + TOUCH_W - 5, static_cast<int16_t>(log.top() + 4 + y), 3, static_cast<int16_t>(thumb), Color::Name::HUD_EXP, 0.6f);
 		}
 
-		// The emoticon button
-		Rectangle<int16_t> emote = emoticon_button_rect();
+		draw_emoticon_button(emoticon_button_rect());
+	}
 
-		classic::cell(emote.get_left_top(), emote.width(), emote.height(), emoticons_open);
+	void UIChatBar::draw_emoticon_button(Rectangle<int16_t> area) const
+	{
+		classic::cell(area.get_left_top(), area.width(), area.height(), emoticons_open);
 
 		if (!emoticon_icons.empty() && emoticon_icons[0].is_valid())
-		{
-			emoticon_icons[0].draw(DrawArgument(emote.get_left_top() + Point<int16_t>(emote.width() / 2, emote.height() / 2)));
-		}
-
-		// The line to tap to start typing
-		Rectangle<int16_t> field = field_rect();
-
-		if (!classic::input(field.get_left_top(), field.width(), field.height()))
-			classic::box(field.left(), field.top(), field.width(), field.height(), Color::Name::GALLERY, 0.97f);
-
-		Point<int16_t> text_pos(field.left() + 18, field.top() + (field.height() - 26) / 2);
-
-		if (chatfield.empty())
-			touch_hint.draw(DrawArgument(text_pos));
-		else if (!typing_bar_shown())
-			chatfield.draw(text_pos + Point<int16_t>(435, 59));
+			emoticon_icons[0].draw(DrawArgument(area.get_left_top() + Point<int16_t>(area.width() / 2, area.height() / 2)));
 	}
 
 	void UIChatBar::scroll_log(bool older)
@@ -882,8 +880,7 @@ namespace ms
 		return chip_at(cursorpos) >= 0
 			|| log_close_rect().contains(cursorpos)
 			|| log_rect().contains(cursorpos)
-			|| emoticon_button_rect().contains(cursorpos)
-			|| field_rect().contains(cursorpos);
+			|| emoticon_button_rect().contains(cursorpos);
 #endif
 	}
 
@@ -931,7 +928,19 @@ namespace ms
 	{
 		if (typing_bar_shown())
 		{
-			if (typing_target_rect().contains(at))
+			int32_t typing_pick = emoticon_at(at);
+
+			if (typing_pick >= 0)
+			{
+				pick_emoticon(typing_pick);
+			}
+			else if (typing_emoticon_rect().contains(at))
+			{
+				Sound(Sound::Name::BUTTONCLICK).play();
+				toggle_emoticons();
+				emoticons_typing = emoticons_open;
+			}
+			else if (typing_target_rect().contains(at))
 			{
 				Sound(Sound::Name::BUTTONCLICK).play();
 				set_chat_target(chip_target((chip_index() + 1) % NUM_CHIPS));
@@ -940,6 +949,10 @@ namespace ms
 			{
 				Sound(Sound::Name::BUTTONCLICK).play();
 				submit_chat(chatfield.get_text());
+			}
+			else if (emoticons_open && !emoticon_panel_rect().contains(at))
+			{
+				emoticons_open = false;
 			}
 
 			return;
@@ -994,9 +1007,11 @@ namespace ms
 		{
 			Sound(Sound::Name::BUTTONCLICK).play();
 			toggle_emoticons();
+			emoticons_typing = false;
 		}
-		else if (field_rect().contains(at))
+		else if (log_rect().contains(at))
 		{
+			// A tap on the log starts a reply. A swipe scrolls it instead.
 			toggle_chatfield(true);
 		}
 	}
@@ -1014,7 +1029,18 @@ namespace ms
 			swiping_log = false;
 		}
 
-		chatfield.set_keep_focus_area(typing_rect());
+		// The picker belongs to the typing bar while it's open from there
+		Rectangle<int16_t> keep = typing_rect();
+
+		if (emoticons_open && emoticons_typing)
+		{
+			if (typing_bar_shown())
+				keep = Rectangle<int16_t>(keep.left(), keep.right(), keep.top(), emoticon_panel_rect().bottom());
+			else
+				emoticons_open = false;
+		}
+
+		chatfield.set_keep_focus_area(keep);
 
 		if (opened_for_typing && chatfield.get_state() != Textfield::State::FOCUSED)
 		{
@@ -1977,7 +2003,7 @@ namespace ms
 	int16_t UIChatBar::getchattop() const
 	{
 #ifdef __ANDROID__
-		return touch_bottom() - TOUCH_FIELD_H - chatrows * CHATROWHEIGHT - 4;
+		return touch_bottom() - chatrows * CHATROWHEIGHT - 4;
 #else
 		return position.y() - chatrows * CHATROWHEIGHT - CHATYOFFSET;
 #endif

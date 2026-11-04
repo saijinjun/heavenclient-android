@@ -171,10 +171,12 @@ namespace ms
 		int32_t emoticon_at(Point<int16_t> cursorpos) const;
 		Point<int16_t> emoticon_origin() const;
 
-		static constexpr int16_t EMOTE_COLS = 6;
 #ifdef __ANDROID__
+		// Wide and short, to fit between the typing bar and the keyboard
+		static constexpr int16_t EMOTE_COLS = 12;
 		static constexpr int16_t EMOTE_CELL = 40;
 #else
+		static constexpr int16_t EMOTE_COLS = 6;
 		static constexpr int16_t EMOTE_CELL = 28;
 #endif
 		static constexpr int16_t EMOTE_PAD = 8;
@@ -210,7 +212,6 @@ namespace ms
 		static constexpr int16_t TOUCH_ABOVE_DOCK = 60;
 		static constexpr int16_t TOUCH_LINE_H = 30;
 		static constexpr int16_t TOUCH_LINE_REACH = 8;
-		static constexpr int16_t TOUCH_FIELD_H = 38;
 		static constexpr int16_t TOUCH_ROWS = 5;
 		static constexpr int16_t TYPING_MAX_W = 600;
 		static constexpr int16_t TYPING_LEFT = 430;
@@ -218,17 +219,18 @@ namespace ms
 		static constexpr int16_t TYPING_H = 40;
 		static constexpr int16_t TYPING_BTN_W = 78;
 		static constexpr int16_t TYPING_GAP = 6;
+		static constexpr int16_t EMOTE_BTN_W = 46;
 
 		int16_t touch_left() const;
 		int16_t touch_bottom() const;
 		Rectangle<int16_t> line_rect() const;
 		Rectangle<int16_t> log_rect() const;
-		Rectangle<int16_t> field_rect() const;
 		Rectangle<int16_t> emoticon_button_rect() const;
 		Rectangle<int16_t> log_close_rect() const;
 		Rectangle<int16_t> emoticon_panel_rect() const;
 		Rectangle<int16_t> typing_rect() const;
 		Rectangle<int16_t> typing_target_rect() const;
+		Rectangle<int16_t> typing_emoticon_rect() const;
 		Rectangle<int16_t> typing_field_rect() const;
 		Rectangle<int16_t> typing_send_rect() const;
 		bool typing_bar_shown() const;
@@ -236,6 +238,7 @@ namespace ms
 		static ChatTarget chip_target(size_t index);
 		void draw_touch() const;
 		void draw_touch_line() const;
+		void draw_emoticon_button(Rectangle<int16_t> area) const;
 		void draw_touch_log() const;
 		void draw_log_rows(int16_t left) const;
 		void draw_typing_bar() const;
@@ -246,7 +249,8 @@ namespace ms
 		TapGesture tap;
 		bool swiping_log = false;
 		int16_t swipe_anchor_y = 0;
-		Text touch_hint;
+		// The picker was opened from the typing bar, so it ends with typing
+		bool emoticons_typing = false;
 		Text touch_close;
 		mutable Text send_label;
 		Texture chatspace[2];
