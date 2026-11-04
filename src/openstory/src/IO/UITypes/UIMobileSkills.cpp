@@ -70,6 +70,9 @@ namespace ms
 		for (size_t i = 0; i < NUM_SLOTS; i++)
 			slot_labels[i] = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, std::to_string(i + 1));
 
+		page_labels[0] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE, "Page 1");
+		page_labels[1] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE, "Page 2");
+
 		name = Text(Text::Font::A13B, Text::Alignment::LEFT, Color::Name::HUD_EXP, "", DETAIL_W - 20);
 		level_text = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::SILVERCHALICE);
 		desc = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::GALLERY, "", DETAIL_W - 20);
@@ -121,6 +124,8 @@ namespace ms
 			int16_t y = l.detail.bottom() - 8 - (2 - row) * SLOT_H - (1 - row) * GAP;
 			l.slots[i] = rect(l.detail.left() + 10 + col * (slot_w + GAP), y, slot_w, SLOT_H);
 		}
+
+		l.slot_page = rect(l.detail.right() - 10 - 64, l.slots[0].top() - 30, 64, 26);
 
 		return l;
 	}
@@ -253,11 +258,10 @@ namespace ms
 	int16_t UIMobileSkills::bound_slot(int32_t skill_id) const
 	{
 		const Keyboard& keyboard = UI::get().get_keyboard();
-		const auto& keys = keyboard.get_quickslot_keys();
 
-		for (size_t i = 0; i < NUM_SLOTS && i < keys.size(); i++)
+		for (size_t i = 0; i < Keyboard::NUM_TOUCH_SLOTS; i++)
 		{
-			Keyboard::Mapping mapping = keyboard.get_maple_mapping(keys[i]);
+			Keyboard::Mapping mapping = keyboard.get_maple_mapping(keyboard.get_touch_slot_key(i));
 
 			if (mapping.type == KeyType::Id::SKILL && mapping.action == skill_id)
 				return static_cast<int16_t>(i);
@@ -271,12 +275,11 @@ namespace ms
 		// The touch quick slots show the quickslot bar's keys, so this is the
 		// same binding a drag onto a slot makes.
 		Keyboard& keyboard = UI::get().get_keyboard();
-		const auto& keys = keyboard.get_quickslot_keys();
 
-		if (slot >= keys.size())
+		if (slot >= Keyboard::NUM_TOUCH_SLOTS)
 			return;
 
-		uint8_t key = keys[slot];
+		uint8_t key = keyboard.get_touch_slot_key(slot);
 		keyboard.assign(key, static_cast<uint8_t>(KeyType::Id::SKILL), skill_id);
 
 		std::vector<std::tuple<KeyConfig::Key, KeyType::Id, int32_t>> updates;
@@ -444,7 +447,7 @@ namespace ms
 			level_text.draw(Point<int16_t>(big.right() + 8, big.top() + 8 + name.height()));
 
 			// Long texts are left out rather than run under the slot buttons
-			int16_t bottom = can_bind(*row) ? l.slots[0].top() - 22 : l.detail.bottom() - 6;
+			int16_t bottom = can_bind(*row) ? l.slot_page.top() - 4 : l.detail.bottom() - 6;
 			int16_t y = big.bottom() + 8;
 
 			if (y + desc.height() <= bottom)
@@ -461,10 +464,15 @@ namespace ms
 				int16_t bound = bound_slot(row->id);
 				slot_hint.draw(Point<int16_t>(l.detail.left() + 10, l.slots[0].top() - 18));
 
+				// Lit when the skill is on the other page, as a pointer to it
+				bool elsewhere = bound >= 0 && static_cast<size_t>(bound) / NUM_SLOTS != slot_page;
+				classic::button(l.slot_page.get_left_top(), l.slot_page.width(), l.slot_page.height(), elsewhere);
+				draw_label(page_labels[slot_page], l.slot_page);
+
 				for (size_t i = 0; i < NUM_SLOTS; i++)
 				{
 					const Rectangle<int16_t>& s = l.slots[i];
-					bool lit = static_cast<int16_t>(i) == bound;
+					bool lit = static_cast<int16_t>(i + slot_page * NUM_SLOTS) == bound;
 					classic::button(s.get_left_top(), s.width(), s.height(), lit);
 					draw_label(slot_labels[i], s);
 				}
@@ -567,11 +575,17 @@ namespace ms
 
 		if (row && can_bind(*row))
 		{
+			if (l.slot_page.contains(cursorpos))
+			{
+				slot_page = slot_page == 0 ? 1 : 0;
+				return Cursor::State::CLICKING;
+			}
+
 			for (size_t i = 0; i < NUM_SLOTS; i++)
 			{
 				if (l.slots[i].contains(cursorpos))
 				{
-					bind(i, row->id);
+					bind(i + slot_page * NUM_SLOTS, row->id);
 					return Cursor::State::CLICKING;
 				}
 			}

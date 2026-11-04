@@ -67,15 +67,18 @@ namespace ms
 		constexpr uint32_t DOUBLE_TAP_MS = 400;
 		constexpr int16_t TAP_SLOP = 24;
 
-		// What a touch quick slot holds: the binding of the quickslot bar's
-		// key in the same position.
+		// Which page of quick slots the touch controls show
+		uint8_t slot_page = 0;
+
+		// What a touch quick slot holds: the binding of its key on this page.
 		Keyboard::Mapping slot_mapping(uint8_t slot)
 		{
-			const auto& keys = UI::get().get_keyboard().get_quickslot_keys();
-			if (slot >= keys.size())
+			size_t index = slot + slot_page * size_t(TouchControls::NUM_SLOTS);
+			if (index >= Keyboard::NUM_TOUCH_SLOTS)
 				return {};
 
-			return UI::get().get_keyboard().get_maple_mapping(keys[slot]);
+			const Keyboard& keyboard = UI::get().get_keyboard();
+			return keyboard.get_maple_mapping(keyboard.get_touch_slot_key(index));
 		}
 
 		const Texture* slot_icon(const Keyboard::Mapping& mapping)
@@ -97,11 +100,11 @@ namespace ms
 		// Puts a skill or item on a quick slot, here and on the server.
 		void bind_slot(uint8_t slot, KeyType::Id type, int32_t action)
 		{
-			const auto& keys = UI::get().get_keyboard().get_quickslot_keys();
-			if (slot >= keys.size())
+			size_t index = slot + slot_page * size_t(TouchControls::NUM_SLOTS);
+			if (index >= Keyboard::NUM_TOUCH_SLOTS)
 				return;
 
-			uint8_t key = keys[slot];
+			uint8_t key = UI::get().get_keyboard().get_touch_slot_key(index);
 			UI::get().get_keyboard().assign(key, static_cast<uint8_t>(type), action);
 
 			std::vector<std::tuple<KeyConfig::Key, KeyType::Id, int32_t>> updates;
@@ -624,6 +627,16 @@ namespace ms
 				if (action.pressed)
 					GeneralChatPacket("@solo", false).dispatch();
 
+				break;
+			case TouchControls::Output::SLOT_PAGE:
+				if (action.pressed)
+				{
+					slot_page = slot_page == 0 ? 1 : 0;
+					touch.set_slot_page(slot_page);
+
+					// A finger still on a slot no longer means what it pressed
+					held_slots.fill(false);
+				}
 				break;
 			case TouchControls::Output::SLOT:
 			{

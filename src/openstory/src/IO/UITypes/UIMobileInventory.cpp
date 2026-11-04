@@ -100,6 +100,9 @@ namespace ms
 		for (size_t i = 0; i < NUM_QUICK; i++)
 			quick_labels[i] = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, std::to_string(i + 1));
 
+		quick_page_labels[0] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE, "Page 1");
+		quick_page_labels[1] = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE, "Page 2");
+
 		scroll_hint = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::HUD_EXP, "", DETAIL_W - 20);
 		empty_hint = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, "Tap an item to see it here", DETAIL_W - 20);
 	}
@@ -147,6 +150,8 @@ namespace ms
 			int16_t y = l.action.top() - 8 - (2 - row) * SLOT_BTN_H - (1 - row) * 6;
 			l.quick[i] = rect(l.detail.left() + 10 + col * (quick_w + 6), y, quick_w, SLOT_BTN_H);
 		}
+
+		l.quick_page = rect(l.detail.right() - 10 - 64, l.quick[0].top() - 30, 64, 26);
 
 		// The footer: mesos on the left, then Drop mesos and Sort on the right
 		int16_t foot_y = py + ph - FOOT_H - 4;
@@ -395,7 +400,7 @@ namespace ms
 			}
 
 			bool quick = can_quick_slot();
-			int16_t bottom = quick ? l.quick[0].top() - 22 : l.action.top() - 6;
+			int16_t bottom = quick ? l.quick_page.top() - 4 : l.action.top() - 6;
 
 			// An equip's requirements and stats, then the description in
 			// what's left above the buttons
@@ -419,10 +424,15 @@ namespace ms
 				int16_t bound = bound_quick_slot(itemid);
 				quick_hint.draw(Point<int16_t>(l.detail.left() + 10, l.quick[0].top() - 18));
 
+				// Lit when the item is on the other page, as a pointer to it
+				bool elsewhere = bound >= 0 && static_cast<size_t>(bound) / NUM_QUICK != quick_page;
+				classic::button(l.quick_page.get_left_top(), l.quick_page.width(), l.quick_page.height(), elsewhere);
+				draw_label(quick_page_labels[quick_page], l.quick_page);
+
 				for (size_t i = 0; i < NUM_QUICK; i++)
 				{
 					const Rectangle<int16_t>& q = l.quick[i];
-					classic::button(q.get_left_top(), q.width(), q.height(), static_cast<int16_t>(i) == bound);
+					classic::button(q.get_left_top(), q.width(), q.height(), static_cast<int16_t>(i + quick_page * NUM_QUICK) == bound);
 					draw_label(quick_labels[i], q);
 				}
 			}
@@ -662,11 +672,10 @@ namespace ms
 	int16_t UIMobileInventory::bound_quick_slot(int32_t itemid) const
 	{
 		const Keyboard& keyboard = UI::get().get_keyboard();
-		const auto& keys = keyboard.get_quickslot_keys();
 
-		for (size_t i = 0; i < NUM_QUICK && i < keys.size(); i++)
+		for (size_t i = 0; i < Keyboard::NUM_TOUCH_SLOTS; i++)
 		{
-			Keyboard::Mapping mapping = keyboard.get_maple_mapping(keys[i]);
+			Keyboard::Mapping mapping = keyboard.get_maple_mapping(keyboard.get_touch_slot_key(i));
 
 			if (mapping.type == KeyType::Id::ITEM && mapping.action == itemid)
 				return static_cast<int16_t>(i);
@@ -680,12 +689,11 @@ namespace ms
 		// The touch quick slots show the quickslot bar's keys, so this is the
 		// same binding a drag onto a slot makes
 		Keyboard& keyboard = UI::get().get_keyboard();
-		const auto& keys = keyboard.get_quickslot_keys();
 
-		if (slot >= keys.size())
+		if (slot >= Keyboard::NUM_TOUCH_SLOTS)
 			return;
 
-		uint8_t key = keys[slot];
+		uint8_t key = keyboard.get_touch_slot_key(slot);
 		keyboard.assign(key, static_cast<uint8_t>(KeyType::Id::ITEM), itemid);
 
 		std::vector<std::tuple<KeyConfig::Key, KeyType::Id, int32_t>> updates;
@@ -816,11 +824,17 @@ namespace ms
 
 		if (item_at(selected) && can_quick_slot())
 		{
+			if (l.quick_page.contains(cursorpos))
+			{
+				quick_page = quick_page == 0 ? 1 : 0;
+				return Cursor::State::CLICKING;
+			}
+
 			for (size_t i = 0; i < NUM_QUICK; i++)
 			{
 				if (l.quick[i].contains(cursorpos))
 				{
-					bind_quick_slot(i, item_at(selected));
+					bind_quick_slot(i + quick_page * NUM_QUICK, item_at(selected));
 					return Cursor::State::CLICKING;
 				}
 			}

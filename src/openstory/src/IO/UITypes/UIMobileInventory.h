@@ -57,6 +57,7 @@ namespace ms
 			Rectangle<int16_t> action;
 			Rectangle<int16_t> drop;
 			std::array<Rectangle<int16_t>, 6> quick;
+			Rectangle<int16_t> quick_page;
 			Rectangle<int16_t> sort;
 			Rectangle<int16_t> drop_meso;
 			int16_t cell;
@@ -130,5 +131,8 @@ namespace ms
 		int16_t scroll_slot = 0;
 		int32_t scroll_id = 0;
 		std::array<Text, 6> quick_labels;
+		std::array<Text, 2> quick_page_labels;
+		// Which page of quick slots the buttons put an item on
+		size_t quick_page = 0;
 	};
 }

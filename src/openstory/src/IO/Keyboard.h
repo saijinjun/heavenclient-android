@@ -62,6 +62,8 @@ namespace ms
 
 		// Number of keys on the quickslot bar.
 		static constexpr size_t NUM_QUICKSLOT_KEYS = 8;
+		// The touch controls' quick slots, over two pages of six
+		static constexpr size_t NUM_TOUCH_SLOTS = 12;
 
 		void assign(uint8_t key, uint8_t type, int32_t action);
 		void remove(uint8_t key);
@@ -77,6 +79,8 @@ namespace ms
 		void set_quickslot_keys(const std::array<uint8_t, NUM_QUICKSLOT_KEYS>& keys);
 		// Return the quickslot bar's key layout.
 		const std::array<uint8_t, NUM_QUICKSLOT_KEYS>& get_quickslot_keys() const;
+		// The key that holds a touch quick slot's binding, slot below NUM_TOUCH_SLOTS
+		uint8_t get_touch_slot_key(size_t slot) const;
 
 		int32_t leftshiftcode() const;
 		int32_t rightshiftcode() const;

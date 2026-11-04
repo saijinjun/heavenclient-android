@@ -89,7 +89,7 @@ namespace ms
 			{ false, false, 1.25f, 2.60f, 0.30f, QUEST, DR, DG, DB },            // MENU_QUESTS
 			{ false, false, 2.00f, 2.60f, 0.30f, GLOBE, DR, DG, DB },            // MENU_MAP
 			{ true,  true,  0.36f, 0.40f, 0.30f, DROP_DOWN, 0.26f, 0.60f, 0.96f },  // JUMP_DOWN
-			{ true,  true,  0.36f, 1.98f, 0.30f, JUMP_SLASH, 0.96f, 0.52f, 0.16f }, // JUMP_ATTACK
+			{ true,  true,  0.36f, 1.98f, 0.30f, NUM_SPRITES, 0.80f, 0.56f, 0.18f }, // SLOT_PAGE
 			{ true,  false, 0.45f, 0.45f, 0.26f, GEAR, DR, DG, DB },             // MENU_LAYOUT
 			{ true,  false, 1.15f, 0.45f, 0.26f, CHAT, DR, DG, DB },             // MENU_CHAT
 			{ true,  false, 1.85f, 0.45f, 0.26f, LIST, 0.80f, 0.56f, 0.18f },    // MENU_SOLO
@@ -101,7 +101,7 @@ namespace ms
 			"STICK", "ATTACK", "JUMP", "PICKUP",
 			"SLOT0", "SLOT1", "SLOT2", "SLOT3", "SLOT4", "SLOT5",
 			"INVENTORY", "EQUIPS", "STATS", "SKILLS", "QUESTS", "MAP",
-			"JUMP_DOWN", "JUMP_ATTACK", "LAYOUT", "CHAT", "SOLO"
+			"JUMP_DOWN", "SLOT_PAGE", "LAYOUT", "CHAT", "SOLO"
 		};
 
 		// The keys the stick and the action buttons hold down, in the order
@@ -409,17 +409,16 @@ namespace ms
 	void TouchControls::send_held_keys(std::vector<Action>& actions)
 	{
 		// Several controls can hold the same key: the jump down button holds
-		// down and jump, the jump attack button jump and attack.
+		// down and jump.
 		bool jump_down = buttons[JUMP_DOWN];
-		bool jump_attack = buttons[JUMP_ATTACK];
 		std::array<bool, KEYS.size()> wanted =
 		{
 			directions[LEFT],
 			directions[RIGHT],
 			directions[UP],
 			directions[DOWN] || jump_down,
-			buttons[JUMP] || jump_down || jump_attack,
-			buttons[ATTACK] || jump_attack
+			buttons[JUMP] || jump_down,
+			buttons[ATTACK]
 		};
 
 		for (size_t i = 0; i < KEYS.size(); i++)
@@ -456,6 +455,8 @@ namespace ms
 			return { Output::SOLO_MENU, 0, pressed };
 		case MENU_LAYOUT:
 			return { Output::OPTIONS, 0, pressed };
+		case SLOT_PAGE:
+			return { Output::SLOT_PAGE, 0, pressed };
 		default:
 			return { Output::SLOT, control - SLOT0, pressed };
 		}
@@ -474,7 +475,7 @@ namespace ms
 			pressed_at[control] = now == 0 ? 1 : now;
 		}
 
-		if (control == ATTACK || control == JUMP || control == JUMP_DOWN || control == JUMP_ATTACK)
+		if (control == ATTACK || control == JUMP || control == JUMP_DOWN)
 		{
 			send_held_keys(actions);
 			return;
@@ -574,6 +575,12 @@ namespace ms
 				sprite(RING, circle.x, circle.y, circle.radius * (1.0f + 0.35f * t),
 					std::min(1.0f, look.red + 0.4f), std::min(1.0f, look.green + 0.4f), std::min(1.0f, look.blue + 0.4f),
 					0.7f * (1.0f - t));
+			}
+
+			if (control == SLOT_PAGE)
+			{
+				sprite(static_cast<Sprite>(DIGIT0 + slot_page + 1), circle.x, circle.y, half * 0.55f, 1.0f, 1.0f, 1.0f, 0.95f);
+				continue;
 			}
 
 			if (slot)
@@ -877,6 +884,11 @@ namespace ms
 			adjustment.scale = std::clamp(adjustment.scale, MIN_SCALE, MAX_SCALE);
 			adjustments[found - NAMES.begin()] = adjustment;
 		}
+	}
+
+	void TouchControls::set_slot_page(uint8_t page)
+	{
+		slot_page = page;
 	}
 
 	bool TouchControls::slot_at(float x, float y, uint8_t& slot) const
