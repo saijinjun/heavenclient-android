@@ -799,6 +799,11 @@ namespace ms
 			int32_t prev_hovered = hovered_selection;
 			hovered_selection = -1;
 
+			// The bands overlap, as the rows are close together, so the row
+			// nearest the finger wins rather than the first one that matches
+			int32_t nearest = -1;
+			int32_t nearest_distance = 0;
+
 			for (size_t i = 0; i < selections.size(); i++)
 			{
 				auto& sel = selections[i];
@@ -828,20 +833,29 @@ namespace ms
 				if (highlight && point.x() >= text_x && point.x() <= text_x + text_w &&
 					point.y() >= row_top && point.y() <= row_bot)
 				{
-					hovered_selection = static_cast<int32_t>(i);
+					int32_t distance = std::abs(point.y() - (baseline - line_h / 2));
 
-					if (press)
+					if (nearest < 0 || distance < nearest_distance)
 					{
-						hovered_selection = -1;
-						deactivate();
-						NpcTalkMorePacket(sel.index).dispatch();
-						return Cursor::State::IDLE;
-					}
-					else
-					{
-						return Cursor::State::CANCLICK;
+						nearest = static_cast<int32_t>(i);
+						nearest_distance = distance;
 					}
 				}
+			}
+
+			if (nearest >= 0)
+			{
+				hovered_selection = nearest;
+
+				if (press)
+				{
+					hovered_selection = -1;
+					deactivate();
+					NpcTalkMorePacket(selections[nearest].index).dispatch();
+					return Cursor::State::IDLE;
+				}
+
+				return Cursor::State::CANCLICK;
 			}
 		}
 
