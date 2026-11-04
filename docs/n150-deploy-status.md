@@ -6,11 +6,13 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `e70652f` | ok |
-| client | `1889e53` | ok |
+| server | `afa1f53` | ok |
+| client | `45c8ee3` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-05 00:48 · client · ✅ deployed `45c8ee3` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
+- 2026-11-05 00:48 · server · ✅ deployed `afa1f53` - online, 8484 open
 - 2026-11-04 23:45 · client · ✅ deployed `1889e53` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 22:14 · client · ✅ deployed `03a62e6` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 18:26 · client · ✅ deployed `c5ac379` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -33,5 +35,3 @@ and the repository exists.
 - 2026-11-03 20:04 · server · **HELD for Onyx review** `c577aa7..25fa1cd` - sensitive: docker-compose.override.yml
 - 2026-11-03 19:36 · client · **HELD for Onyx review** `7732617..772ee78` - sensitive: web/server.py, web/ws_proxy.py
 - 2026-11-03 19:31 · client · **HELD for Onyx review** `7732617..aaebd1c` - sensitive: web/server.py, web/ws_proxy.py
-- 2026-11-03 19:31 · server · **HELD for Onyx review** `c577aa7..637c94e` - sensitive: docker-compose.override.yml
-- 2026-11-03 19:04 · server · ✅ deployed `c577aa7` - online, 8484 open
