@@ -63,16 +63,23 @@ namespace ms
 
 	size_t SocketAsio::receive(bool* recvok)
 	{
-		if (socket.available() > 0)
-		{
-			error_code error;
-			size_t result = socket.read_some(asio::buffer(buffer), error);
-			*recvok = !error;
+		// Try the read instead of asking available() first: available() is
+		// also 0 once the server has closed the connection, so that close
+		// was never seen. Only blocking writes need the socket blocking.
+		error_code error;
+		socket.non_blocking(true, error);
+		size_t result = socket.read_some(asio::buffer(buffer), error);
 
-			return result;
-		}
+		error_code ignored;
+		socket.non_blocking(false, ignored);
 
-		return 0;
+		// Nothing has arrived yet, and the connection is fine
+		if (error == asio::error::would_block || error == asio::error::try_again)
+			return 0;
+
+		*recvok = !error;
+
+		return result;
 	}
 
 	const int8_t* SocketAsio::get_buffer() const

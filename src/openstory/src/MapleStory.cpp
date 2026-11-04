@@ -29,6 +29,9 @@
 #include "Gameplay/Stage.h"
 #include "Graphics/Text.h"
 #include "IO/UI.h"
+#include "IO/UITypes/UILogin.h"
+#include "IO/UITypes/UILoginWait.h"
+#include "IO/UITypes/UILogo.h"
 #include "IO/Window.h"
 #include "Net/Session.h"
 #include "Util/CrashLog.h"
@@ -327,6 +330,23 @@ namespace ms
 	{
 		if (Session::get().is_connected() || !UI::get().not_quitted() || !Window::get().not_closed())
 			return false;
+
+		// The server drops a connection that stays quiet for about 45 seconds,
+		// which includes anyone still on the login screen or a first start
+		// still loading game files. Nothing is lost before signing in, so
+		// open a new connection without bothering the player. A login that is
+		// waiting for an answer has lost it, so that one still gets the dialog.
+		auto logo = UI::get().get_element<UILogo>();
+		auto login = UI::get().get_element<UILogin>();
+		auto wait = UI::get().get_element<UILoginWait>();
+
+		if ((logo && logo->is_active() || login && login->is_active()) && !(wait && wait->is_active()))
+		{
+			Session::get().reconnect();
+
+			if (Session::get().is_connected())
+				return true;
+		}
 
 		std::string message = "Lost the connection to the game server.";
 
