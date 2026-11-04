@@ -64,6 +64,7 @@
 #include "../../Net/Session.h"
 #include "../../IO/Window.h"
 
+#include "../KeyAction.h"
 #include "../UI.h"
 
 #include "../Components/AreaButton.h"
@@ -1336,7 +1337,7 @@ namespace ms
 
 				ColorBox(cover_w, 7, Color::Name::BLACK, 1.0f).draw(
 					DrawArgument(tl + Point<int16_t>(cover_x, 7), sys_fade));
-				sys_title.draw(DrawArgument(tl + Point<int16_t>(panel_w / 2, 3), sys_fade));
+				sys_title.draw(DrawArgument(tl + Point<int16_t>(panel_w / 2, 0), sys_fade));
 			}
 
 			auto draw_sys = [&](uint16_t id) {
@@ -1502,6 +1503,49 @@ namespace ms
 
 	Button::State UIStatusBar::button_pressed(uint16_t id)
 	{
+#ifdef __ANDROID__
+		// These open the same phone panels as the touch shortcuts, rather than
+		// the desktop windows below.
+		int32_t phone_panel = -1;
+
+		switch (id)
+		{
+		case BT_STATS:
+		case BT_MENU_STAT:
+			phone_panel = KeyAction::Id::STATS;
+			break;
+		case BT_INVENTORY:
+		case BT_MENU_ITEM:
+			phone_panel = KeyAction::Id::ITEMS;
+			break;
+		case BT_EQUIPS:
+		case BT_MENU_EQUIP:
+			phone_panel = KeyAction::Id::EQUIPMENT;
+			break;
+		case BT_SKILL:
+		case BT_MENU_SKILL:
+			phone_panel = KeyAction::Id::SKILLS;
+			break;
+		case BT_QUEST:
+		case BT_MENU_QUEST:
+			phone_panel = KeyAction::Id::QUESTLOG;
+			break;
+		case BT_MENU_COMMUNITY:
+			phone_panel = KeyAction::Id::FRIENDS;
+			break;
+		default:
+			break;
+		}
+
+		if (phone_panel >= 0)
+		{
+			remove_menus();
+			UI::get().send_action(KeyType::Id::MENU, phone_panel, true);
+
+			return Button::State::NORMAL;
+		}
+#endif
+
 		switch (id)
 		{
 		case BT_WHISPER:

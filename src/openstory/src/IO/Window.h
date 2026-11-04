@@ -82,6 +82,8 @@ namespace ms
 		// Shows a line of text on black, for a load that blocks the main
 		// loop. The screen keeps it until the next frame is drawn.
 		void show_message(const std::string& message) const;
+		// Opens the editor for moving and sizing the touch controls
+		void edit_touch_controls();
 
 		// True while Android has the app in the background: there is no
 		// surface to draw on, but the game keeps running so it can answer
