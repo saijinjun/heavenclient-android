@@ -25,7 +25,7 @@ namespace ms
 	{
 		constexpr int16_t MARGIN = 12;
 		constexpr int16_t TOP_H = 40;
-		constexpr int16_t TAB_H = 32;
+		constexpr int16_t TAB_H = 40;
 		constexpr int16_t ROW_H = 50;
 		constexpr int16_t GAP = 6;
 		constexpr int16_t FOOT_H = 40;

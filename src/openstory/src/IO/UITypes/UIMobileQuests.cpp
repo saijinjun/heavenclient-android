@@ -32,8 +32,8 @@ namespace ms
 
 		constexpr int16_t MARGIN = 12;
 		constexpr int16_t TITLE_H = 26;
-		constexpr int16_t TAB_H = 32;
-		constexpr int16_t ROW_H = 40;
+		constexpr int16_t TAB_H = 40;
+		constexpr int16_t ROW_H = 48;
 		constexpr int16_t GAP = 6;
 		// Longer stories are cut so the details fit the panel
 		constexpr size_t DESC_MAX = 360;
