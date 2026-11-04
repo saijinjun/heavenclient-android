@@ -87,6 +87,8 @@ namespace ms
 		static constexpr int16_t TOUCH_BUTTON_W = 104;
 		static constexpr int16_t TOUCH_BUTTON_H = 40;
 		static constexpr int16_t TOUCH_STRIP_GAP = 4;
+		static constexpr int16_t TOUCH_PAGE_LEFT = 120;
+		static constexpr int16_t TOUCH_PAGE_PAD = 8;
 
 		bool is_valid_type(int8_t value);
 		std::string format_text(const std::string& tx, const int32_t& npcid);
