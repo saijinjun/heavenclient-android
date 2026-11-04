@@ -19,7 +19,10 @@
 
 #include "../UIDragElement.h"
 
+#include "../../Graphics/Text.h"
 #include "../../Template/BoolPair.h"
+
+#include <vector>
 
 namespace ms
 {
@@ -59,12 +62,19 @@ namespace ms
 			BT_CHANGE
 		};
 
+#ifdef __ANDROID__
+		// Finger-sized cells in the navy and gold skin
+		static constexpr int16_t WIDTH = 456;
+		static constexpr int16_t STRIDE_HORIZ = 84;
+		static constexpr int16_t STRIDE_VERT = 38;
+#else
 		static constexpr int16_t WIDTH = 370;
+		static constexpr int16_t STRIDE_HORIZ = 70;
+		static constexpr int16_t STRIDE_VERT = 20;
+#endif
 		static constexpr int16_t HEIGHT = 168;
 		static constexpr uint8_t COLS = 5;
 		static constexpr uint8_t ROWS = 4;
-		static constexpr int16_t STRIDE_HORIZ = 70;
-		static constexpr int16_t STRIDE_VERT = 20;
 		static constexpr int16_t DRAG_HEIGHT = 20;
 
 		uint8_t current_channel;
@@ -74,6 +84,14 @@ namespace ms
 		std::vector<Sprite> ch_sprites;
 
 		static constexpr Point<int16_t> CH_SPRITE_OFFSET = Point<int16_t>(21, 61);
+#ifdef __ANDROID__
+		static constexpr Point<int16_t> COVER_OFFSET = Point<int16_t>(18, 62);
+
+		Text title;
+		Text hint;
+		std::vector<Text> ch_labels;
+#else
 		static constexpr Point<int16_t> COVER_OFFSET = Point<int16_t>(12, 56);
+#endif
 	};
 }

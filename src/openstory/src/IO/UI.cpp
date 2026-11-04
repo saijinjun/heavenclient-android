@@ -614,6 +614,7 @@ namespace ms
 					// Game
 					types.emplace_back(UIElement::Type::NOTICE);
 					types.emplace_back(UIElement::Type::KEYCONFIG);
+					types.emplace_back(UIElement::Type::CHANNEL);
 					types.emplace_back(UIElement::Type::CHAT);
 					types.emplace_back(UIElement::Type::EVENT);
 					types.emplace_back(UIElement::Type::STATSINFO);

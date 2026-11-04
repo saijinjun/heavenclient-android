@@ -20,9 +20,12 @@
 #include "../KeyAction.h"
 #include "../UI.h"
 
+#include "../Components/ClassicButton.h"
 #include "../Components/MapleButton.h"
 
 #include "../../Audio/Audio.h"
+#include "../../Constants.h"
+#include "../../Graphics/ClassicStyle.h"
 #include "UIChatBar.h"
 
 #include <chrono>
@@ -48,6 +51,27 @@ namespace ms
 			static_cast<int8_t>(selected_world));
 		channel_count = real_count > 0 ? real_count : 20;
 
+#ifdef __ANDROID__
+		title = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "Change Channel");
+		hint = Text(Text::Font::A13M, Text::Alignment::CENTER, Color::Name::HUD_EXP, "");
+
+		for (uint8_t i = 0; i < channel_count; i++)
+			ch_labels.emplace_back(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Ch " + std::to_string(i + 1));
+
+		int16_t rows_used = (channel_count + COLS - 1) / COLS;
+		int16_t height = COVER_OFFSET.y() + rows_used * STRIDE_VERT + 56;
+		int16_t button_y = height - 50;
+
+		buttons[BT_CHANGE] = std::make_unique<ClassicButton>("Change", Point<int16_t>(WIDTH / 2 - 141, button_y), Point<int16_t>(132, 42));
+		buttons[BT_CANCEL] = std::make_unique<ClassicButton>("Cancel", Point<int16_t>(WIDTH / 2 + 9, button_y), Point<int16_t>(132, 42));
+
+		dimension = Point<int16_t>(WIDTH, height);
+		dragarea = Point<int16_t>(0, 0);
+		position = Point<int16_t>(
+			(Constants::Constants::get().get_viewwidth() - WIDTH) / 2,
+			(Constants::Constants::get().get_viewheight() - height) / 2
+		);
+#else
 		nl::node source = nl::nx::ui["UIWindow2.img"]["Channel"];
 
 		sprites.emplace_back(source["backgrnd"]);
@@ -83,10 +107,34 @@ namespace ms
 
 		dimension = Point<int16_t>(WIDTH, HEIGHT);
 		dragarea = Point<int16_t>(WIDTH, DRAG_HEIGHT);
+#endif
 	}
 
 	void UIChannel::draw(float inter) const
 	{
+#ifdef __ANDROID__
+		classic::panel(position, dimension.x(), dimension.y());
+		title.draw(position + Point<int16_t>(dimension.x() / 2, 6));
+		hint.draw(position + Point<int16_t>(dimension.x() / 2, 34));
+
+		int16_t cell_w = STRIDE_HORIZ - 4;
+		int16_t cell_h = STRIDE_VERT - 4;
+
+		for (size_t i = 0; i < ch_labels.size(); i++)
+		{
+			Point<int16_t> tl = position + COVER_OFFSET + Point<int16_t>(
+				static_cast<int16_t>(i % COLS) * STRIDE_HORIZ,
+				static_cast<int16_t>(i / COLS) * STRIDE_VERT
+			);
+
+			classic::cell(tl, cell_w, cell_h, i == selected_channel);
+			ch_labels[i].draw(Point<int16_t>(tl.x() + cell_w / 2, classic::text_y(ch_labels[i], tl.y() + cell_h / 2)));
+		}
+
+		UIElement::draw(inter);
+		return;
+#endif
+
 		UIElement::draw(inter);
 
 		Point<int16_t> base_pos = COVER_OFFSET + position;
@@ -116,6 +164,21 @@ namespace ms
 	void UIChannel::update()
 	{
 		UIElement::update();
+
+#ifdef __ANDROID__
+		position = Point<int16_t>(
+			(Constants::Constants::get().get_viewwidth() - dimension.x()) / 2,
+			(Constants::Constants::get().get_viewheight() - dimension.y()) / 2
+		);
+
+		std::string now = "You are on Channel " + std::to_string(current_channel + 1);
+
+		if (hint.get_text() != now)
+			hint.change_text(now);
+
+		for (size_t i = 0; i < ch_labels.size(); i++)
+			ch_labels[i].change_color(classic::row_text(i == selected_channel, i == current_channel ? Color::Name::HUD_EXP : Color::Name::WHITE));
+#endif
 
 		for (auto& sprite : ch_sprites)
 			sprite.update();
@@ -198,7 +261,8 @@ namespace ms
 		{
 			int8_t clicked_ch = channel_by_pos(cursorpos);
 
-			if (clicked_ch >= 0 && clicked_ch != current_channel)
+			// The current channel can be picked again, as a way to back out
+			if (clicked_ch >= 0)
 				selected_channel = clicked_ch;
 		}
 
