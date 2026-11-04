@@ -67,6 +67,7 @@ namespace jrc
           selected(-1),
           stats(stats)
     {
+        anchored_left = true;
         if (position.y() < ScrollingNotice::HEIGHT)
         {
             position.set_y(ScrollingNotice::HEIGHT);

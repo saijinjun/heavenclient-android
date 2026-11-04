@@ -11,7 +11,7 @@ option(ERROR_ON_UNUSED_VARIABLES "Fail the build on unused variable warnings" ON
 option(ENFORCE_UNUSED_INCLUDES "Run include-what-you-use to catch unused includes" ON)
 
 if(EMSCRIPTEN)
-    add_compile_definitions(MS_PLATFORM_WASM=1)
+    add_compile_definitions(MS_PLATFORM_WASM=1 NX_LAZY_FILES=1)
     add_compile_options("-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=/")
     add_compile_options(
         --use-port=freetype
@@ -48,8 +48,15 @@ if(EMSCRIPTEN)
         add_link_options(-g3 -gsource-map)
     endif()
 else()
-    # Native Linux flags
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -O -g -DASIO_STANDALONE -DGLEW_NO_GLU -lglut -lGL -ldl -lXinerama -lXext -lXrandr -lXi -lXcursor -lX11 -lXxf86vm -pthread -ftrapv -Wall -Wextra -Wshadow -Wpointer-arith -Wcast-align -Wstrict-prototypes -Werror-implicit-function-declaration -Wformat=2 -Wnull-dereference -Wstrict-overflow=5 -Wno-unused-private-field -Wno-unused-command-line-argument -Wno-narrowing -Wno-sign-compare")
+    # Desktop and Android builds: SDL2 for the window, input and audio, and
+    # OpenGL ES 3 for rendering (the same renderer path as WebGL 2).
+    add_compile_definitions(MS_PLATFORM_SDL=1)
+    # Server address a fresh install starts with; Settings can still change it.
+    set(JOURNEY_DEFAULT_SERVER_IP "" CACHE STRING "Default MapleStoryServerIp for new Settings files")
+    if(JOURNEY_DEFAULT_SERVER_IP)
+        add_compile_definitions(JOURNEY_DEFAULT_SERVER_IP="${JOURNEY_DEFAULT_SERVER_IP}")
+    endif()
+    add_compile_options(-Wno-c++11-narrowing -Wno-narrowing -Wno-deprecated-declarations -fexceptions)
 endif()
 
 file(GLOB_RECURSE SOURCES
@@ -77,7 +84,67 @@ list(APPEND SOURCES
     "../nlnx/nx.cpp"
 )
 
-add_executable(JourneyClient ${SOURCES})
+if(NOT EMSCRIPTEN)
+    # Browser-only code: the WebSocket transports for assets and the game.
+    list(FILTER SOURCES EXCLUDE REGEX ".*/LazyFS/LazyFileBackend\\.cpp$")
+    list(FILTER SOURCES EXCLUDE REGEX ".*/Net/SockInternal\\.cpp$")
+
+    # Streaming: .nx files missing on the device are fetched in pieces over
+    # HTTP as the game reads them (LazyFS/LazyFileBackendNative.cpp) instead
+    # of being downloaded whole first. On by default for Android.
+    if(ANDROID)
+        set(STREAM_DEFAULT ON)
+    else()
+        set(STREAM_DEFAULT OFF)
+    endif()
+    option(JOURNEY_STREAM_ASSETS "Fetch missing .nx files on demand over HTTP" ${STREAM_DEFAULT})
+    set(JOURNEY_ASSETS_URL "" CACHE STRING "Default AssetsUrl: where streamed .nx files come from")
+    if(JOURNEY_STREAM_ASSETS)
+        add_compile_definitions(NX_LAZY_FILES=1)
+    else()
+        list(FILTER SOURCES EXCLUDE REGEX ".*/LazyFS/(LazyFileLoader|LazyFileBackendNative|HttpRange)\\.cpp$")
+    endif()
+    if(JOURNEY_ASSETS_URL)
+        add_compile_definitions(JOURNEY_ASSETS_URL="${JOURNEY_ASSETS_URL}")
+    endif()
+endif()
+
+if(ANDROID)
+    # SDL's Java activity loads the game as libmain.so.
+    add_library(JourneyClient SHARED ${SOURCES})
+    set_target_properties(JourneyClient PROPERTIES OUTPUT_NAME main)
+else()
+    add_executable(JourneyClient ${SOURCES})
+endif()
+
+if(NOT EMSCRIPTEN)
+    if(ANDROID)
+        # The Gradle build passes SDL2_SOURCE_DIR and FREETYPE_SOURCE_DIR.
+        if(NOT TARGET SDL2::SDL2)
+            set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+            set(SDL_TEST OFF CACHE BOOL "" FORCE)
+            add_subdirectory("${SDL2_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/SDL2")
+        endif()
+        if(NOT TARGET freetype)
+            set(FT_DISABLE_BZIP2 ON CACHE BOOL "" FORCE)
+            set(FT_DISABLE_PNG ON CACHE BOOL "" FORCE)
+            set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "" FORCE)
+            set(FT_DISABLE_BROTLI ON CACHE BOOL "" FORCE)
+            add_subdirectory("${FREETYPE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/freetype")
+        endif()
+        target_link_libraries(JourneyClient PRIVATE SDL2::SDL2 freetype GLESv3 z log android)
+    else()
+        find_package(SDL2 REQUIRED)
+        find_package(Freetype REQUIRED)
+        find_package(ZLIB REQUIRED)
+        find_library(GLESV2_LIBRARY NAMES GLESv2 REQUIRED)
+        target_link_libraries(JourneyClient PRIVATE SDL2::SDL2 Freetype::Freetype ZLIB::ZLIB ${GLESV2_LIBRARY} pthread)
+        # The client copies these into its data folder on first start.
+        add_custom_command(TARGET JourneyClient POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/fonts" "$<TARGET_FILE_DIR:JourneyClient>/fonts")
+    endif()
+endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     if(WARNINGS_AS_ERRORS)

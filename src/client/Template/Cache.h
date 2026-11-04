@@ -34,6 +34,11 @@ namespace jrc
         // If the object is not in cache, it is created.
         static const T& get(std::int32_t id)
         {
+            // Function-local so the map is only instantiated here, where T is
+            // complete. As a static member, GCC 11 instantiates it while T is
+            // still incomplete (ItemData derives from Cache<ItemData>).
+            static std::unordered_map<std::int32_t, T> cache;
+
             auto iter = cache.find(id);
             if (iter == cache.end())
             {
@@ -42,10 +47,5 @@ namespace jrc
             return iter->second;
         }
 
-    private:
-        static std::unordered_map<std::int32_t, T> cache;
     };
-
-    template <typename T>
-    std::unordered_map<std::int32_t, T> Cache<T>::cache;
 }

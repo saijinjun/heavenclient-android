@@ -24,15 +24,18 @@
 #include "../Audio/Audio.h"
 #include "../Console.h"
 #include "../Configuration.h"
+#include "../Net/Packets/PlayerPackets.h"
 
-#include <GLFW/glfw3.h>
+#include "KeyCodes.h"
 #include <list>
+#include <tuple>
 
 namespace jrc
 {
     UI::UI()
     {
         state = std::make_unique<UIStateNull>();
+        state_id = LOGIN;
         cursor_press_id = 0;
         enabled = true;
         quitted = false;
@@ -74,6 +77,7 @@ namespace jrc
     {
         remove_textfield();
         is_key_down.clear();
+        state_id = id;
         switch (id)
         {
         case LOGIN:
@@ -86,6 +90,11 @@ namespace jrc
             state = std::make_unique<UIStateGame>();
             break;
         }
+    }
+
+    bool UI::in_game() const
+    {
+        return state_id == GAME;
     }
 
     void UI::quit()
@@ -285,6 +294,14 @@ namespace jrc
         is_key_down[keycode] = pressed;
     }
 
+    void UI::send_action(int32_t action, bool pressed)
+    {
+        if (!enabled && pressed)
+            return;
+
+        state->send_key(KeyType::ACTION, action, pressed, false);
+    }
+
     void UI::send_menu(KeyAction::Id action)
     {
         state->send_key(KeyType::MENU, action, true, false);
@@ -323,9 +340,25 @@ namespace jrc
         focusedtextfield = {};
     }
 
+    bool UI::has_focused_textfield() const
+    {
+        return static_cast<bool>(focusedtextfield);
+    }
+
     void UI::drag_icon(Icon* icon)
     {
         state->drag_icon(icon);
+    }
+
+    const Icon* UI::get_dragged_icon() const
+    {
+        return state->get_dragged_icon();
+    }
+
+    void UI::bind_key(uint8_t key, uint8_t type, int32_t action)
+    {
+        ChangeKeyMapPacket({ std::make_tuple(static_cast<int32_t>(key), type, action) }).dispatch();
+        keyboard.assign(key, type, action);
     }
 
     Keyboard& UI::get_keyboard()

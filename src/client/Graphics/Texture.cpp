@@ -78,6 +78,14 @@ namespace jrc
         GraphicsGL::get().draw_clipped(bitmap, rect, args.get_color(), vertical);
     }
 
+#ifdef MS_PLATFORM_SDL
+    void Texture::draw_screen(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color) const
+    {
+        if (bitmap.id() == 0) return;
+        GraphicsGL::get().draw_screen_bitmap(bitmap, left, top, right, bottom, color);
+    }
+#endif
+
     void Texture::shift(Point<int16_t> amount)
     {
         origin -= amount;

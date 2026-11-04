@@ -76,6 +76,11 @@ namespace jrc
         type->drop_on_bindings(cursorpos, remove);
     }
 
+    bool Icon::get_binding(uint8_t& keytype, int32_t& action) const
+    {
+        return type && type->get_binding(keytype, action);
+    }
+
     void Icon::start_drag(Point<int16_t> offset)
     {
         cursoroffset = offset;

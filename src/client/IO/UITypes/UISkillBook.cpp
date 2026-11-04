@@ -57,6 +57,13 @@ namespace jrc
                 }
             }
 
+            bool get_binding(uint8_t& type, int32_t& action) const override
+            {
+                type = KeyType::SKILL;
+                action = skill_id;
+                return true;
+            }
+
         private:
             int32_t skill_id;
         };

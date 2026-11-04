@@ -146,8 +146,9 @@ namespace jrc
 
     void UIStatusbar::update_layout_position()
     {
+        // Centered on views wider than the classic 800.
         position = {
-            POSITION.x(),
+            static_cast<int16_t>(POSITION.x() + (Constants::viewwidth() - Constants::VIEWWIDTH) / 2),
             static_cast<int16_t>(Constants::viewheight() - Constants::VIEWYOFFSET)
         };
         chatbar.set_position(position);

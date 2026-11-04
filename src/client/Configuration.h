@@ -149,10 +149,27 @@ namespace jrc
         TypeMap<Entry> settings;
     };
 
+    // Builds can bake in their server so a fresh install connects without
+    // editing Settings first (the Android build passes the n150's address).
+#ifndef JOURNEY_DEFAULT_SERVER_IP
+#define JOURNEY_DEFAULT_SERVER_IP "127.0.0.1"
+#endif
+
     // IP Adress which the client will connect to.
     struct MapleStoryServerIp : public Configuration::StringEntry
     {
-        MapleStoryServerIp() : StringEntry("MapleStoryServerIp", "127.0.0.1") {}
+        MapleStoryServerIp() : StringEntry("MapleStoryServerIp", JOURNEY_DEFAULT_SERVER_IP) {}
+    };
+
+#ifndef JOURNEY_ASSETS_URL
+#define JOURNEY_ASSETS_URL ""
+#endif
+
+    // Where a streaming native build fetches .nx files it does not have yet,
+    // e.g. http://<server>:8090/assets/. Empty turns streaming off.
+    struct AssetsUrl : public Configuration::StringEntry
+    {
+        AssetsUrl() : StringEntry("AssetsUrl", JOURNEY_ASSETS_URL) {}
     };
 
     // Port which the client will connect to.
@@ -185,22 +202,95 @@ namespace jrc
         Fullscreen() : BoolEntry("Fullscreen", "false") {}
     };
 
+    // Whether the game view widens to fill a wide screen while playing,
+    // instead of keeping 800x600 with black bars at the sides.
+    struct FillScreen : public Configuration::BoolEntry
+    {
+        FillScreen() : BoolEntry("FillScreen", "true") {}
+    };
+
+    // The HD-2D look for the game world (SDL builds): a pixel-art upscaler,
+    // glow around bright things, a blurred far background, and a color grade.
+    struct HdUpscale : public Configuration::BoolEntry
+    {
+        HdUpscale() : BoolEntry("HdUpscale", "true") {}
+    };
+
+    struct HdGlow : public Configuration::BoolEntry
+    {
+        HdGlow() : BoolEntry("HdGlow", "true") {}
+    };
+
+    struct HdDepthBlur : public Configuration::BoolEntry
+    {
+        HdDepthBlur() : BoolEntry("HdDepthBlur", "true") {}
+    };
+
+    struct HdColorGrade : public Configuration::BoolEntry
+    {
+        HdColorGrade() : BoolEntry("HdColorGrade", "true") {}
+    };
+
+    // How much of the HD-2D look to draw: 2 = all enabled effects, 1 = only
+    // the cheap ones (upscale and color grade), 0 = none. Lower saves battery
+    // and keeps phones cooler.
+    struct EffectsQuality : public Configuration::ByteEntry
+    {
+        EffectsQuality() : ByteEntry("EffectsQuality", "2") {}
+    };
+
+    // The most frames drawn per second, such as 30 or 60; 0 = no limit.
+    // The game itself still advances at the same speed.
+    struct MaxFps : public Configuration::ByteEntry
+    {
+        MaxFps() : ByteEntry("MaxFps", "60") {}
+    };
+
+    // Where the touch controls are, as the layout editor left them.
+    struct TouchLayout : public Configuration::StringEntry
+    {
+        TouchLayout() : StringEntry("TouchLayout", "") {}
+    };
+
+    // On touch screens, ropes and ladders can be grabbed from a little
+    // further to the side.
+    struct RopeAssist : public Configuration::BoolEntry
+    {
+        RopeAssist() : BoolEntry("RopeAssist", "true") {}
+    };
+
+    // A short vibration when a touch button is pressed.
+    struct TouchVibration : public Configuration::BoolEntry
+    {
+        TouchVibration() : BoolEntry("TouchVibration", "true") {}
+    };
+
     // Wether to use vsync.
     struct VSync : public Configuration::BoolEntry
     {
         VSync() : BoolEntry("VSync", "true") {}
     };
 
+    // Fonts live at the root of the WASM virtual filesystem, and next to the
+    // NX files (the working directory) everywhere else.
+#ifdef MS_PLATFORM_WASM
+#define JOURNEY_FONT_DIR "/fonts/Arial/"
+#else
+#define JOURNEY_FONT_DIR "fonts/Arial/"
+#endif
+
     // The normal font which will be used.
     struct FontPathNormal : public Configuration::StringEntry
     {
-        FontPathNormal() : StringEntry("FontPathNormal", "/fonts/Arial/Arial.ttf") {}
+        static constexpr const char* DEFAULT = JOURNEY_FONT_DIR "Arial.ttf";
+        FontPathNormal() : StringEntry("FontPathNormal", DEFAULT) {}
     };
 
     // The bold font which will be used.
     struct FontPathBold : public Configuration::StringEntry
     {
-        FontPathBold() : StringEntry("FontPathBold", "/fonts/Arial/Arial-Bold.ttf") {}
+        static constexpr const char* DEFAULT = JOURNEY_FONT_DIR "Arial-Bold.ttf";
+        FontPathBold() : StringEntry("FontPathBold", DEFAULT) {}
     };
 
     // Music Volume, a number from 0 to 100.

@@ -20,6 +20,8 @@
 
 #include "../Configuration.h"
 #include "../Console.h"
+
+#include <cstring>
 #ifdef MS_PLATFORM_WASM
 #include "../Util/Misc.h"
 #endif

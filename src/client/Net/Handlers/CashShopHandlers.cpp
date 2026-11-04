@@ -93,7 +93,19 @@ namespace jrc
         shop.modifiers = std::move(modifiers);
         shop.bestsellers = bestsellers;
         Stage::get().clear();
-        UI::get().change_state(UI::CASHSHOP);
+        try
+        {
+            UI::get().change_state(UI::CASHSHOP);
+        }
+        catch (const std::exception&)
+        {
+            // The shop's windows could not be built. Ask the server to send
+            // the character back to the game rather than leaving them stuck.
+            UI::get().change_state(UI::GAME);
+            UI::get().enable();
+            shop.leave();
+            throw;
+        }
         UI::get().enable();
         Music("BgmUI.img/CashShop").play();
     }

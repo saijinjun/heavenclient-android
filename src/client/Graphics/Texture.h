@@ -33,6 +33,10 @@ namespace jrc
 
         void draw(const DrawArgument& args) const;
         void draw_clipped(const DrawArgument& args, Range<int16_t> vertical) const;
+#ifdef MS_PLATFORM_SDL
+        // Stretched over a rectangle in window pixels, outside the game view.
+        void draw_screen(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color) const;
+#endif
         void shift(Point<int16_t> amount);
 
         bool is_valid() const;

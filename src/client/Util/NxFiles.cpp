@@ -26,6 +26,9 @@
 
 #ifdef MS_PLATFORM_WASM
 #include "../LazyFS/LazyFS.h"
+#elif defined(NX_LAZY_FILES)
+#include "../Configuration.h"
+#include "../LazyFS/HttpRange.h"
 #endif
 
 #include <unistd.h>
@@ -54,13 +57,21 @@ namespace jrc
             }
         }
 #else
-        if (!std::ifstream{ REQUIRED_ROOT_NX }.good())
+#ifdef NX_LAZY_FILES
+        // Files missing on the device are fetched from the asset server as
+        // the game reads them, so only check for them when streaming is off.
+        LazyFS::set_remote_base(Setting<AssetsUrl>::get().load());
+        bool check_local = LazyFS::remote_base().empty();
+#else
+        bool check_local = true;
+#endif
+        if (check_local && !std::ifstream{ REQUIRED_ROOT_NX }.good())
         {
             return { Error::MISSING_FILE, REQUIRED_ROOT_NX };
         }
         for (auto filename : NxFiles::filenames)
         {
-            if (!std::ifstream{ filename }.good())
+            if (check_local && !std::ifstream{ filename }.good())
             {
                 return { Error::MISSING_FILE, filename };
             }

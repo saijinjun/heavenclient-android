@@ -26,14 +26,14 @@ namespace jrc
     namespace NxFiles
     {
         /// Number of needed files.
-        constexpr uint8_t NUM_FILES = 14;
+        constexpr uint8_t NUM_FILES = 15;
         /// Names of the needed game files.
         constexpr std::array<const char*, NUM_FILES> filenames =
         {{
             "Character.nx", "Effect.nx", "Etc.nx",   "Item.nx",
-            "Map.nx",       "Mob.nx",    "Npc.nx",   "Quest.nx",
-            "Reactor.nx",   "Skill.nx",  "Sound.nx", "String.nx",
-            "TamingMob.nx", "UI.nx"
+            "Map.nx",       "Mob.nx",    "Morph.nx", "Npc.nx",
+            "Quest.nx",     "Reactor.nx", "Skill.nx", "Sound.nx",
+            "String.nx",    "TamingMob.nx", "UI.nx"
         }};
 
         /// Initialize nlnx.

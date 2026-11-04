@@ -3,3 +3,7 @@
 /assets/
 /serverAssets/
 __pycache__
+# Nexon game data used by scripts/wz-converter: never commit it.
+/wz/
+/wz-src/
+/nxFiles/

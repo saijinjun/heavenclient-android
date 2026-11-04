@@ -444,6 +444,11 @@ namespace jrc
         draggedicon = drgic;
     }
 
+    const Icon* UIStateGame::get_dragged_icon() const
+    {
+        return draggedicon.get();
+    }
+
     void UIStateGame::clear_cursors(bool clicked, Point<int16_t> pos, UIElement::Type except)
     {
         // Focused dialogs and captured clicks bypass normal hover dispatch,

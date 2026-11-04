@@ -75,6 +75,7 @@ namespace jrc
             void drop_on_equips(Equipslot::Id eqslot) const override;
             void drop_on_items(InventoryType::Id tab, Equipslot::Id, int16_t slot, bool) const override;
             void drop_on_bindings(Point<int16_t> cursorposition, bool remove) const override;
+            bool get_binding(uint8_t& type, int32_t& action) const override;
 
         private:
             InventoryType::Id sourcetab;

@@ -43,6 +43,13 @@ MapleStory WASM brings the classic MapleStory v83 client to modern web browsers 
 
 ---
 
+## 📱 Android
+
+This fork adds a native Android build. See [docs/android.md](docs/android.md)
+for getting the APK, where the game files go, and current controls.
+
+---
+
 ## ⚠️ Required Game Assets
 
 > [!IMPORTANT]
@@ -56,6 +63,8 @@ To put together the asset set:
 2. Take **only** `UI.wz` from **v153+**.
 3. Run all of those `.wz` files through the [WZ to NX converter](./scripts/wz-converter/README.md) to produce `.nx` files.
 4. Drop the resulting `.nx` files into `maplestory-wasm/assets/`.
+
+The client loads 17 files: `Base`, `Character`, `Effect`, `Etc`, `Item`, `Map`, `Mob`, `Morph`, `Npc`, `Quest`, `Reactor`, `Skill`, `Sound`, `String`, `TamingMob` and `UI` (v153+), plus `UI_83.nx` (the v83 `UI.wz`, used by the cash shop).
 
 Treat `assets/` as read-only once the files are in place — don't modify anything in it.
 
