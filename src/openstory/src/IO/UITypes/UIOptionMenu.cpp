@@ -172,6 +172,7 @@ namespace ms
 		phone_hint = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::SILVERCHALICE, "Lit means other players can do this.");
 		phone_ok = label("OK");
 		phone_cancel = label("Cancel");
+		phone_edit = label("Edit touch controls");
 		phone_mute = label("Mute");
 		phone_mute_on = label("Mute", Color::Name::HUD_PANEL);
 		phone_shake = label("Screen shake");
@@ -241,6 +242,11 @@ namespace ms
 
 			draw_toggle(phone_shake_rect(), check_val[CHK_SCREEN_SHAKE] ? phone_shake_on : phone_shake, check_val[CHK_SCREEN_SHAKE]);
 			draw_toggle(phone_minimap_rect(), check_val[CHK_MINIMAP_SIMPLE] ? phone_minimap_on : phone_minimap, check_val[CHK_MINIMAP_SIMPLE]);
+
+			Rectangle<int16_t> edit = phone_edit_rect();
+
+			classic::button(edit.get_left_top(), edit.width(), edit.height());
+			classic::shadowed(phone_edit, Point<int16_t>(edit.left() + edit.width() / 2, classic::text_y(phone_edit, edit.top() + edit.height() / 2)));
 		}
 		else
 		{
@@ -637,6 +643,13 @@ namespace ms
 		return Rectangle<int16_t>(tl, tl + Point<int16_t>(150, 34));
 	}
 
+	Rectangle<int16_t> UIOptionMenu::phone_edit_rect() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(348, PHONE_ROWS_Y + static_cast<int16_t>(PHONE_SLIDERS) * PHONE_ROW_STEP);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(288, 34));
+	}
+
 	Rectangle<int16_t> UIOptionMenu::phone_social_rect(size_t index) const
 	{
 		constexpr int16_t W = 300;
@@ -768,6 +781,15 @@ namespace ms
 				toggle(slider == SL_BGM ? CHK_MUTE_BGM : CHK_MUTE_SFX);
 				return Cursor::State::CLICKING;
 			}
+		}
+
+		if (phone_edit_rect().contains(at))
+		{
+			// Keeps what was changed here, as OK does
+			button_pressed(BT_OK);
+			Window::get().edit_touch_controls();
+
+			return Cursor::State::IDLE;
 		}
 
 		if (phone_shake_rect().contains(at))

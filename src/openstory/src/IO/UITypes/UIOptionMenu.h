@@ -136,6 +136,7 @@ namespace ms
 		Rectangle<int16_t> phone_mute_rect(size_t index) const;
 		Rectangle<int16_t> phone_shake_rect() const;
 		Rectangle<int16_t> phone_minimap_rect() const;
+		Rectangle<int16_t> phone_edit_rect() const;
 		Rectangle<int16_t> phone_social_rect(size_t index) const;
 		Rectangle<int16_t> phone_ok_rect() const;
 		Rectangle<int16_t> phone_cancel_rect() const;
@@ -146,6 +147,7 @@ namespace ms
 		Text phone_hint;
 		Text phone_ok;
 		Text phone_cancel;
+		Text phone_edit;
 		Text phone_mute;
 		Text phone_mute_on;
 		Text phone_shake;
