@@ -128,6 +128,9 @@ To stop everything:
 ## Pull requests and merging
 
 - `n150/ci` (CI on nexus-server) is the merge gate, and branch protection requires it. The GitHub Actions workflows are disabled while the account's billing lock lasts.
-- After opening a PR you want merged, enable auto-merge once (`gh pr merge --auto --merge` or the `enablePullRequestAutoMerge` mutation). It merges itself when `n150/ci` is green. Don't schedule routines only to check CI.
+- Don't merge or enable auto-merge on your own. The thread's permission check blocks it, and the cloud GitHub proxy rejects `gh pr` commands because they use GraphQL.
+- When a batch is ready, list its PRs with their `n150/ci` state. Name any PR that CI can't judge, such as a visual change, so Summer can test that build first. Summer sets auto-merge or tells you to merge.
+- If Summer tells you in the thread to merge a PR, use REST: `gh api -X PUT repos/saijinjun/heavenclient-android/pulls/<n>/merge -f merge_method=merge`. GitHub refuses it unless `n150/ci` is green.
+- Don't schedule routines only to check CI.
 - n150 retries a network failure once by itself, so don't merge main in or push just to re-run it.
 - Group small fixes into one PR per batch: each PR is about 18 minutes of CI.
