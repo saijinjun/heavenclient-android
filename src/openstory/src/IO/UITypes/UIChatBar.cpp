@@ -509,6 +509,11 @@ namespace ms
 			int16_t row = i / EMOTE_COLS;
 			Point<int16_t> cell = grid + Point<int16_t>(col * EMOTE_CELL, row * EMOTE_CELL);
 
+			// These sprites are only eyes and mouths, drawn to sit on a head.
+			// On the dark panel they can't be made out, so each gets a skin tile.
+			ColorBox(EMOTE_CELL - 2, EMOTE_CELL - 2, Color::Name::CREAM, 1.0f)
+				.draw(DrawArgument(cell));
+
 			if (i == emoticon_hover)
 				ColorBox(EMOTE_CELL - 2, EMOTE_CELL - 2, Color::Name::HUD_EXP, 0.5f)
 					.draw(DrawArgument(cell));

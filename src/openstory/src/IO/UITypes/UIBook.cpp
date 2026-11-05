@@ -75,7 +75,9 @@ namespace ms
 		{
 			std::string text = plain_text(node.get_string());
 
-			if (text.empty())
+			// The original pages linked back to their contents with this line.
+			// This window turns pages with buttons, so it would be dead text.
+			if (text.empty() || text.rfind("Return to Table of Contents", 0) == 0)
 				return;
 
 			if (!body.empty())
@@ -106,7 +108,9 @@ namespace ms
 			for (int32_t n = 0; source[std::to_string(n)]; n++)
 				add_text(body, source[std::to_string(n)]["text"]);
 
-			pages.emplace_back(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::WHITE, body, static_cast<uint16_t>(W - 40));
+			// Some books end on a page with nothing on it
+			if (!body.empty())
+				pages.emplace_back(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::WHITE, body, static_cast<uint16_t>(W - 40));
 		}
 
 		title = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, ItemData::get(itemid).get_name());
