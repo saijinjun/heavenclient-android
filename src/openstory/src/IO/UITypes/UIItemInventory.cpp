@@ -19,6 +19,7 @@
 
 #include "UINotice.h"
 #include "UIAvatarMegaphone.h"
+#include "UIBook.h"
 #include "UIItemMegaphone.h"
 #include "UIMapleTV.h"
 #include "UIMegaphone.h"
@@ -507,6 +508,37 @@ namespace ms
 					case InventoryType::Id::SETUP:
 					{
 						Stage::get().get_player().use_item(item_id);
+						break;
+					}
+					case InventoryType::Id::ETC:
+					{
+						if (UIBook::has_book(item_id))
+						{
+							UI::get().remove(UIElement::Type::BOOK);
+							UI::get().emplace<UIBook>(item_id);
+						}
+						else if (item_id / 10000 == 408)
+						{
+							// Omok sets are numbered by their pieces. Match Cards
+							// start at the smallest board.
+							constexpr int32_t MATCH_CARDS = 4080100;
+							constexpr int32_t OMOK_BASE = 4080000;
+
+							bool cards = item_id == MATCH_CARDS;
+							int8_t game = cards ? 2 : 1;
+							int8_t pieces = cards ? 0 : static_cast<int8_t>(item_id - OMOK_BASE);
+
+							UI::get().emplace<UIEnterText>(
+								"Game room name:",
+								[game, pieces](const std::string& desc)
+								{
+									if (!desc.empty())
+										CreateMiniGamePacket(desc, game, pieces).dispatch();
+								},
+								30
+							);
+						}
+
 						break;
 					}
 					case InventoryType::Id::CASH:

@@ -136,7 +136,7 @@ namespace ms
 		phone_bot_title = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Items");
 		phone_wish_label = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, "Wish list");
 
-		const char* button_names[PHONE_BUTTONS] = { "Party", "Trade", "Guild", "Items", "Pet", "Mount", "Fame +", "Fame -" };
+		const char* button_names[PHONE_BUTTONS] = { "Whisper", "Party", "Trade", "Guild", "Items", "Pet", "Mount", "Fame +", "Fame -" };
 
 		for (size_t i = 0; i < PHONE_BUTTONS; i++)
 			phone_button_labels[i] = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, button_names[i]);
@@ -317,6 +317,18 @@ namespace ms
 	{
 		switch (buttonid)
 		{
+		case Buttons::BtWhisper:
+			if (target())
+			{
+				std::string whisper_name = target()->get_name();
+
+				deactivate();
+
+				if (auto chatbar = UI::get().get_element<UIChatBar>())
+					chatbar->whisper_to(whisper_name);
+			}
+
+			return Button::State::NORMAL;
 		case Buttons::BtClose:
 			if (bot_tab_active)
 			{
@@ -803,13 +815,13 @@ namespace ms
 
 	Rectangle<int16_t> UICharInfo::phone_button(size_t index) const
 	{
-		constexpr int16_t W = 98;
+		constexpr int16_t W = 76;
 		constexpr int16_t H = 34;
 		constexpr int16_t GAP = 8;
 
-		int16_t col = static_cast<int16_t>(index % 4);
-		int16_t row = static_cast<int16_t>(index / 4);
-		Point<int16_t> tl = position + Point<int16_t>(12 + col * (W + GAP), 216 + row * (H + GAP));
+		int16_t col = static_cast<int16_t>(index % 5);
+		int16_t row = static_cast<int16_t>(index / 5);
+		Point<int16_t> tl = position + Point<int16_t>(14 + col * (W + GAP), 216 + row * (H + GAP));
 
 		return Rectangle<int16_t>(tl, tl + Point<int16_t>(W, H));
 	}
@@ -865,7 +877,7 @@ namespace ms
 	uint16_t UICharInfo::phone_button_id(size_t index) const
 	{
 		const uint16_t ids[PHONE_BUTTONS] = {
-			Buttons::BtParty, Buttons::BtTrad, Buttons::BtGuild, Buttons::BtItem,
+			Buttons::BtWhisper, Buttons::BtParty, Buttons::BtTrad, Buttons::BtGuild, Buttons::BtItem,
 			Buttons::BtPet, Buttons::BtRide, Buttons::BtPopUp, Buttons::BtPopDown
 		};
 
@@ -876,6 +888,7 @@ namespace ms
 	{
 		switch (phone_button_id(index))
 		{
+		case Buttons::BtWhisper:
 		case Buttons::BtParty:
 		case Buttons::BtTrad:
 		case Buttons::BtPopUp:

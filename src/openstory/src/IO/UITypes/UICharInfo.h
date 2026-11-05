@@ -121,7 +121,7 @@ namespace ms
 #ifdef __ANDROID__
 		static constexpr int16_t PHONE_W = 440;
 		static constexpr int16_t PHONE_H = 304;
-		static constexpr size_t PHONE_BUTTONS = 8;
+		static constexpr size_t PHONE_BUTTONS = 9;
 		static constexpr size_t PHONE_ROWS = 5;
 		static constexpr size_t PHONE_TABS = 5;
 
@@ -190,6 +190,7 @@ namespace ms
 			BtPopUp,
 			BtPopDown,
 			BtGuild,
+			BtWhisper,
 			BtBotEquip,
 			BtBotUse,
 			BtBotSetup,

@@ -6,6 +6,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "UIMobileInventory.h"
 
+#include "UIBook.h"
+
 #include "UIItemInventory.h"
 #include "UINotice.h"
 
@@ -507,6 +509,11 @@ namespace ms
 			return "Sit";
 		case InventoryType::Id::CASH:
 			return "Use";
+		case InventoryType::Id::ETC:
+			if (UIBook::has_book(item_at(selected)))
+				return "Read";
+
+			return item_at(selected) / 10000 == 408 ? "Play" : "";
 		default:
 			return "";
 		}
