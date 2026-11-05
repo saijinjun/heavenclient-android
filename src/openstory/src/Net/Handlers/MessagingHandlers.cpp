@@ -74,7 +74,7 @@ namespace ms
 
 				if (name.length() > 21)
 				{
-					name.substr(0, 21);
+					name = name.substr(0, 21);
 					name += "..";
 				}
 

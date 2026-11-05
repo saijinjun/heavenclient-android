@@ -297,7 +297,7 @@ namespace ms
 				// the leading zero rather than guessing from the opcode.
 				int8_t level = 0;
 
-				if (direction == 0 && recv.available() >= 2)
+				if (direction == 0 && recv.length() >= 2)
 				{
 					level = recv.read_byte();
 					direction = recv.read_byte();
@@ -925,7 +925,7 @@ namespace ms
 		std::string desc = recv.read_string();
 		int8_t skin = 0;
 
-		if (recv.available() >= 2)
+		if (recv.length() >= 2)
 		{
 			recv.read_byte();
 			skin = recv.read_byte();

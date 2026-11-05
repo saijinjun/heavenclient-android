@@ -23,7 +23,7 @@ namespace ms
 	{
 		int8_t index = (state / 2) - 1;
 
-		if (index < 0 || index > 10)
+		if (index < 0 || index >= 10)
 			return WALK1;
 
 		constexpr Id statevalues[10] =

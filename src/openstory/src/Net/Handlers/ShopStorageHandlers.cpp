@@ -290,7 +290,7 @@ namespace ms
 			// The invite carries the room id the inviter already
 			// created. On accept we VISIT that room rather than
 			// CREATEing a new one (the old code skipped this int).
-			int32_t room_id = recv.available() >= 4 ? recv.read_int() : 0;
+			int32_t room_id = recv.length() >= 4 ? recv.read_int() : 0;   // available() is a bool, so ">= 4" was always false
 
 			if (type == 3) // Trade invite
 			{
