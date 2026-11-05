@@ -28,6 +28,8 @@
 
 namespace ms
 {
+	class Physics;
+
 	class HiredMerchants : public Singleton<HiredMerchants>
 	{
 	public:
@@ -40,12 +42,15 @@ namespace ms
 			std::string desc;
 			int8_t skin;
 			Animation stand;
+			bool settled = false;
 		};
 
 		void add(int32_t owner_id, int32_t oid, int32_t item_id, Point<int16_t> pos,
 			const std::string& owner, const std::string& desc, int8_t skin);
 		void remove(int32_t owner_id);
 		void clear_all();
+		// Puts newly added merchants on the platform under them
+		void settle(const Physics& physics);
 
 		void draw(Point<int16_t> viewpos, float alpha) const;
 		void update();

@@ -1120,7 +1120,8 @@ namespace ms
 			bool on_button = false;
 
 			for (auto& button : buttons)
-				if (button.second->is_active() && button.second->bounds(position).contains(point))
+				if (button.second->is_active() && button.second->bounds(position).contains(point)
+					&& (!draw_text || button.first == Buttons::CLOSE))
 					on_button = true;
 
 			if (!on_button)
@@ -1148,6 +1149,13 @@ namespace ms
 				}
 			}
 		}
+#endif
+
+#ifdef __ANDROID__
+		// While the words are appearing only End chat acts. The answer buttons
+		// fire as the finger lands, which would skip words nobody has read.
+		if (draw_text && !buttons[Buttons::CLOSE]->bounds(position).contains(cursorpos))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
 #endif
 
 		Cursor::State estate = UIElement::send_cursor(clicked && !tap.has_moved(), cursorpos);

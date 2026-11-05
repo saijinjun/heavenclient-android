@@ -647,7 +647,7 @@ namespace ms
 			expframe.set(0);
 
 			expelapsed = 0;
-			expcooldown.set_for(5000);
+			expcooldown.set_for(2000);
 
 			return true;
 		}
