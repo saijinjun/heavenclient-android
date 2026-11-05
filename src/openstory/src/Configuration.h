@@ -530,7 +530,13 @@ namespace ms
 	// The default position of UIMiniMap
 	struct PosMINIMAP : public Configuration::PointEntry
 	{
+#ifdef __ANDROID__
+		// Below the scrolling notice, which otherwise runs over its title and
+		// buttons
+		PosMINIMAP() : PointEntry("PosMINIMAP", "(0, 24)") {}
+#else
 		PosMINIMAP() : PointEntry("PosMINIMAP", "(0, 0)") {}
+#endif
 	};
 
 	// The default position of UIShop
