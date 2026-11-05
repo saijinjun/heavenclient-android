@@ -513,7 +513,7 @@ namespace ms
 			if (UIBook::has_book(item_at(selected)))
 				return "Read";
 
-			return item_at(selected) / 10000 == 408 ? "Play" : "";
+			return "";
 		default:
 			return "";
 		}
