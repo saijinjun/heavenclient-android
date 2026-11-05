@@ -16,6 +16,8 @@
 //	along with this program.  If not, see <https://www.gnu.org/licenses/>.		//
 //////////////////////////////////////////////////////////////////////////////////
 #include "MiscHandlers.h"
+
+#include <cctype>
 #include "../../Data/ItemData.h"
 #include "../../Gameplay/Stage.h"
 #include "../../Gameplay/MapleMap/Npc.h"
@@ -85,9 +87,83 @@ namespace ms
 			return;
 
 		std::string message = recv.read_string();
+		// Then the balloon's width (unused: the hint goes to the chat log) and how long
+		// it stays up. Older senders may stop after the text.
+		int16_t seconds = 0;
+
+		if (recv.length() >= 4)
+		{
+			recv.skip_short();
+			seconds = recv.read_short();
+		}
+
+		auto chatbar = UI::get().get_element<UIChatBar>();
+
+		// A lone "." with no time is how the server takes a hint away. Showing it
+		// would only leave a stray dot in the log.
+		if (message == "." && seconds == 0)
+		{
+			if (chatbar)
+				chatbar->clear_reply_options();
+
+			return;
+		}
+
+		std::vector<std::string> options = numbered_options(message);
+
+		if (options.size() >= 2)
+		{
+			if (chatbar)
+				chatbar->set_reply_options(options, seconds > 0 ? seconds : DEFAULT_OPTION_SECONDS);
+#ifdef __ANDROID__
+			// The buttons say the same thing, and the chat line is kept for the reply
+			return;
+#endif
+		}
 
 		// Show yellow text notification at bottom of screen (like quest updates)
 		chat::log(message, chat::LineType::YELLOW);
+	}
+
+	// Splits a "1. First\r\n2. Second" hint into its options. Anything that isn't a
+	// list numbered 1, 2, 3... in order gives nothing, so ordinary hints stay text.
+	std::vector<std::string> YellowTipHandler::numbered_options(const std::string& message)
+	{
+		std::vector<std::string> options;
+		size_t start = 0;
+
+		while (start <= message.size())
+		{
+			size_t end = message.find('\n', start);
+
+			if (end == std::string::npos)
+				end = message.size();
+
+			std::string line = message.substr(start, end - start);
+			start = end + 1;
+
+			while (!line.empty() && std::isspace(static_cast<unsigned char>(line.back())))
+				line.pop_back();
+
+			size_t first = 0;
+
+			while (first < line.size() && std::isspace(static_cast<unsigned char>(line[first])))
+				first++;
+
+			line = line.substr(first);
+
+			if (line.empty())
+				continue;
+
+			std::string number = std::to_string(options.size() + 1) + ". ";
+
+			if (line.compare(0, number.size(), number) != 0 || line.size() == number.size())
+				return {};
+
+			options.push_back(line.substr(number.size()));
+		}
+
+		return options;
 	}
 
 	void BroadcastMsgHandler::handle(InPacket& recv) const

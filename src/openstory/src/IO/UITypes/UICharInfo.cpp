@@ -29,6 +29,8 @@
 #include "../../Net/Packets/PlayerInteractionPackets.h"
 #include "../../Net/Packets/TradePackets.h"
 #include "../../Net/Packets/SocialPackets.h"
+#include "../../Net/Packets/BuddyPackets.h"
+#include "../../Net/Packets/MessagingPackets.h"
 #include "UIGuild.h"
 #include "../../Net/Packets/GameplayPackets.h"
 #include "../../Net/Packets/BotInventoryPackets.h"
@@ -136,7 +138,9 @@ namespace ms
 		phone_bot_title = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Items");
 		phone_wish_label = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, "Wish list");
 
-		const char* button_names[PHONE_BUTTONS] = { "Whisper", "Party", "Trade", "Guild", "Items", "Pet", "Mount", "Fame +", "Fame -" };
+		// Social actions first: on a phone this window is how you meet someone,
+		// so saying hi, partying and adding a buddy are all one tap from a tap on them
+		const char* button_names[PHONE_BUTTONS] = { "Say hi", "Whisper", "Party", "Buddy +", "Trade", "Fame +", "Fame -", "Guild", "Items", "Pet", "Mount" };
 
 		for (size_t i = 0; i < PHONE_BUTTONS; i++)
 			phone_button_labels[i] = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, button_names[i]);
@@ -313,6 +317,21 @@ namespace ms
 		}
 	}
 
+	// Already on the buddy list: a second request would only get an error back
+	bool UICharInfo::target_is_buddy() const
+	{
+		const Char* chr = target();
+
+		if (!chr)
+			return false;
+
+		for (const auto& entry : Stage::get().get_player().get_buddylist().get_entries())
+			if (entry.second.name == chr->get_name())
+				return true;
+
+		return false;
+	}
+
 	Button::State UICharInfo::button_pressed(uint16_t buttonid)
 	{
 		switch (buttonid)
@@ -326,6 +345,27 @@ namespace ms
 
 				if (auto chatbar = UI::get().get_element<UIChatBar>())
 					chatbar->whisper_to(whisper_name);
+			}
+
+			return Button::State::NORMAL;
+		case Buttons::BtSayHi:
+			if (target())
+			{
+				// Said aloud with their name in it: bots start a conversation when they hear
+				// their name, and to a real player it is simply a greeting. The window closes
+				// so the reply and any tap-to-answer options are in view.
+				GeneralChatPacket("hi " + target()->get_name(), true).dispatch();
+				deactivate();
+			}
+
+			return Button::State::NORMAL;
+		case Buttons::BtBuddy:
+			if (target() && !target_is_buddy())
+			{
+				// Straight to the request with the default group: the add-buddy form would
+				// only ask for a name we already have, and typing is the slow part on a phone
+				AddBuddyPacket(target()->get_name(), "Default Group").dispatch();
+				chat::log("Buddy request sent to " + target()->get_name() + ".", chat::LineType::YELLOW);
 			}
 
 			return Button::State::NORMAL;
@@ -815,12 +855,12 @@ namespace ms
 
 	Rectangle<int16_t> UICharInfo::phone_button(size_t index) const
 	{
-		constexpr int16_t W = 76;
+		constexpr int16_t W = 62;
 		constexpr int16_t H = 34;
 		constexpr int16_t GAP = 8;
 
-		int16_t col = static_cast<int16_t>(index % 5);
-		int16_t row = static_cast<int16_t>(index / 5);
+		int16_t col = static_cast<int16_t>(index % PHONE_BUTTON_COLS);
+		int16_t row = static_cast<int16_t>(index / PHONE_BUTTON_COLS);
 		Point<int16_t> tl = position + Point<int16_t>(14 + col * (W + GAP), 216 + row * (H + GAP));
 
 		return Rectangle<int16_t>(tl, tl + Point<int16_t>(W, H));
@@ -877,8 +917,8 @@ namespace ms
 	uint16_t UICharInfo::phone_button_id(size_t index) const
 	{
 		const uint16_t ids[PHONE_BUTTONS] = {
-			Buttons::BtWhisper, Buttons::BtParty, Buttons::BtTrad, Buttons::BtGuild, Buttons::BtItem,
-			Buttons::BtPet, Buttons::BtRide, Buttons::BtPopUp, Buttons::BtPopDown
+			Buttons::BtSayHi, Buttons::BtWhisper, Buttons::BtParty, Buttons::BtBuddy, Buttons::BtTrad, Buttons::BtPopUp,
+			Buttons::BtPopDown, Buttons::BtGuild, Buttons::BtItem, Buttons::BtPet, Buttons::BtRide
 		};
 
 		return ids[index];
@@ -888,6 +928,9 @@ namespace ms
 	{
 		switch (phone_button_id(index))
 		{
+		case Buttons::BtBuddy:
+			return target_char_id != Stage::get().get_player().get_oid() && !target_is_buddy();
+		case Buttons::BtSayHi:
 		case Buttons::BtWhisper:
 		case Buttons::BtParty:
 		case Buttons::BtTrad:

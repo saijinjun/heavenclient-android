@@ -414,6 +414,22 @@ namespace ms
 		return speaker.name;
 	}
 
+	void UIChatBar::set_reply_options(const std::vector<std::string>& options, int16_t seconds)
+	{
+		reply_labels.clear();
+
+		for (const std::string& option : options)
+			reply_labels.emplace_back(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, option);
+
+		reply_ticks_left = std::max<int32_t>(seconds, 1) * 1000 / Constants::TIMESTEP;
+	}
+
+	void UIChatBar::clear_reply_options()
+	{
+		reply_labels.clear();
+		reply_ticks_left = 0;
+	}
+
 	void UIChatBar::set_chat_open(bool open)
 	{
 		chatopen = open;
@@ -999,12 +1015,68 @@ namespace ms
 		return 0;
 	}
 
+	std::vector<Rectangle<int16_t>> UIChatBar::reply_rects() const
+	{
+		std::vector<Rectangle<int16_t>> rects;
+
+		// Stacked just above whatever chat sits on top: the closed line, or the open
+		// log's "send to" chips. Rows fill left to right and grow upwards.
+		int16_t left = touch_left();
+		int16_t bottom = (chatopen ? log_close_rect().top() : line_rect().top()) - REPLY_GAP;
+		int16_t x = left;
+		int16_t row = 0;
+
+		for (const Text& label : reply_labels)
+		{
+			int16_t w = std::min<int16_t>(std::max<int16_t>(label.width() + REPLY_PAD * 2, 64), TOUCH_W);
+
+			if (x > left && x + w > left + TOUCH_W)
+			{
+				x = left;
+				row++;
+			}
+
+			int16_t top = bottom - (row + 1) * REPLY_H - row * REPLY_GAP;
+
+			rects.emplace_back(x, x + w, top, top + REPLY_H);
+			x += w + REPLY_GAP;
+		}
+
+		return rects;
+	}
+
+	int32_t UIChatBar::reply_at(Point<int16_t> cursorpos) const
+	{
+		std::vector<Rectangle<int16_t>> rects = reply_rects();
+
+		for (size_t i = 0; i < rects.size(); i++)
+			if (rects[i].contains(cursorpos))
+				return static_cast<int32_t>(i);
+
+		return -1;
+	}
+
+	void UIChatBar::draw_reply_options() const
+	{
+		std::vector<Rectangle<int16_t>> rects = reply_rects();
+
+		for (size_t i = 0; i < rects.size(); i++)
+		{
+			const Rectangle<int16_t>& r = rects[i];
+
+			classic::button(r.get_left_top(), r.width(), r.height(), false);
+			reply_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(reply_labels[i], r.top() + r.height() / 2)));
+		}
+	}
+
 	void UIChatBar::draw_touch() const
 	{
 		if (chatopen)
 			draw_touch_log();
 		else
 			draw_touch_line();
+
+		draw_reply_options();
 
 		draw_emoticons(emoticon_origin());
 
@@ -1112,6 +1184,9 @@ namespace ms
 			return true;
 
 		if (emoticons_open && emoticon_panel_rect().contains(cursorpos))
+			return true;
+
+		if (reply_at(cursorpos) >= 0)
 			return true;
 
 		if (!chatopen)
@@ -1224,6 +1299,19 @@ namespace ms
 				return;
 		}
 
+		int32_t reply = reply_at(at);
+
+		if (reply >= 0)
+		{
+			// Said to everyone nearby, like the typed answer, since that is where the
+			// one who offered the options listens. The buttons go: the next step, if
+			// there is one, arrives as a new set.
+			Sound(Sound::Name::BUTTONCLICK).play();
+			GeneralChatPacket(std::to_string(reply + 1), true).dispatch();
+			clear_reply_options();
+			return;
+		}
+
 		if (!chatopen)
 		{
 			if (line_rect().contains(at))
@@ -1283,6 +1371,9 @@ namespace ms
 
 		if (!whisper_target.empty() && chatfield.get_state() != Textfield::State::FOCUSED)
 			whisper_target.clear();
+
+		if (reply_ticks_left > 0 && --reply_ticks_left == 0)
+			reply_labels.clear();
 
 #ifdef __ANDROID__
 		// The finger lifted somewhere else, so this touch is over

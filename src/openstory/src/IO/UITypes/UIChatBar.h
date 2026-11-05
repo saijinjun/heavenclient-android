@@ -118,6 +118,11 @@ namespace ms
 		void focus_chatfield();
 		// Opens typing with the next lines going privately to this player
 		void whisper_to(const std::string& name);
+		// Numbered options someone offered ("1. What's up?", ...). On a phone they show
+		// as buttons above the chat line for this many seconds, and a tap answers with
+		// the option's number, which is what typing would have sent.
+		void set_reply_options(const std::vector<std::string>& options, int16_t seconds);
+		void clear_reply_options();
 		void toggle_chat();
 		void toggle_chatfield();
 		void toggle_chatfield(bool open);
@@ -255,6 +260,13 @@ namespace ms
 		void touch_tap(Point<int16_t> at);
 		void scroll_log(bool older);
 
+		static constexpr int16_t REPLY_H = 34;
+		static constexpr int16_t REPLY_GAP = 6;
+		static constexpr int16_t REPLY_PAD = 14;
+		std::vector<Rectangle<int16_t>> reply_rects() const;
+		int32_t reply_at(Point<int16_t> cursorpos) const;
+		void draw_reply_options() const;
+
 		TapGesture tap;
 		bool swiping_log = false;
 		int16_t swipe_anchor_y = 0;
@@ -269,6 +281,9 @@ namespace ms
 		// Who whispered while the log was closed, until it's next opened
 		std::string unread_whisper_from;
 		Text whisper_alert;
+		std::vector<Text> reply_labels;
+		// Counted down in update(); the options stop being offered when it reaches 0
+		int32_t reply_ticks_left = 0;
 		mutable Text whisper_chip;
 		Text whisper_label;
 		Texture chatspace[2];

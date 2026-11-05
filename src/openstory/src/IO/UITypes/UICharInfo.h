@@ -121,7 +121,8 @@ namespace ms
 #ifdef __ANDROID__
 		static constexpr int16_t PHONE_W = 440;
 		static constexpr int16_t PHONE_H = 304;
-		static constexpr size_t PHONE_BUTTONS = 9;
+		static constexpr size_t PHONE_BUTTONS = 11;
+		static constexpr int16_t PHONE_BUTTON_COLS = 6;
 		static constexpr size_t PHONE_ROWS = 5;
 		static constexpr size_t PHONE_TABS = 5;
 
@@ -195,7 +196,10 @@ namespace ms
 			BtBotUse,
 			BtBotSetup,
 			BtBotEtc,
-			BtBotEquipped
+			BtBotEquipped,
+			// Phone only: start a chat with the character, and send them a buddy request
+			BtSayHi,
+			BtBuddy
 		};
 
 		/// Expander panels (vanilla Pet / Ride / Wish List)
@@ -228,6 +232,8 @@ namespace ms
 		// the next draw.
 		Char* target() const;
 		int32_t target_char_id;
+
+		bool target_is_buddy() const;
 
 		// Snapshot of the target's look, refreshed while they are on screen.
 		// When they walk out of view or the map changes their Char is destroyed,
