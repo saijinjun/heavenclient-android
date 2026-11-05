@@ -7,6 +7,7 @@
 #include "UIMobileUserList.h"
 
 #include "UIBuddyGroup.h"
+#include "UIChatBar.h"
 #include "UIBuddyNickname.h"
 #include "UINotice.h"
 #include "UIPartyInvite.h"
@@ -477,7 +478,15 @@ namespace ms
 			UI::get().emplace<UIBuddyGroup>();
 			break;
 		case Action::WHISPER:
-			UI::get().emplace<UIWhisper>(name);
+			if (auto chatbar = UI::get().get_element<UIChatBar>())
+			{
+				deactivate();
+				chatbar->whisper_to(name);
+			}
+			else
+			{
+				UI::get().emplace<UIWhisper>(name);
+			}
 			break;
 		case Action::INVITE_BUDDY:
 			InviteToPartyPacket(name).dispatch();

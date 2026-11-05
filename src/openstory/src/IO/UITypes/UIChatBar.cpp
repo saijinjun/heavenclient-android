@@ -28,6 +28,7 @@
 
 #include "../../Net/Packets/GameplayPackets.h"
 #include "../../Net/Packets/InventoryPackets.h"
+#include "../../Net/Packets/BuddyPackets.h"
 #include "../../Net/Packets/MessagingPackets.h"
 #include "../../Audio/Audio.h"
 #include "../../Graphics/ClassicStyle.h"
@@ -155,6 +156,7 @@ namespace ms
 #endif
 		touch_close = Text(Text::A12B, Text::CENTER, Color::Name::WHITE, "X");
 		send_label = Text(Text::A12B, Text::CENTER, Color::Name::WHITE, "Send");
+		whisper_chip = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Whisper");
 
 		const char* chip_names[NUM_CHIPS] = { "All", "Party", "Guild", "Buddy" };
 
@@ -224,12 +226,192 @@ namespace ms
 			return;
 		}
 
-		if (!handle_party_command(msg))
+		if (handle_whisper_command(msg))
+		{
+		}
+		else if (handle_party_command(msg))
+		{
+		}
+		else if (!whisper_target.empty())
+		{
+			send_whisper(whisper_target, msg);
+		}
+		else
+		{
 			send_chat_message(msg);
+		}
 
 		lastentered.push_back(msg);
 		lastpos = lastentered.size();
 		chatfield.change_text("");
+	}
+
+	namespace
+	{
+		// Who a chat line is from, read from its text: "Name: hi",
+		// "[Party] Name: hi", "Name <Whisper>: hi" or "To Name <Whisper>: hi".
+		struct LineSpeaker
+		{
+			std::string name;
+			size_t name_start = 0;
+			size_t name_end = 0;
+			bool whisper = false;
+			bool outgoing = false;
+		};
+
+		LineSpeaker line_speaker(const std::string& line)
+		{
+			constexpr size_t MAX_NAME = 13;
+
+			LineSpeaker speaker;
+			size_t start = 0;
+
+			// "[To Party] hi" is the player's own line
+			if (line.rfind("[To ", 0) == 0)
+				return speaker;
+
+			if (!line.empty() && line[0] == '[')
+			{
+				size_t close = line.find("] ");
+
+				if (close == std::string::npos)
+					return speaker;
+
+				start = close + 2;
+			}
+
+			const std::string tag = " <Whisper>: ";
+			size_t end = line.find(tag, start);
+			bool whisper = end != std::string::npos;
+			bool outgoing = false;
+
+			if (whisper)
+			{
+				if (line.compare(start, 3, "To ") == 0)
+				{
+					outgoing = true;
+					start += 3;
+				}
+			}
+			else
+			{
+				end = line.find(": ", start);
+
+				if (end == std::string::npos)
+					return speaker;
+			}
+
+			if (end <= start || end - start > MAX_NAME)
+				return speaker;
+
+			for (size_t i = start; i < end; i++)
+				if (!std::isalnum(static_cast<unsigned char>(line[i])))
+					return speaker;
+
+			speaker.name = line.substr(start, end - start);
+			speaker.name_start = start;
+			speaker.name_end = end;
+			speaker.whisper = whisper;
+			speaker.outgoing = outgoing;
+
+			return speaker;
+		}
+	}
+
+	bool UIChatBar::handle_whisper_command(const std::string& message)
+	{
+		std::istringstream in(message);
+		std::string command;
+		std::string name;
+
+		in >> command;
+		std::transform(command.begin(), command.end(), command.begin(),
+			[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+		if (command == "/r")
+		{
+			name = last_whisper_from;
+
+			if (name.empty())
+			{
+				send_line("No one has whispered to you yet.", YELLOW);
+
+				return true;
+			}
+		}
+		else if (command == "/w" || command == "/whisper")
+		{
+			in >> name;
+
+			if (name.empty())
+			{
+				send_line("To whisper, type /w name message", YELLOW);
+
+				return true;
+			}
+		}
+		else
+		{
+			return false;
+		}
+
+		std::string text;
+		std::getline(in, text);
+		text = trim(text);
+
+		if (text.empty())
+			whisper_to(name);
+		else
+			send_whisper(name, text);
+
+		return true;
+	}
+
+	void UIChatBar::send_whisper(const std::string& name, const std::string& message)
+	{
+		WhisperPacket(name, message).dispatch();
+		send_line("To " + name + " <Whisper>: " + message, PINK);
+	}
+
+	void UIChatBar::whisper_to(const std::string& name)
+	{
+		if (name.empty())
+			return;
+
+		whisper_target = name;
+		whisper_label = Text(Text::Font::A12B, Text::Alignment::LEFT, Color::Name::WHITE, "Whisper to " + name + ". Tap Whisper to stop.");
+		focus_chatfield();
+	}
+
+	std::string UIChatBar::whisper_name_at(Point<int16_t> at) const
+	{
+		int16_t row = row_at(at);
+		auto text = rowtexts.find(row);
+		auto line = rowstrings.find(row);
+
+		if (text == rowtexts.end() || line == rowstrings.end())
+			return "";
+
+		LineSpeaker speaker = line_speaker(line->second);
+
+		if (speaker.name.empty() || speaker.name == Stage::get().get_player().get_name())
+			return "";
+
+		// A whisper is a conversation, so the whole line answers it. Elsewhere
+		// only the name does, and the rest of the line is for chatting.
+		if (!speaker.whisper)
+		{
+			constexpr int16_t REACH = 12;
+
+			int16_t x = at.x() - touch_left() - 4;
+			int16_t name_left = static_cast<int16_t>(text->second.advance(speaker.name_start));
+			int16_t name_right = static_cast<int16_t>(text->second.advance(speaker.name_end));
+
+			if (x < name_left - REACH || x > name_right + REACH)
+				return "";
+		}
+
+		return speaker.name;
 	}
 
 	void UIChatBar::set_chat_open(bool open)
@@ -602,8 +784,11 @@ namespace ms
 		size_t chip = chip_index();
 
 		classic::tab(target.get_left_top(), target.width(), target.height(), true);
-		chip_labels[chip].change_color(Color::Name::HUD_PANEL);
-		chip_labels[chip].draw(Point<int16_t>(target.left() + target.width() / 2, classic::text_y(chip_labels[chip], target.top() + target.height() / 2)));
+
+		Text& chip_label = whisper_target.empty() ? chip_labels[chip] : whisper_chip;
+
+		chip_label.change_color(Color::Name::HUD_PANEL);
+		chip_label.draw(Point<int16_t>(target.left() + target.width() / 2, classic::text_y(chip_label, target.top() + target.height() / 2)));
 
 		draw_emoticon_button(typing_emoticon_rect());
 
@@ -649,11 +834,19 @@ namespace ms
 			first--;
 		}
 
-		if (lines > 0)
+		int16_t whisper_h = whisper_target.empty() ? 0 : CHATROWHEIGHT + 4;
+
+		if (lines > 0 || whisper_h > 0)
 		{
 			int16_t y = recent_y;
 
-			classic::box(recent_x, y, recent_w, lines * CHATROWHEIGHT + 6, Color::Name::HUD_PANEL, 0.78f);
+			classic::box(recent_x, y, recent_w, lines * CHATROWHEIGHT + 6 + whisper_h, Color::Name::HUD_PANEL, 0.78f);
+
+			if (whisper_h > 0)
+			{
+				whisper_label.draw(Point<int16_t>(recent_x + 8, y));
+				y += whisper_h;
+			}
 
 			for (int16_t row = first; row <= rowmax; row++)
 			{
@@ -943,7 +1136,11 @@ namespace ms
 			else if (typing_target_rect().contains(at))
 			{
 				Sound(Sound::Name::BUTTONCLICK).play();
-				set_chat_target(chip_target((chip_index() + 1) % NUM_CHIPS));
+
+				if (!whisper_target.empty())
+					whisper_target.clear();
+				else
+					set_chat_target(chip_target((chip_index() + 1) % NUM_CHIPS));
 			}
 			else if (typing_send_rect().contains(at))
 			{
@@ -1011,8 +1208,14 @@ namespace ms
 		}
 		else if (log_rect().contains(at))
 		{
-			// A tap on the log starts a reply. A swipe scrolls it instead.
-			toggle_chatfield(true);
+			// A tap on the log starts a reply, to that player on their name. A
+			// swipe scrolls it instead.
+			std::string name = whisper_name_at(at);
+
+			if (!name.empty())
+				whisper_to(name);
+			else
+				toggle_chatfield(true);
 		}
 	}
 
@@ -1020,6 +1223,9 @@ namespace ms
 	{
 		UIElement::update();
 		chatfield.update(position);
+
+		if (!whisper_target.empty() && chatfield.get_state() != Textfield::State::FOCUSED)
+			whisper_target.clear();
 
 #ifdef __ANDROID__
 		// The finger lifted somewhere else, so this touch is over
@@ -1472,6 +1678,11 @@ namespace ms
 
 	void UIChatBar::send_line(const std::string& line, LineType type)
 	{
+		LineSpeaker speaker = line_speaker(line);
+
+		if (speaker.whisper && !speaker.outgoing && !speaker.name.empty())
+			last_whisper_from = speaker.name;
+
 		bool following = rowpos == rowmax;
 
 		rowmax++;

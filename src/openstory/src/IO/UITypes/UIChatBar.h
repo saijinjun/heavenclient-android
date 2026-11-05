@@ -116,6 +116,8 @@ namespace ms
 		void send_chatline(const std::string& line, LineType type);
 		void display_message(Messages::Type line, UIChatBar::LineType type);
 		void focus_chatfield();
+		// Opens typing with the next lines going privately to this player
+		void whisper_to(const std::string& name);
 		void toggle_chat();
 		void toggle_chatfield();
 		void toggle_chatfield(bool open);
@@ -144,6 +146,10 @@ namespace ms
 		void set_chat_open(bool open);
 		int32_t resolve_party_member_id(const std::string& token) const;
 		bool handle_party_command(const std::string& message);
+		bool handle_whisper_command(const std::string& message);
+		void send_whisper(const std::string& name, const std::string& message);
+		// The player a tap on the log at this point means, or empty
+		std::string whisper_name_at(Point<int16_t> at) const;
 		void submit_chat(std::string message);
 		void send_chat_message(const std::string& message);
 		void send_targeted_message(const std::string& target, const std::string& message);
@@ -253,6 +259,12 @@ namespace ms
 		bool emoticons_typing = false;
 		Text touch_close;
 		mutable Text send_label;
+		// Who typed lines are whispered to. Ends when typing does.
+		std::string whisper_target;
+		// Who whispered last, for /r
+		std::string last_whisper_from;
+		mutable Text whisper_chip;
+		Text whisper_label;
 		Texture chatspace[2];
 		Texture chattargets[NUM_TARGETS];
 		Texture chatenter;
