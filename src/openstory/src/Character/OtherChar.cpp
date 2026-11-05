@@ -133,6 +133,11 @@ namespace ms
 		phobj.vspeed = next_y - cur_y;
 		phobj.move();
 
+		// Movement comes from packets, so nothing else tells them which layer
+		// of the map they're on. Without this they all draw on the lowest one,
+		// behind the tiles and objects of every layer above it.
+		physics.get_fht().update_layer(phobj);
+
 		bool aniend = Char::update(physics, get_stancespeed());
 
 		if (aniend && attacking)

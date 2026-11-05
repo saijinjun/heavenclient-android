@@ -233,6 +233,26 @@ namespace ms
 		}
 	}
 
+	void FootholdTree::update_layer(PhysicsObject& phobj) const
+	{
+		// Positions are rounded, so a character on a platform can be a little
+		// below it. Looking only from their feet would find the platform under.
+		constexpr double TOLERANCE = 3.0;
+
+		double x = phobj.crnt_x();
+		double y = phobj.crnt_y();
+		uint16_t fhid = get_fhid_below(x, y - TOLERANCE);
+
+		if (fhid == 0)
+			return;
+
+		const Foothold& fh = get_fh(fhid);
+
+		// In the air they keep the layer they jumped from, like update_fh
+		if (phobj.fhlayer == 0 || std::abs(fh.ground_below(x) - y) <= TOLERANCE)
+			phobj.fhlayer = fh.layer();
+	}
+
 	const Foothold& FootholdTree::get_fh(uint16_t fhid) const
 	{
 		auto iter = footholds.find(fhid);
