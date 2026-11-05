@@ -36,6 +36,9 @@ namespace ms
 		void limit_movement(PhysicsObject& touse) const;
 		// Updates a PhysicsObject's fhid based on it's position
 		void update_fh(PhysicsObject& touse) const;
+		// Updates only the layer an object draws on, from the platform it's on.
+		// For objects moved by packets, whose position must not be changed.
+		void update_layer(PhysicsObject& touse) const;
 		// Determine the point on the ground below the specified position
 		int16_t get_y_below(Point<int16_t> position) const;
 		// Returns the leftmost and rightmost platform positions of the map
