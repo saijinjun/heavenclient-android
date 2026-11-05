@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `d825648` | ok |
-| client | `ab01dfe` | ok |
+| client | `8ed4536` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-05 18:44 · client · ✅ deployed `8ed4536` - no runtime change (docs/android/tests only)
 - 2026-11-05 17:32 · client · ✅ deployed `ab01dfe` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 15:48 · client · ✅ deployed `b9e8da3` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 15:15 · client · ✅ deployed `99b4e9d` - no runtime change (docs/android/tests only)
@@ -34,4 +35,3 @@ and the repository exists.
 - 2026-11-05 04:57 · client · ✅ deployed `c1e8e0c` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 03:38 · client · ✅ deployed `e8b2806` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 03:38 · server · ✅ deployed `64a5b67` - online, 8484 open
-- 2026-11-05 00:48 · client · ✅ deployed `45c8ee3` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
