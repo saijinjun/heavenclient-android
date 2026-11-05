@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "HiredMerchants.h"
 
+#include "Physics/Physics.h"
+
 #ifdef USE_NX
 #include <nlnx/nx.hpp>
 #endif
@@ -86,6 +88,28 @@ namespace ms
 				d = d.substr(0, 14);
 			shoptext.change_text(d);
 			shoptext.draw(tl + Point<int16_t>(w / 2, skin == 0 ? 9 : 68));
+		}
+	}
+
+	void HiredMerchants::settle(const Physics& physics)
+	{
+		// The position sent can be above the platform, and a merchant stands
+		// on it. The distance check keeps one on a platform with none below.
+		constexpr int16_t MAX_DROP = 200;
+
+		for (auto& it : merchants)
+		{
+			Merchant& m = it.second;
+
+			if (m.settled)
+				continue;
+
+			m.settled = true;
+
+			Point<int16_t> ground = physics.get_y_below(m.pos);
+
+			if (ground.y() >= m.pos.y() && ground.y() - m.pos.y() <= MAX_DROP)
+				m.pos = ground;
 		}
 	}
 

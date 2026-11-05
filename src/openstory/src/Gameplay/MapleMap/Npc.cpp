@@ -258,7 +258,10 @@ namespace ms
 			const Animation& anim = (ait != animations.end())
 				? ait->second : animations.begin()->second;
 			Point<int16_t> origin = anim.get_origin();
-			speech_balloon.draw(absp + Point<int16_t>(0, -origin.y() - 8));
+			// Sits above the quest icon, or it would hide what the NPC offers
+			int16_t lift = quest_mark_type != QuestMarkType::NONE ? quest_mark_anim.get_dimensions().y() + 4 : 0;
+
+			speech_balloon.draw(absp + Point<int16_t>(0, -origin.y() - 8 - lift));
 		}
 
 		// MapleTV NPCs display the current world-wide broadcast on their

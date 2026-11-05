@@ -95,6 +95,21 @@ namespace ms
 		if (player.is_attacking())
 			return;
 
+		// Down and jump can arrive together, before the character has had a
+		// chance to go prone, as they do from the touch jump down button
+		if (down && ka == KeyAction::Id::JUMP && player.is_key_down(KeyAction::Id::DOWN))
+		{
+			if (player.get_phobj().enablejd)
+			{
+				play_jumpsound();
+
+				player.get_phobj().y = player.get_phobj().groundbelow;
+				player.set_state(Char::State::FALL);
+			}
+
+			return;
+		}
+
 		if (down && ka == KeyAction::Id::JUMP)
 		{
 			play_jumpsound();
@@ -144,19 +159,18 @@ namespace ms
 		if (player.is_attacking())
 			return;
 
-		if (down && ka == KeyAction::Id::JUMP)
-		{
-			play_jumpsound();
-
-			player.get_phobj().vforce = -player.get_jumpforce();
-		}
-
 		if (down && ka == KeyAction::Id::JUMP && player.is_key_down(KeyAction::Id::DOWN) && player.get_phobj().enablejd)
 		{
 			play_jumpsound();
 
 			player.get_phobj().y = player.get_phobj().groundbelow;
 			player.set_state(Char::State::FALL);
+		}
+		else if (down && ka == KeyAction::Id::JUMP)
+		{
+			play_jumpsound();
+
+			player.get_phobj().vforce = -player.get_jumpforce();
 		}
 	}
 

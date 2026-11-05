@@ -117,8 +117,8 @@ namespace ms
 		emoticon_frame = Texture(social["ImoticonFrame"]["backgrnd1"]);
 
 		nl::node faces = nl::nx::character["Face"]["00020000.img"];
-		for (int32_t i = 0; i < Text::emoticon_count(); i++)
-			emoticon_icons.emplace_back(faces[Text::emoticon_name(i)]["0"]["face"]);
+		for (int32_t i = 0; i < picker_count(); i++)
+			emoticon_icons.emplace_back(faces[picker_name(i)]["0"]["face"]);
 
 		chatspace[0] = mainbar["chatSpace"];
 		chatspace[1] = mainbar["chatEnter"];
@@ -265,7 +265,7 @@ namespace ms
 
 	Point<int16_t> UIChatBar::emoticon_origin() const
 	{
-		int16_t rows = (Text::emoticon_count() + EMOTE_COLS - 1) / EMOTE_COLS;
+		int16_t rows = (picker_count() + EMOTE_COLS - 1) / EMOTE_COLS;
 		int16_t h = rows * EMOTE_CELL + EMOTE_PAD * 2;
 
 #ifdef __ANDROID__
@@ -301,7 +301,7 @@ namespace ms
 
 		int32_t index = row * EMOTE_COLS + col;
 
-		return index < Text::emoticon_count() ? index : -1;
+		return index < picker_count() ? index : -1;
 	}
 
 	void UIChatBar::draw_emoticons(Point<int16_t> pos) const
@@ -309,7 +309,7 @@ namespace ms
 		if (!emoticons_open)
 			return;
 
-		int16_t rows = (Text::emoticon_count() + EMOTE_COLS - 1) / EMOTE_COLS;
+		int16_t rows = (picker_count() + EMOTE_COLS - 1) / EMOTE_COLS;
 		int16_t w = EMOTE_COLS * EMOTE_CELL + EMOTE_PAD * 2;
 		int16_t h = rows * EMOTE_CELL + EMOTE_PAD * 2;
 
@@ -317,7 +317,7 @@ namespace ms
 
 		Point<int16_t> grid = pos + Point<int16_t>(EMOTE_PAD, EMOTE_PAD);
 
-		for (int32_t i = 0; i < Text::emoticon_count(); i++)
+		for (int32_t i = 0; i < picker_count(); i++)
 		{
 			int16_t col = i % EMOTE_COLS;
 			int16_t row = i / EMOTE_COLS;
@@ -366,8 +366,39 @@ namespace ms
 #endif
 	}
 
+	int32_t UIChatBar::picker_count()
+	{
+#ifdef __ANDROID__
+		return 7;
+#else
+		return Text::emoticon_count();
+#endif
+	}
+
+	const char* UIChatBar::picker_name(int32_t index)
+	{
+#ifdef __ANDROID__
+		// The faces the server lets anyone make: the F1 to F7 ones
+		const char* faces[] = { "smile", "troubled", "cry", "angry", "bewildered", "stunned", "hit" };
+
+		return index >= 0 && index < 7 ? faces[index] : "default";
+#else
+		return Text::emoticon_name(index);
+#endif
+	}
+
 	void UIChatBar::pick_emoticon(int32_t index)
 	{
+#ifdef __ANDROID__
+		// A face plays on the character for everyone to see. It isn't a line of chat.
+		Sound(Sound::Name::BUTTONCLICK).play();
+		emoticons_open = false;
+		emoticon_hover = -1;
+		make_face(picker_name(index));
+
+		return;
+#endif
+
 		Sound(Sound::Name::BUTTONCLICK).play();
 		focus_chatfield();
 		chatfield.add_string("#e" + std::to_string(index) + "#");
@@ -375,7 +406,7 @@ namespace ms
 
 		// The seven F1-F7 faces also play on the character, so touch
 		// players (who have no F keys) can make faces too.
-		make_face(Text::emoticon_name(index));
+		make_face(picker_name(index));
 		emoticon_hover = -1;
 	}
 
@@ -706,7 +737,7 @@ namespace ms
 
 	Rectangle<int16_t> UIChatBar::emoticon_panel_rect() const
 	{
-		int16_t rows = (Text::emoticon_count() + EMOTE_COLS - 1) / EMOTE_COLS;
+		int16_t rows = (picker_count() + EMOTE_COLS - 1) / EMOTE_COLS;
 		Point<int16_t> origin = emoticon_origin();
 
 		return Rectangle<int16_t>(origin, origin + Point<int16_t>(EMOTE_COLS * EMOTE_CELL + EMOTE_PAD * 2, rows * EMOTE_CELL + EMOTE_PAD * 2));
@@ -1154,7 +1185,7 @@ namespace ms
 
 		if (emoticons_open)
 		{
-			int16_t rows = (Text::emoticon_count() + EMOTE_COLS - 1) / EMOTE_COLS;
+			int16_t rows = (picker_count() + EMOTE_COLS - 1) / EMOTE_COLS;
 			Point<int16_t> ep = emoticon_origin();
 			Point<int16_t> edim(EMOTE_COLS * EMOTE_CELL + EMOTE_PAD * 2,
 			                    rows * EMOTE_CELL + EMOTE_PAD * 2);
