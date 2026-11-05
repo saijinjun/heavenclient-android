@@ -83,6 +83,15 @@ namespace ms
 			return keyboard.get_maple_mapping(keyboard.get_touch_slot_key(index));
 		}
 
+		// Potions, fruit and food, by the item id's family. The stat boosting
+		// potions (2002) are left out, as holding the button would waste them.
+		bool restores_hp_or_mp(int32_t itemid)
+		{
+			int32_t family = itemid / 1000;
+
+			return family == 2000 || family == 2001 || family == 2010 || family == 2020;
+		}
+
 		const Texture* slot_icon(const Keyboard::Mapping& mapping)
 		{
 			if (mapping.action == 0)
@@ -681,7 +690,10 @@ namespace ms
 					held_slots[action.id] = action.pressed;
 
 					if (action.pressed)
+					{
 						slot_repeat_tick = SDL_GetTicks();
+						potion_repeat_tick = slot_repeat_tick;
+					}
 				}
 
 				// Whatever the player put on the slot: a skill, a potion.
@@ -1033,20 +1045,31 @@ namespace ms
 	{
 		// A held key repeats an attack skill on a keyboard; a finger held on
 		// a quick slot sends one press. Keep attacking while it stays down,
-		// as soon as the last attack has finished.
+		// as soon as the last attack has finished. Potions keep going too, more
+		// slowly, and jump hops again on landing.
 		constexpr uint32_t REPEAT_MS = 100;
+		constexpr uint32_t POTION_REPEAT_MS = 500;
+		constexpr uint32_t JUMP_REPEAT_MS = 200;
 		uint32_t now = SDL_GetTicks();
 
-		if (now - slot_repeat_tick < REPEAT_MS)
-			return;
+		if (!touch.is_jump_held())
+			jump_repeat_tick = now;
 
 		if (!UI::get().in_game() || UI::get().in_mobile_panel() || UI::get().has_focused_textfield())
 			return;
 
-		const Player& player = Stage::get().get_player();
+		Player& player = Stage::get().get_player();
 
-		if (!player.can_attack())
-			return;
+		// Not with down held, where jump drops through the platform instead
+		if (now - jump_repeat_tick >= JUMP_REPEAT_MS && player.get_phobj().onground
+			&& !player.is_climbing() && !player.is_sitting() && !player.is_key_down(KeyAction::Id::DOWN))
+		{
+			jump_repeat_tick = now;
+			UI::get().send_action(KeyType::Id::ACTION, KeyAction::Id::JUMP, true);
+		}
+
+		bool attack_ready = now - slot_repeat_tick >= REPEAT_MS && player.can_attack();
+		bool potion_ready = now - potion_repeat_tick >= POTION_REPEAT_MS;
 
 		for (uint8_t slot = 0; slot < TouchControls::NUM_SLOTS; slot++)
 		{
@@ -1055,13 +1078,22 @@ namespace ms
 
 			Keyboard::Mapping mapping = slot_mapping(slot);
 
-			// Buffs and potions are one press each
-			if (mapping.type != KeyType::Id::SKILL || mapping.action == 0 || !SkillData::get(mapping.action).is_attack())
+			if (mapping.action == 0)
 				continue;
 
-			slot_repeat_tick = now;
-			UI::get().send_action(KeyType::Id::SKILL, mapping.action, true);
-			break;
+			// Buffs, scrolls and other items are one press each
+			if (mapping.type == KeyType::Id::SKILL && attack_ready && SkillData::get(mapping.action).is_attack())
+			{
+				attack_ready = false;
+				slot_repeat_tick = now;
+				UI::get().send_action(KeyType::Id::SKILL, mapping.action, true);
+			}
+			else if (mapping.type == KeyType::Id::ITEM && potion_ready && restores_hp_or_mp(mapping.action))
+			{
+				potion_ready = false;
+				potion_repeat_tick = now;
+				UI::get().send_action(KeyType::Id::ITEM, mapping.action, true);
+			}
 		}
 	}
 

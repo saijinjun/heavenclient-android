@@ -93,6 +93,7 @@ namespace ms
 		void set_time(uint32_t milliseconds);
 		// Empty slots are drawn faintly and ignore touches.
 		void set_slot_filled(uint8_t slot, bool filled);
+		bool is_jump_held() const { return buttons[JUMP]; }
 		// What a filled slot shows besides its icon: how many of its item
 		// are left (negative for none, e.g. a skill), and whether its skill
 		// is cooling down.
