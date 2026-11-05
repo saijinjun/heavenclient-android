@@ -32,6 +32,7 @@
 #include "../../Character/Look/EquipSlot.h"
 #include "../../Character/MapleStat.h"
 #include "../../IO/UITypes/UICharSelect.h"
+#include "../../IO/UITypes/UIQuestHelper.h"
 
 namespace ms
 {
@@ -54,6 +55,10 @@ namespace ms
 #endif
 
 				Stage::get().load(mapid, portalid);
+
+				// The Quest Helper says "(here)" for monsters and NPCs on this map
+				if (auto helper = UI::get().get_element<UIQuestHelper>())
+					helper->refresh_all();
 
 				UI::get().enable();
 				Timer::get().start();

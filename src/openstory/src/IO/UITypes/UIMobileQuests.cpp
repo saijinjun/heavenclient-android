@@ -121,6 +121,19 @@ namespace ms
 			tab = AVAILABLE;
 	}
 
+	void UIMobileQuests::show_quest(int16_t id)
+	{
+		if (questlog.get_started().count(id))
+			tab = IN_PROGRESS;
+		else if (questlog.get_completed().count(id))
+			tab = DONE;
+		else
+			tab = AVAILABLE;
+
+		load();
+		select(id);
+	}
+
 	UIMobileQuests::Layout UIMobileQuests::layout() const
 	{
 		int16_t vw = Constants::Constants::get().get_viewwidth();
