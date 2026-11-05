@@ -39,6 +39,7 @@ namespace ms
 
 	private:
 		static constexpr size_t NUM_INFO = 6;
+		static constexpr size_t NUM_COMBAT = 10;
 		static constexpr size_t NUM_MAIN = 4;
 
 		struct Layout
@@ -46,6 +47,7 @@ namespace ms
 			Rectangle<int16_t> panel;
 			Rectangle<int16_t> close;
 			std::array<Rectangle<int16_t>, NUM_INFO> info;
+			std::array<Rectangle<int16_t>, NUM_COMBAT> combat;
 			std::array<Rectangle<int16_t>, NUM_MAIN> main;
 			std::array<Rectangle<int16_t>, NUM_MAIN> plus;
 			Rectangle<int16_t> ap;
@@ -63,6 +65,8 @@ namespace ms
 		Text header;
 		std::array<Text, NUM_INFO> info_names;
 		std::array<Text, NUM_INFO> info_values;
+		std::array<Text, NUM_COMBAT> combat_names;
+		std::array<Text, NUM_COMBAT> combat_values;
 		std::array<Text, NUM_MAIN> main_names;
 		std::array<Text, NUM_MAIN> main_values;
 		Text ap_text;

@@ -2335,6 +2335,13 @@ namespace ms
 		int16_t vh = Constants::Constants::get().get_viewheight();
 		int16_t w = std::min<int16_t>(HUD_DOCK_W, vw - 16);
 		int16_t x = (vw - w) / 2;
+#ifdef __ANDROID__
+		// The chat line runs along the same row from the left, and the jump
+		// button sits to the right, so slide over into the gap between them.
+		constexpr int16_t CHAT_LINE_RIGHT = 516;
+		constexpr int16_t JUMP_BUTTON_MARGIN = 272;
+		x = std::max<int16_t>(x, std::min<int16_t>(CHAT_LINE_RIGHT, vw - w - JUMP_BUTTON_MARGIN));
+#endif
 		int16_t y = vh - HUD_EXP_H - HUD_GAP - HUD_DOCK_H;
 
 		return Rectangle<int16_t>(Point<int16_t>(x, y), Point<int16_t>(x + w, y + HUD_DOCK_H));

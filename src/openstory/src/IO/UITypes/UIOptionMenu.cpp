@@ -483,6 +483,9 @@ namespace ms
 		slider_val[SL_HP_WARNING] = Setting<HPWarning>::get().load();
 		slider_val[SL_MP_WARNING] = Setting<MPWarning>::get().load();
 
+		check_val[CHK_MUTE_BGM] = Setting<BGMMuted>::get().load();
+		check_val[CHK_MUTE_SFX] = Setting<SFXMuted>::get().load();
+
 		// Resolution radio buttons (cosmetic only — does not change resolution)
 		check_val[CHK_RES_800] = false;
 		check_val[CHK_RES_1024] = true;
@@ -525,6 +528,8 @@ namespace ms
 		// Audio sliders
 		Setting<BGMVolume>::get().save(slider_val[SL_BGM]);
 		Setting<SFXVolume>::get().save(slider_val[SL_SFX]);
+		Setting<BGMMuted>::get().save(check_val[CHK_MUTE_BGM]);
+		Setting<SFXMuted>::get().save(check_val[CHK_MUTE_SFX]);
 
 		// Other sliders
 		Setting<GraphicsQuality>::get().save(slider_val[SL_GRAPHICS]);

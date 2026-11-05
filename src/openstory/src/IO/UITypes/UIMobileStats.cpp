@@ -23,7 +23,14 @@ namespace ms
 	namespace
 	{
 		const char* INFO_NAMES[] = { "HP", "MP", "EXP", "Fame", "Damage", "Job" };
+		const char* COMBAT_NAMES[] = { "Attack", "Magic", "Defense", "Magic def", "Accuracy", "Avoid", "Speed", "Jump", "Critical", "Stance" };
 		const char* MAIN_NAMES[] = { "STR", "DEX", "INT", "LUK" };
+
+		// The rows that show a plain total, with any buff beside it
+		const EquipStat::Id COMBAT_TOTALS[] = {
+			EquipStat::Id::WATK, EquipStat::Id::MAGIC, EquipStat::Id::WDEF,
+			EquipStat::Id::MDEF, EquipStat::Id::ACC, EquipStat::Id::AVOID
+		};
 
 		const MapleStat::Id MAIN_STATS[] = {
 			MapleStat::Id::STR, MapleStat::Id::DEX, MapleStat::Id::INT, MapleStat::Id::LUK
@@ -35,6 +42,7 @@ namespace ms
 
 		constexpr int16_t MARGIN = 16;
 		constexpr int16_t ROW_H = 40;
+		constexpr int16_t COMBAT_STEP = 32;
 
 		Rectangle<int16_t> rect(int16_t x, int16_t y, int16_t w, int16_t h)
 		{
@@ -59,6 +67,12 @@ namespace ms
 			info_values[i] = Text(Text::Font::A13B, Text::Alignment::RIGHT, Color::Name::WHITE);
 		}
 
+		for (size_t i = 0; i < NUM_COMBAT; i++)
+		{
+			combat_names[i] = Text(Text::Font::A13B, Text::Alignment::LEFT, Color::Name::SILVERCHALICE, COMBAT_NAMES[i]);
+			combat_values[i] = Text(Text::Font::A13B, Text::Alignment::RIGHT, Color::Name::WHITE);
+		}
+
 		for (size_t i = 0; i < NUM_MAIN; i++)
 		{
 			main_names[i] = Text(Text::Font::A15B, Text::Alignment::LEFT, Color::Name::HUD_EXP, MAIN_NAMES[i]);
@@ -79,8 +93,8 @@ namespace ms
 		int16_t vh = Constants::Constants::get().get_viewheight();
 
 		Layout l;
-		int16_t pw = std::min<int16_t>(vw - 24, 640);
-		int16_t ph = std::min<int16_t>(vh - 24, 400);
+		int16_t pw = std::min<int16_t>(vw - 24, 820);
+		int16_t ph = std::min<int16_t>(vh - 24, 416);
 		int16_t px = (vw - pw) / 2;
 		int16_t py = (vh - ph) / 2;
 
@@ -88,12 +102,16 @@ namespace ms
 		l.close = rect(px + pw - 40, py + 4, 34, 34);
 
 		int16_t top = py + 72;
-		int16_t col_w = (pw - MARGIN * 3) / 2;
+		int16_t col_w = (pw - MARGIN * 4) / 3;
 		int16_t left = px + MARGIN;
-		int16_t right = left + col_w + MARGIN;
+		int16_t middle = left + col_w + MARGIN;
+		int16_t right = middle + col_w + MARGIN;
 
 		for (size_t i = 0; i < NUM_INFO; i++)
 			l.info[i] = rect(left, top + static_cast<int16_t>(i) * (ROW_H - 6), col_w, ROW_H - 10);
+
+		for (size_t i = 0; i < NUM_COMBAT; i++)
+			l.combat[i] = rect(middle, top + static_cast<int16_t>(i) * COMBAT_STEP, col_w, COMBAT_STEP - 4);
 
 		l.ap = rect(right, top, col_w, ROW_H - 10);
 
@@ -126,6 +144,22 @@ namespace ms
 		set_text(info_values[3], std::to_string(stats.get_honor()));
 		set_text(info_values[4], std::to_string(stats.get_mindamage()) + " ~ " + std::to_string(stats.get_maxdamage()));
 		set_text(info_values[5], stats.get_jobname());
+
+		for (size_t i = 0; i < 6; i++)
+		{
+			int32_t delta = stats.get_buffdelta(COMBAT_TOTALS[i]);
+			std::string value = std::to_string(stats.get_total(COMBAT_TOTALS[i]));
+
+			if (delta != 0)
+				value += "  (" + std::string(delta > 0 ? "+" : "") + std::to_string(delta) + ")";
+
+			set_text(combat_values[i], value);
+		}
+
+		set_text(combat_values[6], std::to_string(stats.get_total(EquipStat::Id::SPEED)) + "%");
+		set_text(combat_values[7], std::to_string(stats.get_total(EquipStat::Id::JUMP)) + "%");
+		set_text(combat_values[8], std::to_string(static_cast<int32_t>(stats.get_critical() * 100)) + "%");
+		set_text(combat_values[9], std::to_string(static_cast<int32_t>(stats.get_stance() * 100)) + "%");
 
 		for (size_t i = 0; i < NUM_MAIN; i++)
 		{
@@ -166,6 +200,14 @@ namespace ms
 			classic::row(r.get_left_top(), r.width(), r.height(), false);
 			info_names[i].draw(Point<int16_t>(r.left() + 10, classic::text_y(info_names[i], r.top() + r.height() / 2)));
 			info_values[i].draw(Point<int16_t>(r.right() - 10, classic::text_y(info_values[i], r.top() + r.height() / 2)));
+		}
+
+		for (size_t i = 0; i < NUM_COMBAT; i++)
+		{
+			const Rectangle<int16_t>& r = l.combat[i];
+			classic::row(r.get_left_top(), r.width(), r.height(), false);
+			combat_names[i].draw(Point<int16_t>(r.left() + 10, classic::text_y(combat_names[i], r.top() + r.height() / 2)));
+			combat_values[i].draw(Point<int16_t>(r.right() - 10, classic::text_y(combat_values[i], r.top() + r.height() / 2)));
 		}
 
 		bool has_ap = stats.get_stat(MapleStat::Id::AP) > 0;

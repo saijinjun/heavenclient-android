@@ -17,6 +17,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "../Components/TapGesture.h"
 #include "../UIDragElement.h"
 
 #include "../../Character/Char.h"
@@ -117,6 +118,36 @@ namespace ms
 		bool send_icon(const Icon& icon, Point<int16_t> cursorpos) override;
 
 	private:
+#ifdef __ANDROID__
+		static constexpr int16_t PHONE_W = 440;
+		static constexpr int16_t PHONE_H = 304;
+		static constexpr size_t PHONE_BUTTONS = 8;
+		static constexpr size_t PHONE_ROWS = 5;
+		static constexpr size_t PHONE_TABS = 5;
+
+		void draw_phone() const;
+		void draw_phone_details() const;
+		void draw_phone_bot() const;
+		Cursor::State phone_tap(Point<int16_t> at);
+		Rectangle<int16_t> phone_close() const;
+		Rectangle<int16_t> phone_button(size_t index) const;
+		Rectangle<int16_t> phone_tab(size_t index) const;
+		Rectangle<int16_t> phone_slot(int16_t index) const;
+		Point<int16_t> phone_icon_pos(int16_t index) const;
+		int16_t phone_slot_at(Point<int16_t> cursorpos) const;
+		uint16_t phone_button_id(size_t index) const;
+		bool phone_button_enabled(size_t index) const;
+		bool phone_button_lit(size_t index) const;
+
+		TapGesture gesture;
+		Text phone_title;
+		Text phone_bot_title;
+		Text phone_wish_label;
+		Text phone_button_labels[PHONE_BUTTONS];
+		Text phone_row_labels[PHONE_ROWS];
+		Text phone_tab_labels[PHONE_TABS];
+#endif
+
 		void draw_bot_inventory(float inter) const;
 		void draw_bot_item_grid(const std::vector<BotItem>& items, int16_t start_y) const;
 		void load_bot_icons();

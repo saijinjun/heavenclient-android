@@ -22,7 +22,9 @@
 #include "../Components/TwoSpriteButton.h"
 #include "UIChatBar.h"
 
+#include "../../Constants.h"
 #include "../../Gameplay/Stage.h"
+#include "../../Graphics/ClassicStyle.h"
 
 #include "../../Net/Packets/PlayerInteractionPackets.h"
 #include "../../Net/Packets/TradePackets.h"
@@ -109,11 +111,61 @@ namespace ms
 		bot_backgrnd3 = Item["productionBackgrnd3"];
 		bot_slot_disabled = Item["disabled"];
 
+#ifdef __ANDROID__
+		// Drawn and tapped by hand, in the navy style of the phone panels
+		sprites.clear();
+		buttons.clear();
+
+		dimension = Point<int16_t>(PHONE_W, PHONE_H);
+		charinfo_dim = dimension;
+		dragarea = Point<int16_t>(0, 0);
+		position = Point<int16_t>(
+			(Constants::Constants::get().get_viewwidth() - PHONE_W) / 2,
+			(Constants::Constants::get().get_viewheight() - PHONE_H) / 2);
+
+		job.change_color(Color::Name::WHITE);
+		level.change_color(Color::Name::WHITE);
+		fame.change_color(Color::Name::WHITE);
+		guild.change_color(Color::Name::WHITE);
+		alliance.change_color(Color::Name::WHITE);
+		panel_label.change_color(Color::Name::WHITE);
+		bot_level_label.change_color(Color::Name::WHITE);
+		bot_meso_label.change_color(Color::Name::HUD_EXP);
+
+		phone_title = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Character Info");
+		phone_bot_title = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Items");
+		phone_wish_label = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, "Wish list");
+
+		const char* button_names[PHONE_BUTTONS] = { "Party", "Trade", "Guild", "Items", "Pet", "Mount", "Fame +", "Fame -" };
+
+		for (size_t i = 0; i < PHONE_BUTTONS; i++)
+			phone_button_labels[i] = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, button_names[i]);
+
+		const char* row_names[PHONE_ROWS] = { "Level", "Job", "Fame", "Guild", "Alliance" };
+
+		for (size_t i = 0; i < PHONE_ROWS; i++)
+			phone_row_labels[i] = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::HUD_EXP, row_names[i]);
+
+		const char* tab_names[PHONE_TABS] = { "Equip", "Use", "Set-up", "Etc", "Worn" };
+
+		for (size_t i = 0; i < PHONE_TABS; i++)
+			phone_tab_labels[i] = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, tab_names[i]);
+#endif
+
 		CharInfoRequestPacket(cid).dispatch();
 	}
 
 	void UICharInfo::draw(float inter) const
 	{
+#ifdef __ANDROID__
+		if (bot_tab_active && bot_inventory.is_valid())
+			draw_phone_bot();
+		else
+			draw_phone();
+
+		return;
+#endif
+
 		if (bot_tab_active && bot_inventory.is_valid())
 		{
 			draw_bot_inventory(inter);
@@ -494,6 +546,7 @@ namespace ms
 		bot_inventory = std::move(data);
 		bot_scroll_offset = 0;
 
+#ifndef __ANDROID__
 		// Create tab buttons if they don't exist
 		if (!buttons.count(Buttons::BtBotEquip))
 		{
@@ -508,11 +561,14 @@ namespace ms
 			buttons[Buttons::BtBotEtc] = std::make_unique<TwoSpriteButton>(tabdis["2"], taben["2"]);
 			buttons[Buttons::BtBotEquipped] = std::make_unique<TwoSpriteButton>(tabdis["4"], taben["4"]);
 		}
+#endif
 
 		bot_sub_tab = 4;
 		bot_tab_active = true;
+#ifndef __ANDROID__
 		dimension = bot_backgrnd.get_dimensions();
 		dragarea = Point<int16_t>(dimension.x(), 20);
+#endif
 
 		bot_name_label.change_text(bot_inventory.name);
 		bot_level_label.change_text("Lv. " + std::to_string(bot_inventory.level));
@@ -568,6 +624,38 @@ namespace ms
 
 	Cursor::State UICharInfo::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
+#ifdef __ANDROID__
+		if (bot_tab_active && bot_inventory.is_valid())
+		{
+			int16_t slot_index = phone_slot_at(cursorpos);
+
+			if (Icon* icon = get_bot_icon(slot_index))
+			{
+				if (clicked)
+				{
+					icon->start_drag(cursorpos - position - phone_icon_pos(slot_index));
+					UI::get().drag_icon(icon);
+					gesture.reset();
+
+					return Cursor::State::GRABBING;
+				}
+
+				const auto& items = bot_inventory.get_tab(bot_sub_tab);
+
+				if (slot_index < static_cast<int16_t>(items.size()))
+					UI::get().show_item(Tooltip::Parent::CHARINFO, items[slot_index].item_id);
+			}
+		}
+
+		// Act when the finger lifts where it landed
+		Point<int16_t> at;
+
+		if (!gesture.update(clicked, cursorpos, at))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+
+		return phone_tap(at);
+#endif
+
 		Cursor::State dstate = UIDragElement::send_cursor(clicked, cursorpos);
 
 		if (dragged)
@@ -697,9 +785,336 @@ namespace ms
 
 	void UICharInfo::remove_cursor()
 	{
+#ifdef __ANDROID__
+		gesture.reset();
+#endif
+
 		UIDragElement::remove_cursor();
 		UI::get().clear_tooltip(Tooltip::Parent::CHARINFO);
 	}
+
+#ifdef __ANDROID__
+	Rectangle<int16_t> UICharInfo::phone_close() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(PHONE_W - 36, 6);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(30, 30));
+	}
+
+	Rectangle<int16_t> UICharInfo::phone_button(size_t index) const
+	{
+		constexpr int16_t W = 98;
+		constexpr int16_t H = 34;
+		constexpr int16_t GAP = 8;
+
+		int16_t col = static_cast<int16_t>(index % 4);
+		int16_t row = static_cast<int16_t>(index / 4);
+		Point<int16_t> tl = position + Point<int16_t>(12 + col * (W + GAP), 216 + row * (H + GAP));
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(W, H));
+	}
+
+	Rectangle<int16_t> UICharInfo::phone_tab(size_t index) const
+	{
+		constexpr int16_t W = 78;
+		constexpr int16_t H = 30;
+		constexpr int16_t GAP = 6;
+
+		Point<int16_t> tl = position + Point<int16_t>(12 + static_cast<int16_t>(index) * (W + GAP), 40);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(W, H));
+	}
+
+	Rectangle<int16_t> UICharInfo::phone_slot(int16_t index) const
+	{
+		constexpr int16_t COLS = 8;
+		constexpr int16_t STEP = 46;
+		constexpr int16_t SIZE = 42;
+
+		Point<int16_t> tl = position + Point<int16_t>(36 + (index % COLS) * STEP, 76 + (index / COLS) * STEP);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(SIZE, SIZE));
+	}
+
+	// Where an item's icon draws in its slot, relative to the window
+	Point<int16_t> UICharInfo::phone_icon_pos(int16_t index) const
+	{
+		Rectangle<int16_t> slot = phone_slot(index);
+		Point<int16_t> at = slot.get_left_top() - position;
+		const auto& items = bot_inventory.get_tab(bot_sub_tab);
+
+		if (index < 0 || index >= static_cast<int16_t>(items.size()))
+			return at;
+
+		const Texture& texture = ItemData::get(items[index].item_id).get_icon(false);
+		Point<int16_t> dim = texture.get_dimensions();
+		Point<int16_t> origin = texture.get_origin();
+
+		return at + Point<int16_t>((slot.width() - dim.x()) / 2 + origin.x(), (slot.height() - dim.y()) / 2 + origin.y());
+	}
+
+	int16_t UICharInfo::phone_slot_at(Point<int16_t> cursorpos) const
+	{
+		for (int16_t i = 0; i < BOT_MAX_SLOTS; i++)
+			if (phone_slot(i).contains(cursorpos))
+				return i;
+
+		return -1;
+	}
+
+	uint16_t UICharInfo::phone_button_id(size_t index) const
+	{
+		const uint16_t ids[PHONE_BUTTONS] = {
+			Buttons::BtParty, Buttons::BtTrad, Buttons::BtGuild, Buttons::BtItem,
+			Buttons::BtPet, Buttons::BtRide, Buttons::BtPopUp, Buttons::BtPopDown
+		};
+
+		return ids[index];
+	}
+
+	bool UICharInfo::phone_button_enabled(size_t index) const
+	{
+		switch (phone_button_id(index))
+		{
+		case Buttons::BtParty:
+		case Buttons::BtTrad:
+		case Buttons::BtPopUp:
+		case Buttons::BtPopDown:
+			return target_char_id != Stage::get().get_player().get_oid();
+		case Buttons::BtPet:
+			return !pets_info.empty();
+		case Buttons::BtRide:
+			return has_mount;
+		default:
+			return true;
+		}
+	}
+
+	bool UICharInfo::phone_button_lit(size_t index) const
+	{
+		switch (phone_button_id(index))
+		{
+		case Buttons::BtPet:
+			return panel_mode == 1;
+		case Buttons::BtRide:
+			return panel_mode == 2;
+		case Buttons::BtItem:
+			return wish_open;
+		default:
+			return false;
+		}
+	}
+
+	void UICharInfo::draw_phone() const
+	{
+		classic::panel(position, PHONE_W, PHONE_H);
+		phone_title.draw(position + Point<int16_t>(PHONE_W / 2, 6));
+
+		Rectangle<int16_t> close = phone_close();
+
+		if (!classic::close_button(close.get_left_top(), close.width()))
+			classic::button(close.get_left_top(), close.width(), close.height());
+
+		// Portrait
+		classic::box(position.x() + 16, position.y() + 40, 136, 166, Color::Name::BLACK, 0.3f);
+
+		if (has_preview)
+			preview_look.draw(position + Point<int16_t>(84, 176), false, Stance::Id::STAND1, Expression::Id::DEFAULT);
+
+		name.draw(position + Point<int16_t>(84, 180));
+
+		// Info, or what the Pet, Mount or Wish list button opened
+		if (panel_mode != 0 || wish_open)
+		{
+			draw_phone_details();
+		}
+		else
+		{
+			const Text* values[PHONE_ROWS] = { &level, &job, &fame, &guild, &alliance };
+
+			for (size_t i = 0; i < PHONE_ROWS; i++)
+			{
+				Point<int16_t> at = position + Point<int16_t>(168, 44 + static_cast<int16_t>(i) * 32);
+
+				phone_row_labels[i].draw(at);
+
+				if (values[i]->get_text().empty())
+				{
+					panel_label.change_text("-");
+					panel_label.draw(at + Point<int16_t>(72, 0));
+				}
+				else
+				{
+					values[i]->draw(at + Point<int16_t>(72, 0));
+				}
+			}
+		}
+
+		bool shows_wish_list = !bot_inventory.is_valid();
+
+		for (size_t i = 0; i < PHONE_BUTTONS; i++)
+		{
+			Rectangle<int16_t> r = phone_button(i);
+			bool enabled = phone_button_enabled(i);
+
+			if (enabled)
+				classic::button(r.get_left_top(), r.width(), r.height(), phone_button_lit(i));
+			else
+				classic::cell(r.get_left_top(), r.width(), r.height(), false);
+
+			const Text& label = phone_button_id(i) == Buttons::BtItem && shows_wish_list ? phone_wish_label : phone_button_labels[i];
+			Point<int16_t> at(r.left() + r.width() / 2, classic::text_y(label, r.top() + r.height() / 2));
+
+			if (enabled)
+				classic::shadowed(label, at);
+			else
+				label.draw(DrawArgument(at, 0.4f));
+		}
+	}
+
+	void UICharInfo::draw_phone_details() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(168, 44);
+
+		auto line = [&](const std::string& text, int16_t x, int16_t y)
+		{
+			panel_label.change_text(text);
+			panel_label.draw(tl + Point<int16_t>(x, y));
+		};
+
+		auto icon = [&](int32_t itemid, int16_t y)
+		{
+			const ItemData& data = ItemData::get(itemid);
+
+			if (data.is_valid())
+			{
+				const Texture& texture = data.get_icon(false);
+				texture.draw(DrawArgument(tl + texture.get_origin() + Point<int16_t>(0, y)));
+			}
+		};
+
+		if (panel_mode == 1)
+		{
+			for (size_t i = 0; i < pets_info.size() && i < 3; i++)
+			{
+				const CharPetInfo& pet = pets_info[i];
+				int16_t y = static_cast<int16_t>(i) * 54;
+
+				icon(pet.itemid, y);
+				line(pet.name, 42, y);
+				line("Lv. " + std::to_string(pet.level) + "   Closeness " + std::to_string(pet.closeness) + "   Fullness " + std::to_string(pet.fullness), 42, y + 20);
+			}
+		}
+		else if (panel_mode == 2)
+		{
+			line("Mount level: " + std::to_string(mount_level), 0, 0);
+			line("Mount EXP: " + std::to_string(mount_exp), 0, 32);
+			line("Tiredness: " + std::to_string(mount_tired), 0, 64);
+		}
+		else if (wishlist.empty())
+		{
+			line("No wish list items.", 0, 0);
+		}
+		else
+		{
+			constexpr size_t SHOWN = 4;
+
+			for (size_t i = 0; i < wishlist.size() && i < SHOWN; i++)
+			{
+				const ItemData& data = ItemData::get(wishlist[i]);
+				int16_t y = static_cast<int16_t>(i) * 38;
+
+				icon(wishlist[i], y);
+				line(data.is_valid() ? data.get_name() : std::string("?"), 42, y + 8);
+			}
+
+			if (wishlist.size() > SHOWN)
+				line("+" + std::to_string(wishlist.size() - SHOWN) + " more", 0, 152);
+		}
+	}
+
+	void UICharInfo::draw_phone_bot() const
+	{
+		classic::panel(position, PHONE_W, PHONE_H);
+		phone_bot_title.draw(position + Point<int16_t>(PHONE_W / 2, 6));
+
+		Rectangle<int16_t> close = phone_close();
+
+		if (!classic::close_button(close.get_left_top(), close.width()))
+			classic::button(close.get_left_top(), close.width(), close.height());
+
+		for (size_t i = 0; i < PHONE_TABS; i++)
+		{
+			Rectangle<int16_t> r = phone_tab(i);
+
+			classic::tab(r.get_left_top(), r.width(), r.height(), static_cast<int8_t>(i) == bot_sub_tab);
+			phone_tab_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(phone_tab_labels[i], r.top() + r.height() / 2)));
+		}
+
+		for (int16_t i = 0; i < BOT_MAX_SLOTS; i++)
+		{
+			Rectangle<int16_t> r = phone_slot(i);
+
+			classic::slot(r.get_left_top(), r.width(), r.height(), false);
+
+			auto it = bot_icons.find(i);
+
+			if (it != bot_icons.end() && it->second)
+				it->second->draw(position + phone_icon_pos(i));
+		}
+
+		bot_name_label.draw(position + Point<int16_t>(36, 224));
+		bot_level_label.draw(position + Point<int16_t>(36, 246));
+		bot_meso_label.draw(position + Point<int16_t>(120, 246));
+	}
+
+	Cursor::State UICharInfo::phone_tap(Point<int16_t> at)
+	{
+		if (phone_close().contains(at))
+		{
+			button_pressed(Buttons::BtClose);
+			return Cursor::State::IDLE;
+		}
+
+		if (bot_tab_active && bot_inventory.is_valid())
+		{
+			for (size_t i = 0; i < PHONE_TABS; i++)
+			{
+				if (phone_tab(i).contains(at))
+				{
+					button_pressed(static_cast<uint16_t>(Buttons::BtBotEquip + i));
+					return Cursor::State::CLICKING;
+				}
+			}
+
+			return Cursor::State::IDLE;
+		}
+
+		for (size_t i = 0; i < PHONE_BUTTONS; i++)
+		{
+			if (!phone_button(i).contains(at) || !phone_button_enabled(i))
+				continue;
+
+			uint16_t id = phone_button_id(i);
+
+			// One thing at a time shows in the info column
+			if (id == Buttons::BtItem)
+				panel_mode = 0;
+			else if (id == Buttons::BtPet || id == Buttons::BtRide)
+				wish_open = false;
+
+			button_pressed(id);
+
+			// The desktop window grows for these; this one doesn't
+			dimension = Point<int16_t>(PHONE_W, PHONE_H);
+			dragarea = Point<int16_t>(0, 0);
+
+			return Cursor::State::CLICKING;
+		}
+
+		return Cursor::State::IDLE;
+	}
+#endif
 
 	// BotItemIcon implementation
 	UICharInfo::BotItemIcon::BotItemIcon(int32_t bid, int8_t it, int16_t s, int32_t iid, int16_t c, int8_t st)

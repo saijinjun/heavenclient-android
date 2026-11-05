@@ -413,6 +413,17 @@ namespace ms
 		SFXVolume() : ByteEntry("SFXVolume", "50") {}
 	};
 
+	// Muting keeps the volume above for when it is turned back on
+	struct BGMMuted : public Configuration::BoolEntry
+	{
+		BGMMuted() : BoolEntry("BGMMuted", "false") {}
+	};
+
+	struct SFXMuted : public Configuration::BoolEntry
+	{
+		SFXMuted() : BoolEntry("SFXMuted", "false") {}
+	};
+
 	// Whether to save the last used account name
 	struct SaveLogin : public Configuration::BoolEntry
 	{
@@ -530,7 +541,13 @@ namespace ms
 	// The default position of UIMiniMap
 	struct PosMINIMAP : public Configuration::PointEntry
 	{
+#ifdef __ANDROID__
+		// Below the scrolling notice, which otherwise runs over its title and
+		// buttons
+		PosMINIMAP() : PointEntry("PosMINIMAP", "(0, 24)") {}
+#else
 		PosMINIMAP() : PointEntry("PosMINIMAP", "(0, 0)") {}
+#endif
 	};
 
 	// The default position of UIShop

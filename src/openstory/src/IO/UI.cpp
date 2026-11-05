@@ -102,7 +102,11 @@ namespace ms
 			if (banner->is_active())
 				banner->draw(alpha);
 
+#ifndef __ANDROID__
+		// A finger is the pointer on a phone. A hand left where the last tap
+		// landed only covers what's under it.
 		cursor.draw(alpha);
+#endif
 	}
 
 	void UI::update()
@@ -180,10 +184,10 @@ namespace ms
 		if (focused)
 		{
 			// The window gained input focus
-			uint8_t sfxvolume = Setting<SFXVolume>::get().load();
+			uint8_t sfxvolume = Setting<SFXMuted>::get().load() ? 0 : Setting<SFXVolume>::get().load();
 			Sound::set_sfxvolume(sfxvolume);
 
-			uint8_t bgmvolume = Setting<BGMVolume>::get().load();
+			uint8_t bgmvolume = Setting<BGMMuted>::get().load() ? 0 : Setting<BGMVolume>::get().load();
 			Music::set_bgmvolume(bgmvolume);
 		}
 		else
@@ -356,6 +360,13 @@ namespace ms
 			return true;
 
 #ifdef __ANDROID__
+		// The world map takes taps ahead of the touch controls, so showing
+		// them on top of it only makes them look live.
+		auto worldmap = ui.get_element<UIWorldMap>();
+
+		if (worldmap && worldmap->is_active())
+			return true;
+
 		// The shop fills the screen on phones
 		auto shop = ui.get_element<UIShop>();
 
@@ -378,6 +389,12 @@ namespace ms
 		auto userlist = ui.get_element<UIMobileUserList>();
 
 		if (userlist && userlist->is_active())
+			return true;
+
+		// Options is a full window too, with nothing to steer behind it
+		auto options = ui.get_element<UIOptionMenu>();
+
+		if (options && options->is_active())
 			return true;
 #endif
 
