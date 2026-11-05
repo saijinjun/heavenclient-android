@@ -26,6 +26,7 @@
 #include "../Components/TapGesture.h"
 
 #include "../../Character/NameTagStyle.h"
+#include "../../Character/Look/CharAuras.h"
 #include "../../Character/Look/CharLook.h"
 #include "../../Data/ItemData.h"
 #include "../../Graphics/Animation.h"
@@ -200,7 +201,8 @@ namespace ms
 		int16_t selected_item;
 		CharLook preview_look;
 		// What the stage shows for an item you can't wear: a pet's
-		// standing animation, or the item's own icon drawn large
+		// standing animation (or a hired merchant beside you), or the
+		// item's own icon drawn large
 		Animation preview_pet;
 		bool preview_has_pet = false;
 		bool m_was_down = false;
@@ -330,10 +332,43 @@ namespace ms
 		mutable Text m_action;
 		mutable Text m_status;
 		Text m_hint;
+		Text m_jump_hint;
 		Text m_empty;
 		mutable int32_t m_shown = 0;
 		mutable std::map<std::pair<int32_t, int16_t>, Text> m_names;
 		mutable std::map<int32_t, Text> m_prices;
+
+		// What the try-on stage plays for items that are not clothes. Each is
+		// set by mobile_select and cleared when another item is picked.
+		void mobile_clear_preview();
+		// Rebuild the cash effect's animation when the stance changes, since
+		// many effects have their own walk and jump frames
+		void mobile_update_effect();
+
+		// Cash effects (501xxxx): Item/Cash/0501.img/<id>/effect
+		nl::node m_effect_src;
+		std::string m_effect_stance;
+		Animation m_effect;
+		bool m_effect_behind = false;
+		// Equip effects (effect rings and the like), as worn in game
+		CharAuras m_auras;
+		// Throwing star skins (502xxxx): the star flies across the stage
+		// from your hand and bursts, then comes round again
+		Animation m_star_bullet;
+		Animation m_star_hit;
+		bool m_has_star = false;
+		bool m_star_hit_done = false;
+		uint16_t m_star_ticks = 0;
+		// In 8 ms update steps: 0.5 s in flight, then the burst and a
+		// pause until the next throw 1.6 s later
+		static constexpr uint16_t STAR_FLIGHT = 62;
+		static constexpr uint16_t STAR_CYCLE = 200;
+		// Emotion items (516xxxx) keep replaying their face
+		Expression::Id m_emote = Expression::Id::DEFAULT;
+		uint16_t m_emote_ticks = 0;
+		// A ring's own sample picture, for a label or quote ring whose plate
+		// or balloon art this client does not have
+		Texture m_sample;
 #endif
 	};
 }

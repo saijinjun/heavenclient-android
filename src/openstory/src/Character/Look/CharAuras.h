@@ -58,6 +58,9 @@ namespace ms
 		// Refresh equip-driven effects: effect-ring auras, the GM-hat set
 		// effect and the declared info/effect auras. Call on equip change.
 		void refresh(const CharEquips& equips);
+		// The Effect.nx node a data path such as "Effect/CharacterEff.img/1112900"
+		// names, or an empty node
+		static nl::node resolve_effect_path(const std::string& path);
 
 		void update(double hspeed, double vspeed);
 		// Aura layers that sit behind / in front of the character. A flat

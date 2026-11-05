@@ -51,6 +51,31 @@ namespace ms
 		}
 	}
 
+	nl::node CharAuras::resolve_effect_path(const std::string& path)
+	{
+#ifdef USE_NX
+		// Only Effect.nx paths are used by equips; each later piece is a child
+		size_t start = path.find('/');
+
+		if (start == std::string::npos || path.substr(0, start) != "Effect")
+			return {};
+
+		nl::node node = nl::nx::effect;
+
+		while (start != std::string::npos && node)
+		{
+			size_t next = path.find('/', start + 1);
+			node = node[path.substr(start + 1, next == std::string::npos ? std::string::npos : next - start - 1)];
+			start = next;
+		}
+
+		return node;
+#else
+		(void)path;
+		return {};
+#endif
+	}
+
 	void CharAuras::set_item_effect(int32_t itemid)
 	{
 		item_effect_id = itemid;
@@ -157,6 +182,12 @@ namespace ms
 				effnode = (slash != std::string::npos)
 					? nl::nx::effect[name.substr(0, slash) + ".img"][name.substr(slash + 1)]
 					: nl::nx::effect["CharEff.img"][name];
+			}
+			else if (eff["path"].data_type() == nl::node::type::string)
+			{
+				// Classic effect rings point at shared art instead, as
+				// "Effect/CharacterEff.img/1112900"
+				effnode = resolve_effect_path(eff["path"]);
 			}
 			else
 			{
