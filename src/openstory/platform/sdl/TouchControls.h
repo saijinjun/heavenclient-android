@@ -50,6 +50,8 @@ namespace ms
 			ACTION,
 			MENU,
 			SLOT,
+			// Flips the quick slots to their other page.
+			SLOT_PAGE,
 			// Opens the chat field, or sends it away when it is open.
 			CHAT,
 			// Opens the server's solo menu (the @solo command).
@@ -123,6 +125,8 @@ namespace ms
 		// broken parts of the text are ignored.
 		std::string get_layout() const;
 		void set_layout(const std::string& text);
+		// The page of quick slots showing, 0 or 1, for the page button
+		void set_slot_page(uint8_t page);
 		// True once after the layout editor changed something, so the
 		// window knows to save it.
 		bool take_layout_changed();
@@ -143,7 +147,7 @@ namespace ms
 			MENU_QUESTS,
 			MENU_MAP,
 			JUMP_DOWN,
-			JUMP_ATTACK,
+			SLOT_PAGE,
 			MENU_LAYOUT,
 			MENU_CHAT,
 			MENU_SOLO,
@@ -212,6 +216,7 @@ namespace ms
 		std::array<bool, NUM_SLOTS> slots_filled = {};
 		std::array<int32_t, NUM_SLOTS> slot_counts = { -1, -1, -1, -1, -1, -1 };
 		std::array<bool, NUM_SLOTS> slots_cooling = {};
+		uint8_t slot_page = 0;
 		// Where the stick sits while a thumb holds it, and the thumb itself.
 		float stick_x = 0.0f;
 		float stick_y = 0.0f;

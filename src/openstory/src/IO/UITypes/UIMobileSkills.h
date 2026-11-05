@@ -57,6 +57,7 @@ namespace ms
 			Rectangle<int16_t> list;
 			Rectangle<int16_t> detail;
 			std::array<Rectangle<int16_t>, NUM_SLOTS> slots;
+			Rectangle<int16_t> slot_page;
 			int16_t rows;
 		};
 
@@ -107,6 +108,9 @@ namespace ms
 		Text empty_hint;
 		Text slot_hint;
 		std::array<Text, NUM_SLOTS> slot_labels;
+		std::array<Text, 2> page_labels;
+		// Which page of quick slots the buttons put a skill on
+		size_t slot_page = 0;
 		mutable Text name;
 		mutable Text level_text;
 		mutable Text desc;

@@ -273,6 +273,15 @@ namespace ms
 		}
 	}
 
+	uint8_t Keyboard::get_touch_slot_key(size_t slot) const
+	{
+		// The quickslot bar's keys, then number row keys free in the default
+		// key map, so a binding is kept on the server like any other
+		constexpr std::array<uint8_t, NUM_TOUCH_SLOTS - NUM_QUICKSLOT_KEYS> EXTRA = { 8, 9, 10, 11 };
+
+		return slot < NUM_QUICKSLOT_KEYS ? quickslotkeys[slot] : EXTRA[slot - NUM_QUICKSLOT_KEYS];
+	}
+
 	void Keyboard::assign(uint8_t key, uint8_t tid, int32_t action)
 	{
 		if (KeyType::Id type = KeyType::typebyid(tid))
