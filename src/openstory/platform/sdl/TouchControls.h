@@ -56,7 +56,8 @@ namespace ms
 			CHAT,
 			// Opens the server's solo menu (the @solo command).
 			SOLO_MENU,
-			OPTIONS
+			OPTIONS,
+			LOOT_TOGGLE
 		};
 
 		struct Action
@@ -98,6 +99,8 @@ namespace ms
 		// are left (negative for none, e.g. a skill), and whether its skill
 		// is cooling down.
 		void set_slot_info(uint8_t slot, int32_t count, bool cooling);
+		// Walk-over looting: the loot button is drawn faintly while it is off
+		void set_auto_loot(bool on);
 
 		// Each returns true when the finger belongs to a control, so the
 		// caller must not also treat it as a tap on the game.
@@ -214,6 +217,7 @@ namespace ms
 		std::array<bool, NUM_CONTROLS> buttons = {};
 		std::array<uint32_t, NUM_CONTROLS> pressed_at = {};
 		uint32_t now = 0;
+		bool auto_loot = true;
 		std::array<bool, NUM_SLOTS> slots_filled = {};
 		std::array<int32_t, NUM_SLOTS> slot_counts = { -1, -1, -1, -1, -1, -1 };
 		std::array<bool, NUM_SLOTS> slots_cooling = {};

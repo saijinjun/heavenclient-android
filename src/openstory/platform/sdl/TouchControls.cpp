@@ -141,6 +141,11 @@ namespace ms
 		now = milliseconds;
 	}
 
+	void TouchControls::set_auto_loot(bool on)
+	{
+		auto_loot = on;
+	}
+
 	void TouchControls::set_slot_filled(uint8_t slot, bool filled)
 	{
 		if (slot < NUM_SLOTS)
@@ -362,6 +367,15 @@ namespace ms
 			else
 			{
 				set_button(control, false, actions);
+
+				// A quick tap on loot switches walk-over looting. Holding it
+				// just picks up, as the key does, for when that is off.
+				constexpr uint32_t LOOT_TAP_MS = 350;
+
+				if (control == PICKUP && pressed_at[PICKUP] != 0 && now - pressed_at[PICKUP] < LOOT_TAP_MS)
+				{
+					actions.push_back({ Output::LOOT_TOGGLE, 0, true });
+				}
 			}
 		}
 
@@ -370,6 +384,9 @@ namespace ms
 
 	void TouchControls::release_all(std::vector<Action>& actions)
 	{
+		// Being let go of here is not a tap
+		pressed_at[PICKUP] = 0;
+
 		while (!fingers.empty())
 		{
 			finger_up(fingers.begin()->first, actions);
@@ -556,7 +573,7 @@ namespace ms
 			Circle circle = area(control);
 			bool pressed = buttons[control];
 			bool slot = control >= SLOT0 && control <= SLOT_LAST;
-			bool empty = slot && !slots_filled[control - SLOT0];
+			bool empty = (slot && !slots_filled[control - SLOT0]) || (control == PICKUP && !auto_loot);
 			const Place& look = PLACES[control];
 
 			float half = circle.radius * (pressed ? 0.93f : 1.0f);
@@ -638,7 +655,7 @@ namespace ms
 			}
 			else if (look.icon < NUM_SPRITES)
 			{
-				sprite(look.icon, circle.x, circle.y, half * 0.6f, 1.0f, 1.0f, 1.0f, 0.95f);
+				sprite(look.icon, circle.x, circle.y, half * 0.6f, 1.0f, 1.0f, 1.0f, empty ? 0.4f : 0.95f);
 			}
 		}
 
