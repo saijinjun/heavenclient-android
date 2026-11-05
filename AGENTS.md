@@ -124,3 +124,13 @@ To stop everything:
 
 ## Documentation
 * Check `docs/ms-network-protocol.md` for the network protocol.
+
+## Pull requests and merging
+
+- `n150/ci` (CI on nexus-server) is the merge gate, and branch protection requires it. The GitHub Actions workflows are disabled while the account's billing lock lasts.
+- Summer's rule (2026-11-05): merge your own PR once `n150/ci` is green on its head. GitHub refuses the merge until then. Check all of a batch's PRs together when the batch should be done, and don't schedule routines only to check CI.
+- Use REST: `gh api -X PUT repos/saijinjun/heavenclient-android/pulls/<n>/merge -f merge_method=merge`. Don't use `gh pr merge --auto`: the cloud GitHub proxy rejects `gh pr` commands because they use GraphQL.
+- If the permission check blocks a merge, don't look for another route. List the PR and its `n150/ci` state for Summer.
+- Leave a PR open and name it for Summer when CI can't judge it, such as a visual change that needs a playtest.
+- n150 retries a network failure once by itself, so don't merge main in or push just to re-run it.
+- Group small fixes into one PR per batch: each PR is about 18 minutes of CI.

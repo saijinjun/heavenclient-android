@@ -264,6 +264,7 @@ namespace ms
 			return;
 
 		combat.update();
+		HiredMerchants::get().settle(physics);
 		HiredMerchants::get().update();
 
 		petai.update(player, drops);

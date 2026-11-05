@@ -71,12 +71,11 @@ namespace ms
 	void Reactor::draw(double viewx, double viewy, float alpha) const
 	{
 		Point<int16_t> absp = phobj.get_absolute(viewx, viewy, alpha);
-		Point<int16_t> shift = Point<int16_t>(0, normal.get_origin().y());
 
 		if (animation_ended)
 		{
 			// Default/idle animation (e.g. horntail reactor floating)
-			normal.draw(absp - shift, alpha);
+			normal.draw(absp, alpha);
 		}
 		else
 		{
@@ -84,9 +83,9 @@ namespace ms
 			// would make animations.at(state - 1) throw and crash.
 			auto it = animations.find(state - 1);
 			if (it != animations.end())
-				it->second.draw(DrawArgument(absp - shift), 1.0);
+				it->second.draw(DrawArgument(absp), 1.0);
 			else
-				normal.draw(absp - shift, alpha);
+				normal.draw(absp, alpha);
 		}
 	}
 

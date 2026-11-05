@@ -27,6 +27,7 @@
 #include "../../Constants.h"
 #include "../../Data/ItemData.h"
 #include "../../Gameplay/Stage.h"
+#include "../../Util/Misc.h"
 
 #include <algorithm>
 #include <sstream>
@@ -820,6 +821,36 @@ namespace ms
 		// (drag-and-drop from quest log / track button).
 	}
 
+	namespace
+	{
+		// Whether a monster ("m") or NPC ("n") with this id is placed on the
+		// map the player is on, from the map's own life list.
+		bool on_this_map(const char* type, int32_t id)
+		{
+			nl::node life = NxHelper::Map::get_map_node_name(Stage::get().get_mapid())["life"];
+
+			for (auto entry : life)
+			{
+				if (entry["type"].get_string() != type)
+					continue;
+
+				std::string sid = entry["id"].get_string();
+				int32_t lid = sid.empty() ? static_cast<int32_t>(entry["id"].get_integer()) : 0;
+
+				if (!sid.empty())
+				{
+					try { lid = std::stoi(sid); }
+					catch (...) { continue; }
+				}
+
+				if (lid == id)
+					return true;
+			}
+
+			return false;
+		}
+	}
+
 	void UIQuestHelper::refresh_quest_info(TrackedQuest& tq)
 	{
 		tq.requirements.clear();
@@ -908,8 +939,12 @@ namespace ms
 			if (mob_name.empty())
 				mob_name = "Monster " + std::to_string(mobid);
 
-			std::string line = mob_name + " " + std::to_string(killed) + "/" + std::to_string(count);
 			bool done = killed >= count;
+			std::string line = mob_name + " " + std::to_string(killed) + "/" + std::to_string(count);
+
+			// Say when they live right here, so the player knows to hunt now
+			if (!done && on_this_map("m", mobid))
+				line += " (here)";
 			Color::Name color = done ? Color::Name::LIGHTGREY : Color::Name::WHITE;
 
 			tq.requirements.push_back(
@@ -919,18 +954,27 @@ namespace ms
 			mob_idx++;
 		}
 
-		// NPC requirement
+		// Who to hand it in to. That step is "done" once everything else is,
+		// so the entry turns into "Ready! Talk to ..." instead of never
+		// counting as complete (the old line was always left unchecked).
 		int32_t end_npc = end_check["npc"].get_integer();
 		if (end_npc > 0)
 		{
 			std::string npc_name = nl::nx::string["Npc.img"][std::to_string(end_npc)]["name"].get_string();
 			if (!npc_name.empty())
 			{
+				bool rest_done = std::all_of(tq.requirements_complete.begin(), tq.requirements_complete.end(),
+					[](bool c) { return c; });
+				std::string where = on_this_map("n", end_npc) ? " (here)" : "";
+				std::string line = rest_done
+					? "Ready! Talk to " + npc_name + where
+					: "Then talk to " + npc_name + where;
+
 				tq.requirements.push_back(
-					Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::WHITE, "Talk to " + npc_name, 145, false)
+					Text(Text::Font::A11B, Text::Alignment::LEFT,
+						rest_done ? Color::Name::YELLOW : Color::Name::WHITE, line, 145, false)
 				);
-				// Can't track NPC-talked state client-side without server flag; leave unchecked.
-				tq.requirements_complete.push_back(false);
+				tq.requirements_complete.push_back(rest_done);
 			}
 		}
 

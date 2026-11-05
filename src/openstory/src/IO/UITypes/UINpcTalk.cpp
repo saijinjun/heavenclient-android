@@ -43,6 +43,71 @@
 
 namespace ms
 {
+	namespace
+	{
+		Texture option_icon(char code, const std::string& id_str)
+		{
+			int32_t id = 0;
+
+			try { id = std::stoi(id_str); }
+			catch (...) { return Texture(); }
+
+			if (code == 'i' || code == 'v')
+				return ItemData::get(id).get_icon(false);
+
+			std::string job = std::to_string(id / 10000);
+
+			while (job.size() < 3)
+				job.insert(0, 1, '0');
+
+			nl::node node = nl::nx::skill[job + ".img"]["skill"][id_str]["icon"];
+
+			return node ? Texture(node) : Texture();
+		}
+
+		// Takes every icon code out of an option's text, and returns the
+		// picture of the first item or skill among them
+		Texture take_option_icon(std::string& option)
+		{
+			Texture icon;
+			size_t pos = 0;
+
+			while ((pos = option.find('#', pos)) != std::string::npos && pos + 1 < option.size())
+			{
+				char code = option[pos + 1];
+				size_t end = option.find('#', pos + 2);
+				bool is_icon = code == 'i' || code == 'v' || code == 's' || code == 'q' || code == 'f';
+				bool digits = end != std::string::npos && end > pos + 2;
+
+				for (size_t i = pos + 2; digits && i < end; i++)
+					digits = std::isdigit(static_cast<unsigned char>(option[i])) != 0;
+
+				if (!is_icon || !digits)
+				{
+					pos++;
+					continue;
+				}
+
+				if (!icon.is_valid() && code != 'q' && code != 'f')
+					icon = option_icon(code, option.substr(pos + 2, end - pos - 2));
+
+				option.erase(pos, end - pos + 1);
+			}
+
+			size_t first = option.find_first_not_of(" \t\n");
+
+			if (first == std::string::npos)
+			{
+				option.clear();
+				return icon;
+			}
+
+			option = option.substr(first, option.find_last_not_of(" \t\n") - first + 1);
+
+			return icon;
+		}
+	}
+
 	UINpcTalk::UINpcTalk() : offset(0), unitrows(0), rowmax(0), show_slider(false), draw_text(false), formatted_text(""), formatted_text_pos(0), timestep(0), selection_top(0), hovered_selection(-1)
 	{
 		nl::node UtilDlgEx = nl::nx::ui["UIWindow2.img"]["UtilDlgEx"];
@@ -282,7 +347,23 @@ namespace ms
 			}
 		};
 
-		if (show_slider)
+		if (use_tiles)
+		{
+			Point<int16_t> text_origin(position.x() + TILE_LEFT + 2, tile_content_top());
+			Range<int16_t> clip(tile_clip_top(), tile_clip_bottom());
+
+			if (!formatted_text.empty())
+			{
+				text.draw(text_origin, clip);
+				draw_inline_icons(text_origin, clip);
+			}
+
+			draw_tiles();
+
+			if (show_slider)
+				slider.draw(position);
+		}
+		else if (show_slider)
 		{
 			int16_t text_min_height = position.y() + top.height() - 1;
 			int16_t clip_bot = text_min_height + height - 18;
@@ -305,7 +386,7 @@ namespace ms
 					else pref_escaped += c;
 				}
 				Text prefix_text(Text::Font::A12M, Text::Alignment::LEFT,
-					Color::Name::DARKGREY, Text::Background::NONE, pref_escaped, 320, true, option_line_adj());
+					Color::Name::DARKGREY, Text::Background::NONE, pref_escaped, 320, true);
 
 				int16_t base_y = position.y() + 19 - offset * SCROLL_STEP;
 				int16_t row_y = base_y + prefix_text.height() - 16;
@@ -351,7 +432,7 @@ namespace ms
 					}
 					Text prefix_text(Text::Font::A12M, Text::Alignment::LEFT,
 						Color::Name::DARKGREY, Text::Background::NONE,
-						pref_escaped, 320, true, option_line_adj());
+						pref_escaped, 320, true);
 					// height() returns the baseline y of the next row after
 					// the prefix; subtract linespace so row_y points at the
 					// TOP of the option's row (where list_bg/dot sprites
@@ -514,6 +595,156 @@ namespace ms
 		if (type == TalkType::SENDGETTEXT || type == TalkType::SENDGETNUMBER)
 			input_field.draw(position);
 
+	}
+
+	int16_t UINpcTalk::tile_area_width() const
+	{
+		return top.width() - TILE_LEFT - TILE_RIGHT_GAP;
+	}
+
+	int16_t UINpcTalk::layout_tiles()
+	{
+		int16_t width = tile_area_width();
+		int16_t half = (width - TILE_GAP) / 2;
+		bool any_icon = false;
+
+		for (const auto& sel : selections)
+			if (sel.icon.is_valid() || sel.mark != QuestMark::NONE)
+				any_icon = true;
+
+		// Tiles line up, so with any picture they all leave room for one
+		int16_t text_left = any_icon ? TILE_ICON + 12 : 12;
+		bool columns = selections.size() >= 2;
+
+		for (const auto& sel : selections)
+		{
+			Text measure(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::WHITE, Text::Background::NONE, sel.text, 0, true);
+
+			if (measure.width() > half - text_left - 6)
+				columns = false;
+		}
+
+		uint16_t text_w = static_cast<uint16_t>((columns ? half : width) - text_left - 6);
+		int16_t top_y = formatted_text.empty() ? 0 : text.height() + 8;
+		int16_t y = top_y;
+
+		for (size_t i = 0; i < selections.size(); i++)
+		{
+			Selection& sel = selections[i];
+
+			sel.label = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::WHITE, Text::Background::NONE, sel.text, text_w, true);
+
+			if (columns)
+			{
+				int16_t x = static_cast<int16_t>(i % 2) * (half + TILE_GAP);
+				int16_t row_y = top_y + static_cast<int16_t>(i / 2) * (TILE_H + TILE_GAP);
+
+				sel.tile = Rectangle<int16_t>(x, x + half, row_y, row_y + TILE_H);
+				y = row_y + TILE_H;
+			}
+			else
+			{
+				int16_t h = std::max<int16_t>(TILE_H, sel.label.height() + 14);
+
+				sel.tile = Rectangle<int16_t>(0, width, y, y + h);
+				y += h + (i + 1 < selections.size() ? TILE_GAP : 0);
+			}
+		}
+
+		return y;
+	}
+
+	int16_t UINpcTalk::tile_clip_top() const
+	{
+		return position.y() + TILE_PAD - 2;
+	}
+
+	int16_t UINpcTalk::tile_clip_bottom() const
+	{
+		return position.y() + top.height() + height + bottom.height() - TILE_PAD + 2;
+	}
+
+	int16_t UINpcTalk::tile_content_top() const
+	{
+		return position.y() + TILE_PAD - (show_slider ? offset * SCROLL_STEP : 0);
+	}
+
+	Rectangle<int16_t> UINpcTalk::tile_on_screen(size_t index) const
+	{
+		const Rectangle<int16_t>& tile = selections[index].tile;
+		int16_t x = position.x() + TILE_LEFT;
+		int16_t y = tile_content_top();
+
+		return Rectangle<int16_t>(x + tile.left(), x + tile.right(), y + tile.top(), y + tile.bottom());
+	}
+
+	bool UINpcTalk::tile_visible(size_t index) const
+	{
+		Rectangle<int16_t> tile = tile_on_screen(index);
+
+		return tile.top() >= tile_clip_top() && tile.bottom() <= tile_clip_bottom();
+	}
+
+	void UINpcTalk::draw_tiles() const
+	{
+		bool any_icon = false;
+
+		for (const auto& sel : selections)
+			if (sel.icon.is_valid() || sel.mark != QuestMark::NONE)
+				any_icon = true;
+
+		for (size_t i = 0; i < selections.size(); i++)
+		{
+			if (!tile_visible(i))
+				continue;
+
+			const Selection& sel = selections[i];
+			Rectangle<int16_t> tile = tile_on_screen(i);
+			bool lit = static_cast<int32_t>(i) == hovered_selection;
+			int16_t cy = tile.top() + tile.height() / 2;
+
+			classic::row(tile.get_left_top(), tile.width(), tile.height(), lit);
+
+			if (any_icon)
+			{
+				Point<int16_t> slot_pos(tile.left() + 6, cy - TILE_ICON / 2);
+				Point<int16_t> slot_center = slot_pos + Point<int16_t>(TILE_ICON / 2, TILE_ICON / 2);
+
+				classic::slot(slot_pos, TILE_ICON, TILE_ICON, false);
+
+				if (sel.icon.is_valid())
+				{
+					// Fit the picture to the slot, about its own origin
+					Point<int16_t> dims = sel.icon.get_dimensions();
+					int16_t largest = std::max<int16_t>(std::max(dims.x(), dims.y()), 1);
+					float scale = largest > TILE_ICON - 4 ? static_cast<float>(TILE_ICON - 4) / largest : 1.0f;
+					Point<int16_t> origin = sel.icon.get_origin();
+					Point<int16_t> pos(
+						static_cast<int16_t>(slot_center.x() + (origin.x() - dims.x() / 2) * scale),
+						static_cast<int16_t>(slot_center.y() + (origin.y() - dims.y() / 2) * scale));
+
+					sel.icon.draw(DrawArgument(pos, scale, scale, 1.0f));
+				}
+				else
+				{
+					const Animation* mark = nullptr;
+
+					switch (sel.mark)
+					{
+					case QuestMark::AVAILABLE:   mark = &mark_available;   break;
+					case QuestMark::IN_PROGRESS: mark = &mark_in_progress; break;
+					case QuestMark::COMPLETE:    mark = &mark_complete;    break;
+					default: break;
+					}
+
+					if (mark && mark->get_dimensions().x() > 0)
+						mark->draw(DrawArgument(slot_center), 1.0f);
+				}
+			}
+
+			sel.label.change_color(classic::row_text(lit, Color::Name::WHITE));
+			sel.label.draw(Point<int16_t>(tile.left() + (any_icon ? TILE_ICON + 12 : 12), classic::text_y(sel.label, cy)));
+		}
 	}
 
 	void UINpcTalk::update()
@@ -769,7 +1000,29 @@ namespace ms
 
 		// Handle SENDSIMPLE option clicks.
 		// Uses embedded #L<i># codes in the text; reply via NpcTalkMorePacket(index).
-		if (type == TalkType::SENDSIMPLE && !selections.empty())
+		if (use_tiles)
+		{
+			hovered_selection = -1;
+
+			for (size_t i = 0; highlight && i < selections.size(); i++)
+			{
+				if (!tile_visible(i) || !tile_on_screen(i).contains(point))
+					continue;
+
+				if (press)
+				{
+					deactivate();
+					NpcTalkMorePacket(selections[i].index).dispatch();
+
+					return Cursor::State::IDLE;
+				}
+
+				hovered_selection = static_cast<int32_t>(i);
+
+				return Cursor::State::CANCLICK;
+			}
+		}
+		else if (type == TalkType::SENDSIMPLE && !selections.empty())
 		{
 			// Mirror the DRAW path's geometry exactly — the previous
 			// hit-test used text_x = +130 while the visible text
@@ -789,7 +1042,7 @@ namespace ms
 				: (position.y() + 48);
 			int16_t text_w = 320;
 			int16_t line_h = 16; // approximate line height for A12M font
-			int16_t band_pad = touch() ? 11 : 4; // extra px above/below each option row
+			int16_t band_pad = 4; // extra px above/below each option row
 
 			// Visible clip band (slider mode) — options scrolled out of view
 			// must not be clickable/hoverable.
@@ -816,7 +1069,7 @@ namespace ms
 				}
 				Text prefix_text(Text::Font::A12M, Text::Alignment::LEFT,
 					Color::Name::DARKGREY, Text::Background::NONE,
-					pref_escaped, 320, true, option_line_adj());
+					pref_escaped, 320, true);
 
 				// prefix_text.height() is the baseline-y of where THIS
 				// option's glyphs render. Glyphs extend roughly from
@@ -867,7 +1120,8 @@ namespace ms
 			bool on_button = false;
 
 			for (auto& button : buttons)
-				if (button.second->is_active() && button.second->bounds(position).contains(point))
+				if (button.second->is_active() && button.second->bounds(position).contains(point)
+					&& (!draw_text || button.first == Buttons::CLOSE))
 					on_button = true;
 
 			if (!on_button)
@@ -895,6 +1149,13 @@ namespace ms
 				}
 			}
 		}
+#endif
+
+#ifdef __ANDROID__
+		// While the words are appearing only End chat acts. The answer buttons
+		// fire as the finger lands, which would skip words nobody has read.
+		if (draw_text && !buttons[Buttons::CLOSE]->bounds(position).contains(cursorpos))
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
 #endif
 
 		Cursor::State estate = UIElement::send_cursor(clicked && !tap.has_moved(), cursorpos);
@@ -1221,6 +1482,12 @@ namespace ms
 		// Count lines before the selections start (intro text)
 		// by scanning for #L which marks the first selection
 		size_t first_link = tx.find("#L");
+
+		// A list with no options still has words to show
+		if (first_link == std::string::npos)
+			return tx;
+
+		std::string intro_only;
 		if (first_link != std::string::npos && first_link > 0)
 		{
 			std::string intro = tx.substr(0, first_link);
@@ -1242,6 +1509,7 @@ namespace ms
 			}
 
 			result = clean_intro;
+			intro_only = clean_intro;
 
 			// Count newlines in intro to track line position
 			for (char c : clean_intro)
@@ -1336,6 +1604,11 @@ namespace ms
 					|| consume_tag("(available)", QuestMark::AVAILABLE);
 			}
 
+			Texture option_picture;
+
+			if (touch())
+				option_picture = take_option_icon(clean_option);
+
 			// Ensure each option starts on its own rendered line.
 			if (!result.empty() && result.back() != '\n')
 				result += "\n";
@@ -1353,6 +1626,7 @@ namespace ms
 			sel.line = actual_line;
 			sel.prefix = result;
 			sel.mark = mark;
+			sel.icon = option_picture;
 			selections.push_back(std::move(sel));
 
 			// Render the option text in blue so it stands out against the
@@ -1364,6 +1638,14 @@ namespace ms
 			line++;
 
 			pos = text_end + 2; // skip past #l
+		}
+
+		// On a phone the options are tiles, so only the intro is text
+		if (touch())
+		{
+			size_t last = intro_only.find_last_not_of(" \t\n");
+
+			return last == std::string::npos ? "" : intro_only.substr(0, last + 1);
 		}
 
 		return result;
@@ -1411,10 +1693,13 @@ namespace ms
 			formatted_text = std::move(escaped);
 		}
 
-		text = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::DARKGREY,
-			Text::Background::NONE, formatted_text, 320, true, option_line_adj());
+		use_tiles = touch() && type == TalkType::SENDSIMPLE && !selections.empty();
+		hovered_selection = -1;
 
-		int16_t text_height = text.height();
+		text = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::DARKGREY,
+			Text::Background::NONE, formatted_text, use_tiles ? tile_area_width() - 4 : 320, true);
+
+		int16_t text_height = use_tiles ? layout_tiles() : text.height();
 
 		if (type != TalkType::SENDSIMPLE)
 			text.change_text("");
@@ -1454,7 +1739,9 @@ namespace ms
 		int16_t text_top_offset = 48 - top.height();
 		if (text_top_offset < 0)
 			text_top_offset = 0;
-		int16_t needed = text_top_offset + text_height + TEXT_BOTTOM_PAD;
+		int16_t needed = use_tiles
+			? text_height + TILE_PAD * 2 - top.height() - bottom.height()
+			: text_top_offset + text_height + TEXT_BOTTOM_PAD;
 
 		if (needed > height)
 		{
@@ -1472,7 +1759,7 @@ namespace ms
 				// rowmax = total content lines; the slider then has
 				// (rowmax - unitrows) scroll positions, each moving the text
 				// SCROLL_STEP px, so every line is reachable.
-				int16_t visible = height - 18;
+				int16_t visible = use_tiles ? height + top.height() + bottom.height() - TILE_PAD * 2 : height - 18;
 				unitrows = visible / SCROLL_STEP;
 				if (unitrows < 1) unitrows = 1;
 
@@ -1615,11 +1902,6 @@ namespace ms
 			dimension = Point<int16_t>(top.width(), strip_y + TOUCH_BUTTON_H + 12);
 			position = Point<int16_t>(vw / 2 - top.width() / 2, std::max<int16_t>(4, (vh - dimension.y()) / 2));
 		}
-	}
-
-	int16_t UINpcTalk::option_line_adj() const
-	{
-		return touch() && type == TalkType::SENDSIMPLE ? -14 : 0;
 	}
 
 	bool UINpcTalk::touch()

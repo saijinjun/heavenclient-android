@@ -30,6 +30,7 @@
 #include "../../IO/UITypes/UINpcTalk.h"
 #include "../../IO/UITypes/UIQuestHelper.h"
 #include "../../IO/UITypes/UIQuestLog.h"
+#include "../../IO/UITypes/UIMobileQuests.h"
 #include "../../IO/UITypes/UIStatusBar.h"
 #include "../../IO/UITypes/UIStatusMessenger.h"
 #include "../../IO/UITypes/UIWhisper.h"
@@ -42,6 +43,17 @@
 
 namespace ms
 {
+	namespace
+	{
+		[[maybe_unused]] void open_mobile_quest(int16_t qid)
+		{
+			UI::get().emplace<UIMobileQuests>(Stage::get().get_player().get_quests());
+
+			if (auto panel = UI::get().get_element<UIMobileQuests>())
+				panel->show_quest(qid);
+		}
+	}
+
 	// Modes:
 	// 0 - Item(0) or Meso(1) 
 	// 3 - Exp gain
@@ -203,6 +215,11 @@ namespace ms
 						{
 							if (!yes)
 								return;
+#ifdef __ANDROID__
+							// Phones use the full-screen quest panel; open it on this quest
+							open_mobile_quest(qid);
+							return;
+#endif
 							auto log = UI::get().get_element<UIQuestLog>();
 							if (!log)
 							{
@@ -239,6 +256,10 @@ namespace ms
 					{
 						if (!yes)
 							return;
+#ifdef __ANDROID__
+						open_mobile_quest(qid);
+						return;
+#endif
 						auto log = UI::get().get_element<UIQuestLog>();
 						if (!log)
 						{

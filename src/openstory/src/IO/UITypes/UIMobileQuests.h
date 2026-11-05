@@ -41,6 +41,9 @@ namespace ms
 
 		UIElement::Type get_type() const override;
 
+		// Open on this quest: its tab, selected, with its details
+		void show_quest(int16_t id);
+
 	private:
 		enum Tab : size_t
 		{

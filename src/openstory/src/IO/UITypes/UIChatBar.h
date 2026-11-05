@@ -170,6 +170,9 @@ namespace ms
 		// button and socialChat/ImoticonFrame for the panel.
 		void toggle_emoticons();
 		void pick_emoticon(int32_t index);
+		// What the picker offers. On a phone, the faces the character can make.
+		static int32_t picker_count();
+		static const char* picker_name(int32_t index);
 		void make_face(const std::string& name);
 		void draw_emoticons(Point<int16_t> position) const;
 		// Grid cell under the cursor, or -1. Shared by hover and click so the
@@ -178,8 +181,8 @@ namespace ms
 		Point<int16_t> emoticon_origin() const;
 
 #ifdef __ANDROID__
-		// Wide and short, to fit between the typing bar and the keyboard
-		static constexpr int16_t EMOTE_COLS = 12;
+		// One row, to fit between the typing bar and the keyboard
+		static constexpr int16_t EMOTE_COLS = 7;
 		static constexpr int16_t EMOTE_CELL = 40;
 #else
 		static constexpr int16_t EMOTE_COLS = 6;
