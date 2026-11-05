@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `d825648` | ok |
-| client | `e065705` | ok |
+| client | `bee9adb` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-05 10:59 · client · ✅ deployed `bee9adb` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 10:38 · server · ✅ deployed `d825648` - no runtime change (container not recreated), 8484 open
 - 2026-11-05 08:50 · client · ✅ deployed `e065705` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 08:29 · client · ✅ deployed `abf9a48` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -38,4 +39,3 @@ and the repository exists.
 - 2026-11-04 14:18 · client · ✅ deployed `7d197ab` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 13:15 · client · ✅ deployed `40128bb` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 12:38 · client · ✅ deployed `4238243` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-04 12:38 · server · ✅ deployed `e70652f` - online, 8484 open
