@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `d825648` | ok |
-| client | `622c5ed` | ok |
+| client | `1278373` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-05 12:20 · client · ✅ deployed `1278373` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 12:00 · client · ✅ deployed `622c5ed` - no runtime change (docs/android/tests only)
 - 2026-11-05 11:21 · client · ✅ deployed `03fd54a` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 10:59 · client · ✅ deployed `bee9adb` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -38,4 +39,3 @@ fatal: Could not read from remote repository.
 Please make sure you have the correct access rights
 and the repository exists.
 - 2026-11-04 16:21 · client · ✅ deployed `0956b35` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-04 14:18 · client · ✅ deployed `7d197ab` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
