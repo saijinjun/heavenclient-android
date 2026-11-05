@@ -124,3 +124,10 @@ To stop everything:
 
 ## Documentation
 * Check `docs/ms-network-protocol.md` for the network protocol.
+
+## Pull requests and merging
+
+- `n150/ci` (CI on nexus-server) is the merge gate, and branch protection requires it. The GitHub Actions workflows are disabled while the account's billing lock lasts.
+- After opening a PR you want merged, enable auto-merge once (`gh pr merge --auto --merge` or the `enablePullRequestAutoMerge` mutation). It merges itself when `n150/ci` is green. Don't schedule routines only to check CI.
+- n150 retries a network failure once by itself, so don't merge main in or push just to re-run it.
+- Group small fixes into one PR per batch: each PR is about 18 minutes of CI.
