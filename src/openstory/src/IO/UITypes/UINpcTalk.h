@@ -85,9 +85,24 @@ namespace ms
 	private:
 		// Phones get finger-sized buttons in a strip under the dialog
 		static bool touch();
-		// Extra room between lines of an option list on a phone, as a text
-		// line_adj (negative spreads the lines)
-		int16_t option_line_adj() const;
+		// Each option of a selection list is a finger-sized tile on a phone.
+		// Short labels share a row in two columns; long ones get a full row.
+		static constexpr int16_t TILE_LEFT = 128;
+		static constexpr int16_t TILE_RIGHT_GAP = 32;
+		static constexpr int16_t TILE_H = 46;
+		static constexpr int16_t TILE_GAP = 6;
+		static constexpr int16_t TILE_ICON = 34;
+		static constexpr int16_t TILE_PAD = 16;
+		int16_t tile_area_width() const;
+		// Lays out the tiles under the intro text; returns the total height
+		int16_t layout_tiles();
+		int16_t tile_clip_top() const;
+		int16_t tile_clip_bottom() const;
+		int16_t tile_content_top() const;
+		Rectangle<int16_t> tile_on_screen(size_t index) const;
+		// A tile cut off by the page isn't drawn or tappable
+		bool tile_visible(size_t index) const;
+		void draw_tiles() const;
 		static constexpr int16_t TOUCH_BUTTON_W = 104;
 		static constexpr int16_t TOUCH_BUTTON_H = 40;
 		static constexpr int16_t TOUCH_STRIP_GAP = 4;
@@ -139,6 +154,11 @@ namespace ms
 			int16_t line;
 			std::string prefix; // rendered text before this option (for measuring visual-line Y)
 			QuestMark mark = QuestMark::NONE;
+			// Phone tiles: the label, the picture from the option's first icon
+			// code, and the place relative to the top of the content
+			mutable Text label;
+			Texture icon;
+			Rectangle<int16_t> tile;
 		};
 
 		Texture top;
@@ -177,6 +197,7 @@ namespace ms
 		uint16_t timestep;
 
 		std::vector<Selection> selections;
+		bool use_tiles = false;
 		int16_t selection_top;
 		int32_t hovered_selection;
 
