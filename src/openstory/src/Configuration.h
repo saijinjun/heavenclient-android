@@ -413,6 +413,17 @@ namespace ms
 		SFXVolume() : ByteEntry("SFXVolume", "50") {}
 	};
 
+	// Muting keeps the volume above for when it is turned back on
+	struct BGMMuted : public Configuration::BoolEntry
+	{
+		BGMMuted() : BoolEntry("BGMMuted", "false") {}
+	};
+
+	struct SFXMuted : public Configuration::BoolEntry
+	{
+		SFXMuted() : BoolEntry("SFXMuted", "false") {}
+	};
+
 	// Whether to save the last used account name
 	struct SaveLogin : public Configuration::BoolEntry
 	{

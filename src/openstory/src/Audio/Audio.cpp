@@ -224,7 +224,7 @@ namespace ms
 		for (auto node : itemsrc)
 			add_sound(node.name(), node["Use"]);
 
-		uint8_t volume = Setting<SFXVolume>::get().load();
+		uint8_t volume = Setting<SFXMuted>::get().load() ? 0 : Setting<SFXVolume>::get().load();
 
 		if (!set_sfxvolume(volume))
 			return Error::Code::AUDIO;
@@ -381,7 +381,7 @@ namespace ms
 
 	Error Music::init()
 	{
-		uint8_t volume = Setting<BGMVolume>::get().load();
+		uint8_t volume = Setting<BGMMuted>::get().load() ? 0 : Setting<BGMVolume>::get().load();
 
 		if (!set_bgmvolume(volume))
 			return Error::Code::AUDIO;
