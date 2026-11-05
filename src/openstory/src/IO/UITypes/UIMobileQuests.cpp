@@ -334,7 +334,7 @@ namespace ms
 		else
 			story = qnode["0"].get_string();
 
-		story = shorten(strip_quest_codes(story), DESC_MAX);
+		story = shorten(strip_quest_codes(fill_quest_records(story, questlog)), DESC_MAX);
 		desc = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::GALLERY, story, width, false);
 
 		if (in_progress)

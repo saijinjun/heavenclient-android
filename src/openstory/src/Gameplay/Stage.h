@@ -25,6 +25,7 @@
 #include "MapleMap/MapDrops.h"
 #include "MapleMap/MapMists.h"
 #include "MapleMap/MapEffect.h"
+#include "MapleMap/DirectionScene.h"
 #include "MapleMap/MapWeather.h"
 #include "MapleMap/MapNpcs.h"
 #include "MapleMap/MapPortals.h"
@@ -101,6 +102,10 @@ namespace ms
 
 		// Set a map effect
 		void add_effect(std::string path);
+		// Play a story cutscene (Effect/Direction*.img)
+		void play_direction(const std::string& path);
+		// Show a tutorial hint picture (UI.wz/tutorial.img) over the player
+		void show_guide_hint(int32_t hint, int32_t duration);
 
 		// Weather
 		void set_weather(const std::string& path, const std::string& message);
@@ -190,6 +195,9 @@ namespace ms
 		MapDoors doors;
 		MapMists mists;
 		MapEffect effect;
+		DirectionScene direction;
+		Animation guide_hint;
+		int32_t guide_hint_left = 0;
 		MapPointEffects point_effects;
 		MapWeather weather;
 

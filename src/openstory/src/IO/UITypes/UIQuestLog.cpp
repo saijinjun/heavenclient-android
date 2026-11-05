@@ -1225,6 +1225,46 @@ namespace ms
 		}
 	}
 
+	std::string fill_quest_records(const std::string& text, const QuestLog& questlog)
+	{
+		// #R<quest id># shows that quest's record, e.g. "#R27010# / 20" is how
+		// many Victoria regions a Beginner Explorer has seen. Without this the
+		// code was stripped and the count went missing.
+		std::string out;
+		out.reserve(text.size());
+
+		for (size_t i = 0; i < text.size(); i++)
+		{
+			if (text[i] == '#' && i + 1 < text.size() && text[i + 1] == 'R')
+			{
+				size_t end = text.find('#', i + 2);
+
+				if (end != std::string::npos)
+				{
+					std::string record = "0";
+
+					try
+					{
+						int32_t qid = std::stoi(text.substr(i + 2, end - i - 2));
+						auto iter = questlog.get_started().find(static_cast<int16_t>(qid));
+
+						if (iter != questlog.get_started().end() && !iter->second.empty())
+							record = iter->second;
+					}
+					catch (...) {}
+
+					out += record;
+					i = end;
+					continue;
+				}
+			}
+
+			out += text[i];
+		}
+
+		return out;
+	}
+
 	std::string strip_quest_codes(const std::string& desc)
 	{
 		std::string clean;
@@ -1262,6 +1302,17 @@ namespace ms
 				}
 				// Unknown #X — drop both chars to avoid leaving stray '#'
 				i++;
+				continue;
+			}
+
+			// Some WZ strings carry the escapes as text ("\\r\\n"), which showed
+			// up literally in quest details (Beginner Explorer).
+			if (c == '\\' && i + 1 < desc.size() && (desc[i + 1] == 'r' || desc[i + 1] == 'n'))
+			{
+				i++;
+				if (desc[i] == 'r' && i + 2 < desc.size() && desc[i + 1] == '\\' && desc[i + 2] == 'n')
+					i += 2;
+				clean += '\n';
 				continue;
 			}
 
@@ -1430,7 +1481,7 @@ namespace ms
 		if (desc.empty())
 			desc = "No description available.";
 
-		std::string clean_desc = strip_quest_codes(desc);
+		std::string clean_desc = strip_quest_codes(fill_quest_records(desc, questlog));
 
 		detail_quest_name = Text(Text::Font::A12B, Text::Alignment::LEFT, Color::Name::BLACK, name, 180, false);
 		detail_quest_desc = Text(Text::Font::A12M, Text::Alignment::LEFT, Color::Name::BLACK, clean_desc, 260, true);

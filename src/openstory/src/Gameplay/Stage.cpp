@@ -106,6 +106,8 @@ namespace ms
 		doors.clear();
 		mists.clear();
 		point_effects.clear();
+		direction.clear();
+		guide_hint_left = 0;
 		reactors.clear();
 
 		// Weather is a property of the map we are leaving. The server only
@@ -203,6 +205,18 @@ namespace ms
 
 		effect.draw();
 
+		if (guide_hint_left > 0)
+		{
+			// The hint pictures hang from their bottom middle: put that just
+			// above the character's head.
+			Point<int16_t> head = player.get_position() + Point<int16_t>(0, -70);
+			guide_hint.draw(DrawArgument(Point<int16_t>(
+				static_cast<int16_t>(head.x() + viewx),
+				static_cast<int16_t>(head.y() + viewy))), alpha);
+		}
+
+		direction.draw(alpha);
+
 		if (gfx_quality > 50)
 			weather.draw(alpha);
 
@@ -257,6 +271,13 @@ namespace ms
 		backgrounds.update();
 		environments.update();
 		effect.update();
+		direction.update();
+
+		if (guide_hint_left > 0)
+		{
+			guide_hint.update();
+			guide_hint_left -= Constants::TIMESTEP;
+		}
 		weather.update();
 		tilesobjs.update();
 
@@ -615,6 +636,22 @@ namespace ms
 	void Stage::add_effect(std::string path)
 	{
 		effect = MapEffect(path);
+	}
+
+	void Stage::play_direction(const std::string& path)
+	{
+		direction.play(path);
+	}
+
+	void Stage::show_guide_hint(int32_t hint, int32_t duration)
+	{
+		nl::node src = nl::nx::ui["tutorial.img"][std::to_string(hint)];
+
+		if (!src)
+			return;
+
+		guide_hint = Animation(src);
+		guide_hint_left = duration > 0 ? duration : 7000;
 	}
 
 	void Stage::set_weather(const std::string& path, const std::string& message)
