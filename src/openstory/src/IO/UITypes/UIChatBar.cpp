@@ -299,6 +299,10 @@ namespace ms
 
 				if (end == std::string::npos)
 					return speaker;
+
+				// Megaphones read "Name : text", with a space before the colon
+				while (end > start && line[end - 1] == ' ')
+					end--;
 			}
 
 			if (end <= start || end - start > MAX_NAME)
