@@ -27,6 +27,7 @@
 #endif
 #include "Constants.h"
 #include "Gameplay/Stage.h"
+#include "Graphics/GraphicsGL.h"
 #include "Graphics/Text.h"
 #include "IO/UI.h"
 #include "IO/UITypes/UILogin.h"
@@ -299,6 +300,15 @@ namespace ms
 
 		if (Error error = Window::get().init())
 			return error;
+
+#if defined(PLATFORM_SDL)
+		// The rest of this function fetches game files, which leaves a phone on
+		// a black screen for over a minute on its first run. show_message leaves
+		// graphics locked for the fade it normally runs in, and nothing is
+		// fading here.
+		Window::get().show_message("Loading...");
+		GraphicsGL::get().unlock();
+#endif
 
 		std::cout << "[Init] Initializing audio..." << std::endl;
 
