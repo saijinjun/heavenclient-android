@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `d825648` | ok |
-| client | `d658b71` | ok |
+| client | `05990e9` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-05 14:14 · client · ✅ deployed `05990e9` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 13:21 · client · ✅ deployed `d658b71` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 13:06 · client · ✅ deployed `ef6a1dc` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 12:20 · client · ✅ deployed `1278373` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -34,4 +35,3 @@ and the repository exists.
 - 2026-11-05 00:48 · server · ✅ deployed `afa1f53` - online, 8484 open
 - 2026-11-04 23:45 · client · ✅ deployed `1889e53` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-04 22:14 · client · ✅ deployed `03a62e6` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-04 18:26 · client · ✅ deployed `c5ac379` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
