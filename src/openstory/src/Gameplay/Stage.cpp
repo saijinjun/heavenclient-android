@@ -200,6 +200,10 @@ namespace ms
 		if (gfx_quality > 10)
 			backgrounds.drawforegrounds(viewx, viewy, alpha);
 
+		// The player's own last, so their name is never under someone else's
+		chars.draw_labels(viewx, viewy, alpha);
+		player.draw_labels(viewx, viewy, alpha);
+
 		if (gfx_quality > 25)
 			environments.draw(viewx, viewy, alpha);
 

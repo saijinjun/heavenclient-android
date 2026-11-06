@@ -67,6 +67,9 @@ namespace ms
 
 		// Draw look, NameTag, effects and chat bubble.
 		void draw(double viewx, double viewy, float alpha) const override;
+		// Name, guild, party bar and speech. Map scenery can cover a character,
+		// so these are drawn after it, or a player couldn't find themselves.
+		void draw_labels(double viewx, double viewy, float alpha) const;
 		// Draw look
 		void draw_preview(Point<int16_t> position, float alpha) const;
 		// The look draw_preview uses. Exposed so a UI can copy it and keep

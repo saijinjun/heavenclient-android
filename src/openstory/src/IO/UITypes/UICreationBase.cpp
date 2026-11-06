@@ -105,7 +105,13 @@ namespace ms
 						charselect->post_add_character();
 				};
 
+#ifdef __ANDROID__
+				// Keyboard layouts mean nothing on a touch screen, and this
+				// handler ignores the choice anyway, so go straight back.
+				onok(false);
+#else
 				UI::get().emplace<UIKeySelect>(onok, true);
+#endif
 			}
 			else
 			{
