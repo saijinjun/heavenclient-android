@@ -11,6 +11,11 @@
 
 ## Recent events (newest first)
 
+- 2026-11-06 15:03 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: Connection timed out
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
 - 2026-11-06 10:57 · server · ✅ deployed `8cc741a` - online, 8484 open
 - 2026-11-06 10:44 · client · ✅ deployed `fc759a3` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-06 01:19 · client · ✅ deployed `3bac3b9` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -30,4 +35,3 @@
 - 2026-11-05 08:50 · client · ✅ deployed `e065705` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 08:29 · client · ✅ deployed `abf9a48` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 06:31 · client · ✅ deployed `4cd02e0` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-05 06:25 · client · ✅ deployed `5251579` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
