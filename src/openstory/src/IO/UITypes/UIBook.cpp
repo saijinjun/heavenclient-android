@@ -77,7 +77,24 @@ namespace ms
 
 			// The original pages linked back to their contents with this line.
 			// This window turns pages with buttons, so it would be dead text.
-			if (text.empty() || text.rfind("Return to Table of Contents", 0) == 0)
+			size_t link = text.find("Return to Table of Contents");
+
+			if (link != std::string::npos)
+				text.erase(link);
+
+			// The link sat at the foot of its page, pushed down by line breaks.
+			// With it gone they would leave a blank page or a gap.
+			while (true)
+			{
+				if (!text.empty() && (text.back() == ' ' || text.back() == '\r' || text.back() == '\n'))
+					text.pop_back();
+				else if (text.size() >= 2 && text.compare(text.size() - 2, 2, "\\n") == 0)
+					text.erase(text.size() - 2);
+				else
+					break;
+			}
+
+			if (text.empty())
 				return;
 
 			if (!body.empty())
