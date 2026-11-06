@@ -32,6 +32,7 @@
 #include "../../Constants.h"
 #include "../../Graphics/ClassicStyle.h"
 #include "../../Graphics/Geometry.h"
+#include "../../Util/TextCodes.h"
 
 #include <cctype>
 #include <cmath>
@@ -1222,7 +1223,8 @@ namespace ms
 	// NPC text formatting — replaces all # macros with game data
 	// Handles: #h# (player name), #p<id># (NPC name), #m<id># (map name),
 	//          #o<id># (mob name), #t<id># / #z<id># (item name),
-	//          #e...#n (bold on/off), #b #k #r #d #c (color codes — stripped)
+	//          #f<path># (quest banners, as words),
+	//          #e...#n (bold on/off), #b #k #r #d #g #c (color codes — stripped)
 	std::string UINpcTalk::format_text(const std::string& tx, const int32_t& npcid)
 	{
 		std::string result;
@@ -1263,7 +1265,7 @@ namespace ms
 
 			// Color/style codes: just skip the marker
 			if (code == 'b' || code == 'k' || code == 'r' || code == 'd' ||
-				code == 'c' || code == 'e' || code == 'n')
+				code == 'g' || code == 'c' || code == 'e' || code == 'n')
 			{
 				i++; // skip the code character
 				continue;
@@ -1281,8 +1283,9 @@ namespace ms
 				}
 			}
 
-			// #p<id># — NPC name
-			if (code == 'p')
+			// #p<id># NPC, #m<id># map, #o<id># mob, #t<id># / #z<id># item:
+			// replaced by the name from the game files.
+			if (code == 'p' || code == 'm' || code == 'o' || code == 't' || code == 'z')
 			{
 				size_t end = tx.find('#', i + 2);
 				if (end != std::string::npos)
@@ -1290,74 +1293,36 @@ namespace ms
 					std::string id_str = tx.substr(i + 2, end - i - 2);
 					if (!id_str.empty())
 					{
-						std::string name = (std::string)nl::nx::string["Npc.img"][id_str]["name"];
-						result += name.empty() ? ("NPC " + id_str) : name;
-					}
-					i = end;
-					continue;
-				}
-			}
+						if (code == 't' || code == 'z')
+							macro_ids.push_back(id_str);
 
-			// #m<id># — map name
-			if (code == 'm')
-			{
-				size_t end = tx.find('#', i + 2);
-				if (end != std::string::npos)
-				{
-					std::string id_str = tx.substr(i + 2, end - i - 2);
-					if (!id_str.empty())
-					{
-						// Map names: pad to 9 digits, look up in string.nx
-						std::string padded = id_str;
-						while (padded.size() < 9)
-							padded.insert(0, 1, '0');
+						std::string name = TextCodes::name_for(code, id_str);
 
-						std::string name = (std::string)nl::nx::string["Map.img"][padded]["mapName"];
-						result += name.empty() ? ("Map " + id_str) : name;
-					}
-					i = end;
-					continue;
-				}
-			}
-
-			// #o<id># — mob name
-			if (code == 'o')
-			{
-				size_t end = tx.find('#', i + 2);
-				if (end != std::string::npos)
-				{
-					std::string id_str = tx.substr(i + 2, end - i - 2);
-					if (!id_str.empty())
-					{
-						std::string name = (std::string)nl::nx::string["Mob.img"][id_str]["name"];
-						result += name.empty() ? ("Mob " + id_str) : name;
-					}
-					i = end;
-					continue;
-				}
-			}
-
-			// #t<id># or #z<id># — item name.
-			if (code == 't' || code == 'z')
-			{
-				size_t end = tx.find('#', i + 2);
-				if (end != std::string::npos)
-				{
-					std::string id_str = tx.substr(i + 2, end - i - 2);
-					if (!id_str.empty())
-					{
-						macro_ids.push_back(id_str);
-						try
+						// The id is a last resort for data the game files lack;
+						// a word for what it is keeps the sentence readable.
+						if (name.empty())
 						{
-							int32_t itemid = std::stoi(id_str);
-							const ItemData& idata = ItemData::get(itemid);
-							result += idata.is_valid() ? idata.get_name() : ("Item " + id_str);
+							static const char* kinds[] = { "NPC ", "Map ", "Mob ", "Item " };
+							size_t kind = code == 'p' ? 0 : code == 'm' ? 1 : code == 'o' ? 2 : 3;
+							name = kinds[kind] + id_str;
 						}
-						catch (...)
-						{
-							result += "Item " + id_str;
-						}
+
+						result += name;
 					}
+					i = end;
+					continue;
+				}
+			}
+
+			// #f<path># — a UI picture named by its WZ path (quest reward
+			// banners). It is shown as words; see TextCodes::label_for_path.
+			if (code == 'f')
+			{
+				size_t end = tx.find('#', i + 2);
+				if (end != std::string::npos && end > i + 2
+					&& !std::isdigit(static_cast<unsigned char>(tx[i + 2])))
+				{
+					result += TextCodes::label_for_path(tx.substr(i + 2, end - i - 2));
 					i = end;
 					continue;
 				}
