@@ -227,10 +227,14 @@ namespace ms
 	private:
 		enum Buttons : int16_t { ACCEPT, DECLINE };
 
+		void touch_layout(const std::string& message);
+
 		std::function<void(bool yes)> handler;
 		Texture backdrop;
 		Texture icon;
+		Text title;
 		Text label;
+		bool finger_sized = false;
 		// An invite needs long enough to actually read and answer; the
 		// 5s toast timing was fine for informational popups but far too
 		// short for anything with Accept/Decline on it.
