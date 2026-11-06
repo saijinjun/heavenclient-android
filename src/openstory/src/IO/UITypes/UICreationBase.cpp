@@ -102,7 +102,17 @@ namespace ms
 					UI::get().remove(UIElement::Type::RACESELECT);
 
 					if (auto charselect = UI::get().get_element<UICharSelect>())
+					{
+#ifdef __ANDROID__
+						// With no screen to wait on, the new character hasn't
+						// arrived yet: add_character selects it when it does.
+						// Show the list now, so a refused creation can't leave
+						// the player on an empty screen.
+						charselect->makeactive();
+#else
 						charselect->post_add_character();
+#endif
+					}
 				};
 
 #ifdef __ANDROID__
