@@ -6,11 +6,12 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `8cc741a` | ok |
+| server | `3fcdb7f` | ok |
 | client | `fc759a3` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-07 01:24 · server · ✅ deployed `3fcdb7f` - online, 8484 open
 - 2026-11-06 15:03 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: Connection timed out
 fatal: Could not read from remote repository.
 
@@ -34,4 +35,3 @@ and the repository exists.
 - 2026-11-05 10:38 · server · ✅ deployed `d825648` - no runtime change (container not recreated), 8484 open
 - 2026-11-05 08:50 · client · ✅ deployed `e065705` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 08:29 · client · ✅ deployed `abf9a48` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-05 06:31 · client · ✅ deployed `4cd02e0` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
