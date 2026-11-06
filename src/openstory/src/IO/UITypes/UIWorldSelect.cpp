@@ -147,6 +147,7 @@ namespace ms
 		// overflow is cropped 75% off the top (sky) / 25% off the bottom so
 		// the skyline stays in view.
 		backdrop = Texture(neo["0"]["0"]);
+		UI::get().set_side_backdrop(backdrop);
 
 		if (backdrop.is_valid())
 		{
@@ -238,7 +239,8 @@ namespace ms
 			for (uint8_t i = 0; i < 20; ++i)
 				drawn_labels.emplace_back(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Ch. " + std::to_string(i + 1));
 
-			drawn_enter = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Enter");
+			drawn_enter = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "Enter");
+			drawn_title = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "");
 		}
 
 		// Channel buttons on the open parchment
@@ -708,6 +710,29 @@ namespace ms
 			if (channelid >= world.channelcount)
 				channelid = 0;
 		}
+
+#ifdef __ANDROID__
+		// On a phone the scroll of the world played last time (or the only
+		// world) opens by itself, with its last channel lit: one tap on
+		// Enter goes straight to character select.
+		if (!world_selected)
+		{
+			uint8_t last_world = Setting<DefaultWorld>::get().load();
+			int16_t pick = -1;
+
+			for (auto& world : worlds)
+			{
+				if (world.channelcount < 1 || !buttons.count(BT_WORLD0 + world.wid))
+					continue;
+
+				if (pick < 0 || world.wid == last_world)
+					pick = world.wid;
+			}
+
+			if (pick >= 0)
+				button_pressed(static_cast<uint16_t>(BT_WORLD0 + pick));
+		}
+#endif
 	}
 
 	void UIWorldSelect::add_world(World world)
@@ -836,6 +861,13 @@ namespace ms
 			{
 				if (w.wid == worldid)
 				{
+					// Back in the world played last time, the channel played
+					// last time is picked again, so Enter is one tap away
+					uint8_t last_channel = Setting<DefaultChannel>::get().load();
+
+					if (worldid == Setting<DefaultWorld>::get().load() && last_channel < w.channelcount)
+						channelid = last_channel;
+
 					change_world(w);
 					break;
 				}
@@ -875,6 +907,10 @@ namespace ms
 	{
 		Configuration::get().set_worldid(worldid);
 		Configuration::get().set_channelid(channelid);
+
+		Setting<DefaultWorld>::get().save(worldid);
+		Setting<DefaultChannel>::get().save(channelid);
+		Configuration::get().save();
 
 		UI::get().emplace<UILoginWait>();
 		auto loginwait = UI::get().get_element<UILoginWait>();
@@ -916,20 +952,22 @@ namespace ms
 	{
 		constexpr int16_t COLS = 5;
 		constexpr int16_t GAP = 6;
-		constexpr int16_t CELL_H = 24;
 
+		// A world with up to ten channels gets cells tall enough for a
+		// thumb; a full twenty needs four rows and the shorter cells.
+		int16_t cell_h = selected_channel_count() > 2 * COLS ? 24 : 34;
 		int16_t width = PANEL_W - 32;
 		int16_t cell_w = (width - GAP * (COLS - 1)) / COLS;
 		int16_t x = PANEL_X + 16 + (index % COLS) * (cell_w + GAP);
-		int16_t y = PANEL_Y + 46 + (index / COLS) * (CELL_H + GAP);
+		int16_t y = PANEL_Y + 46 + (index / COLS) * (cell_h + GAP);
 
-		return Rectangle<int16_t>(lay(x, y), lay(x + cell_w, y + CELL_H));
+		return Rectangle<int16_t>(lay(x, y), lay(x + cell_w, y + cell_h));
 	}
 
 	Rectangle<int16_t> UIWorldSelect::drawn_enter_rect() const
 	{
-		constexpr int16_t W = 120;
-		constexpr int16_t H = 28;
+		constexpr int16_t W = 160;
+		constexpr int16_t H = 36;
 
 		int16_t x = PANEL_X + (PANEL_W - W) / 2;
 		int16_t y = PANEL_Y + PANEL_H - H - 14;
@@ -940,6 +978,21 @@ namespace ms
 	void UIWorldSelect::draw_drawn_channels() const
 	{
 		uint8_t count = selected_channel_count();
+
+		// The world's name, as the server sends it, on the panel's title
+		// band: the newer UI.nx has no title art that fits this panel
+		for (auto& w : worlds)
+		{
+			if (w.wid != worldid)
+				continue;
+
+			if (drawn_title.get_text() != w.name)
+				drawn_title.change_text(w.name);
+
+			Point<int16_t> band = lay(PANEL_X + PANEL_W / 2, PANEL_Y + 16);
+			classic::shadowed(drawn_title, Point<int16_t>(band.x(), classic::text_y(drawn_title, band.y())));
+			break;
+		}
 
 		for (uint8_t i = 0; i < count; ++i)
 		{

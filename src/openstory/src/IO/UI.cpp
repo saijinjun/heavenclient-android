@@ -418,6 +418,16 @@ namespace ms
 #endif
 	}
 
+	void UI::set_side_backdrop(const Texture& backdrop)
+	{
+		side_backdrop = backdrop;
+	}
+
+	const Texture& UI::get_side_backdrop() const
+	{
+		return side_backdrop;
+	}
+
 	void UI::set_typing_on_top(bool on_top)
 	{
 		typing_on_top = on_top;

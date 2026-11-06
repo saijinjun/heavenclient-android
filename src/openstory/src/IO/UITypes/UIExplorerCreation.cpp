@@ -69,6 +69,7 @@ namespace ms
 		// Reference v83 composition (HeavenClient): sky strip back/2 tiled,
 		// cloud back/27 drifting, scene pieces 15-18 and the Common frame.
 		sky = Texture(back["2"]);
+		UI::get().set_side_backdrop(sky);
 		cloud = back["27"];
 
 		auto scenepc = [&](nl::node src, int16_t x, int16_t y)

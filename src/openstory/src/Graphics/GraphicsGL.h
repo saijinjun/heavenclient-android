@@ -119,6 +119,11 @@ namespace ms
 		void draw_screen_overlay(int16_t left, int16_t top, int16_t right, int16_t bottom,
 			int16_t src_left, int16_t src_top, int16_t src_right, int16_t src_bottom, const Color& color);
 		void draw_screen_bitmap(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color);
+		// Like draw_screen_bitmap, but shows only the part of the bitmap
+		// between the fractions u0..u1 across and v0..v1 down, so a picture
+		// cover-scaled over the window can be cut to fit one strip of it.
+		void draw_screen_bitmap_part(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom,
+			float u0, float v0, float u1, float v1, const Color& color);
 		void flush_screen(int16_t width, int16_t height);
 
 		// Where the world starts (after the far background) and where the UI
