@@ -21,6 +21,7 @@
 #include "../../Constants.h"
 #include "../../Data/ItemData.h"
 #include "../../Graphics/ClassicStyle.h"
+#include "../../Util/TextCodes.h"
 
 #include <string>
 
@@ -60,6 +61,9 @@ namespace ms
 					if (end == std::string::npos)
 						break;
 
+					// Names still read fine on this page; only the
+					// pictures and links are dropped.
+					out += TextCodes::name_for(code, text.substr(i + 2, end - i - 2));
 					i = end;
 				}
 				else

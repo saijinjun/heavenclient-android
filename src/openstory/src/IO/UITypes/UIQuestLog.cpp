@@ -21,6 +21,7 @@
 #include "../Components/MapleButton.h"
 #include "../Components/TwoSpriteButton.h"
 #include "../../Data/ItemData.h"
+#include "../../Util/TextCodes.h"
 #include "../UI.h"
 #include "UIMiniMap.h"
 #include "UINotice.h"
@@ -1285,6 +1286,31 @@ namespace ms
 				{
 					i++;
 					continue;
+				}
+				// Name codes: #t<id># item, #p<id># NPC, #m<id># map, #o<id>#
+				// mob. The name is the point of the sentence ("Bring 10
+				// Snail Shells"), so it replaces the code instead of being
+				// dropped with it.
+				if (next == 't' || next == 'z' || next == 'p' || next == 'm' || next == 'o')
+				{
+					size_t end = desc.find('#', i + 2);
+					if (end != std::string::npos)
+					{
+						clean += TextCodes::name_for(next, desc.substr(i + 2, end - i - 2));
+						i = end;
+						continue;
+					}
+				}
+				// #h# is the player's own name
+				if (next == 'h')
+				{
+					size_t end = desc.find('#', i + 2);
+					if (end != std::string::npos)
+					{
+						clean += Stage::get().get_player().get_name();
+						i = end;
+						continue;
+					}
 				}
 				// Paired codes: #X<id># — skip to matching '#'
 				if (next == 'R' || next == 'f' || next == 'i' || next == 't'
