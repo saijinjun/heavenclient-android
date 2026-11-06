@@ -421,6 +421,10 @@ namespace ms
 	void UIChatBar::set_chat_open(bool open)
 	{
 		chatopen = open;
+
+		if (open)
+			unread_whisper_from.clear();
+
 #ifdef __ANDROID__
 		// Phones draw and hit test their own larger controls
 		for (auto& button : buttons)
@@ -508,6 +512,11 @@ namespace ms
 			int16_t col = i % EMOTE_COLS;
 			int16_t row = i / EMOTE_COLS;
 			Point<int16_t> cell = grid + Point<int16_t>(col * EMOTE_CELL, row * EMOTE_CELL);
+
+			// These sprites are only eyes and mouths, drawn to sit on a head.
+			// On the dark panel they can't be made out, so each gets a skin tile.
+			ColorBox(EMOTE_CELL - 2, EMOTE_CELL - 2, Color::Name::CREAM, 1.0f)
+				.draw(DrawArgument(cell));
 
 			if (i == emoticon_hover)
 				ColorBox(EMOTE_CELL - 2, EMOTE_CELL - 2, Color::Name::HUD_EXP, 0.5f)
@@ -1016,8 +1025,15 @@ namespace ms
 		classic::box(left, top, TOUCH_W, TOUCH_LINE_H, Color::Name::HUD_PANEL, 0.62f);
 		classic::box(left, top, 2, TOUCH_LINE_H, Color::Name::HUD_EXP, 0.9f);
 
-		if (rowtexts.count(rowmax))
+		if (!unread_whisper_from.empty())
+		{
+			classic::box(left, top, TOUCH_W, TOUCH_LINE_H, Color::Name::PINK, 0.45f);
+			whisper_alert.draw(Point<int16_t>(left + 8, classic::text_y(whisper_alert, top + TOUCH_LINE_H / 2)));
+		}
+		else if (rowtexts.count(rowmax))
+		{
 			rowtexts.at(rowmax).draw(DrawArgument(Point<int16_t>(left + 8, top + 3)), Range<int16_t>(top + 1, bottom - 1));
+		}
 
 		// An arrow on the right says the line opens upwards
 		int16_t cx = left + TOUCH_W - 12;
@@ -1217,7 +1233,17 @@ namespace ms
 			if (line_rect().contains(at))
 			{
 				Sound(Sound::Name::BUTTONCLICK).play();
-				set_chat_open(true);
+
+				if (!unread_whisper_from.empty())
+				{
+					std::string from = unread_whisper_from;
+
+					whisper_to(from);
+				}
+				else
+				{
+					set_chat_open(true);
+				}
 			}
 
 			return;
@@ -1716,7 +1742,16 @@ namespace ms
 		LineSpeaker speaker = line_speaker(line);
 
 		if (speaker.whisper && !speaker.outgoing && !speaker.name.empty())
+		{
 			last_whisper_from = speaker.name;
+
+			if (!chatopen)
+			{
+				unread_whisper_from = speaker.name;
+				whisper_alert = Text(Text::Font::A12B, Text::Alignment::LEFT, Color::Name::WHITE, "Whisper from " + speaker.name + ". Tap to reply.");
+				Sound(Sound::Name::DLGNOTICE).play();
+			}
+		}
 
 		bool following = rowpos == rowmax;
 

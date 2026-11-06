@@ -19,6 +19,7 @@
 
 #include "UINotice.h"
 #include "UIAvatarMegaphone.h"
+#include "UIBook.h"
 #include "UIItemMegaphone.h"
 #include "UIMapleTV.h"
 #include "UIMegaphone.h"
@@ -507,6 +508,16 @@ namespace ms
 					case InventoryType::Id::SETUP:
 					{
 						Stage::get().get_player().use_item(item_id);
+						break;
+					}
+					case InventoryType::Id::ETC:
+					{
+						if (UIBook::has_book(item_id))
+						{
+							UI::get().remove(UIElement::Type::BOOK);
+							UI::get().emplace<UIBook>(item_id);
+						}
+
 						break;
 					}
 					case InventoryType::Id::CASH:

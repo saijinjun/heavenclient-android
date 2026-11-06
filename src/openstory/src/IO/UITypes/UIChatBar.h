@@ -266,6 +266,9 @@ namespace ms
 		std::string whisper_target;
 		// Who whispered last, for /r
 		std::string last_whisper_from;
+		// Who whispered while the log was closed, until it's next opened
+		std::string unread_whisper_from;
+		Text whisper_alert;
 		mutable Text whisper_chip;
 		Text whisper_label;
 		Texture chatspace[2];

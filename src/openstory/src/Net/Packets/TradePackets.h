@@ -110,6 +110,20 @@ namespace ms
 		}
 	};
 
+	// Open an Omok (game 1) or Match Cards (game 2) room, with no password
+	class CreateMiniGamePacket : public OutPacket
+	{
+	public:
+		CreateMiniGamePacket(const std::string& desc, int8_t game, int8_t pieces) : OutPacket(OutPacket::Opcode::PLAYER_INTERACTION)
+		{
+			write_byte(0);
+			write_byte(game);
+			write_string(desc);
+			write_byte(0);
+			write_byte(pieces);
+		}
+	};
+
 	// Add item to trade
 	// action 15: byte invtype, short slot, short qty, byte trade_slot
 	class TradeSetItemPacket : public OutPacket
