@@ -145,6 +145,23 @@ namespace ms
 		camera.set_view(mapinfo.get_walls(), mapinfo.get_borders());
 	}
 
+	void Stage::draw_labels(float alpha) const
+	{
+		if (state != State::ACTIVE)
+			return;
+
+		Point<double> viewrpos = camera.realposition(alpha);
+		double viewx = viewrpos.x();
+		double viewy = viewrpos.y();
+
+		for (auto id : Layer::IDs)
+			npcs.draw_names(id, viewx, viewy, alpha);
+
+		// The player's own last, so their name is never under someone else's
+		chars.draw_labels(viewx, viewy, alpha);
+		player.draw_labels(viewx, viewy, alpha);
+	}
+
 	void Stage::draw(float alpha) const
 	{
 		if (state != State::ACTIVE)
@@ -175,7 +192,6 @@ namespace ms
 
 			reactors.draw(id, viewx, viewy, alpha);
 			npcs.draw(id, viewx, viewy, alpha);
-			npcs.draw_names(id, viewx, viewy, alpha);
 			mobs.draw(id, viewx, viewy, alpha);
 			summons.draw(id, viewx, viewy, alpha);
 			dragons.draw(id, viewx, viewy, alpha);
@@ -199,10 +215,6 @@ namespace ms
 
 		if (gfx_quality > 10)
 			backgrounds.drawforegrounds(viewx, viewy, alpha);
-
-		// The player's own last, so their name is never under someone else's
-		chars.draw_labels(viewx, viewy, alpha);
-		player.draw_labels(viewx, viewy, alpha);
 
 		if (gfx_quality > 25)
 			environments.draw(viewx, viewy, alpha);

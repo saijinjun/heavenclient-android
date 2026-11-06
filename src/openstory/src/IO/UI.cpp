@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "../Configuration.h"
+#include "../Gameplay/Stage.h"
 #include "../Graphics/GraphicsGL.h"
 
 #include "UIStateCashShop.h"
@@ -80,6 +81,8 @@ namespace ms
 		// The HD-2D effects stop here: the UI is drawn sharp on top.
 		GraphicsGL::get().mark_ui();
 #endif
+
+		Stage::get().draw_labels(alpha);
 
 		state->draw(alpha, cursor.get_position());
 
