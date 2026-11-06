@@ -11,6 +11,11 @@
 
 ## Recent events (newest first)
 
+- 2026-11-07 04:17 · client · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: Connection timed out
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
 - 2026-11-07 02:59 · client · ✅ deployed `9668495` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-07 02:30 · server · ✅ deployed `2a81c6b` - online, 8484 open
 - 2026-11-07 02:23 · server · ✅ deployed `421ec4c` - online, 8484 open
@@ -34,4 +39,3 @@ and the repository exists.
 - 2026-11-05 13:06 · client · ✅ deployed `ef6a1dc` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 12:20 · client · ✅ deployed `1278373` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 12:00 · client · ✅ deployed `622c5ed` - no runtime change (docs/android/tests only)
-- 2026-11-05 11:21 · client · ✅ deployed `03fd54a` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
