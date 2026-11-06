@@ -6,11 +6,12 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `89841db` | ok |
+| server | `421ec4c` | ok |
 | client | `fc759a3` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-07 02:23 · server · ✅ deployed `421ec4c` - online, 8484 open
 - 2026-11-07 01:48 · server · ✅ deployed `89841db` - online, 8484 open
 - 2026-11-07 01:24 · server · ✅ deployed `3fcdb7f` - online, 8484 open
 - 2026-11-06 15:03 · server · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: Connection timed out
@@ -34,4 +35,3 @@ and the repository exists.
 - 2026-11-05 11:21 · client · ✅ deployed `03fd54a` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 10:59 · client · ✅ deployed `bee9adb` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 10:38 · server · ✅ deployed `d825648` - no runtime change (container not recreated), 8484 open
-- 2026-11-05 08:50 · client · ✅ deployed `e065705` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
