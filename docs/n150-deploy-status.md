@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `2a81c6b` | ok |
-| client | `fc759a3` | ok |
+| client | `9668495` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-07 02:59 · client · ✅ deployed `9668495` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-07 02:30 · server · ✅ deployed `2a81c6b` - online, 8484 open
 - 2026-11-07 02:23 · server · ✅ deployed `421ec4c` - online, 8484 open
 - 2026-11-07 01:48 · server · ✅ deployed `89841db` - online, 8484 open
@@ -34,4 +35,3 @@ and the repository exists.
 - 2026-11-05 12:20 · client · ✅ deployed `1278373` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 12:00 · client · ✅ deployed `622c5ed` - no runtime change (docs/android/tests only)
 - 2026-11-05 11:21 · client · ✅ deployed `03fd54a` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-05 10:59 · client · ✅ deployed `bee9adb` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
