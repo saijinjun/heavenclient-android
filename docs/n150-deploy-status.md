@@ -6,11 +6,12 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `d825648` | ok |
+| server | `8cc741a` | ok |
 | client | `fc759a3` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-06 10:57 · server · ✅ deployed `8cc741a` - online, 8484 open
 - 2026-11-06 10:44 · client · ✅ deployed `fc759a3` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-06 01:19 · client · ✅ deployed `3bac3b9` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 20:50 · client · ✅ deployed `b549838` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -30,8 +31,3 @@
 - 2026-11-05 08:29 · client · ✅ deployed `abf9a48` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 06:31 · client · ✅ deployed `4cd02e0` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 06:25 · client · ✅ deployed `5251579` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-05 05:53 · client · ⚠ deploy check errored: git fetch -q origin main -> 128: channel 0: open failed: administratively prohibited: 
-fatal: Could not read from remote repository.
-
-Please make sure you have the correct access rights
-and the repository exists.
