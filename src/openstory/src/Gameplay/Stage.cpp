@@ -164,9 +164,12 @@ namespace ms
 		// look blurs; the world after it is tinted by the time of day.
 		GraphicsGL::get().mark_world();
 
-		static const bool day_night = Setting<DayNightCycle>::get().load();
-		if (day_night)
+		// Read every frame, so the Options toggle applies at once. The neutral
+		// tint clears whatever color the cycle last left in the post process.
+		if (Setting<DayNightCycle>::get().load())
 			GraphicsGL::get().set_tint(DayNight::tint(static_cast<int64_t>(std::time(nullptr))));
+		else
+			GraphicsGL::get().set_tint({ 1.0f, 1.0f, 1.0f });
 #endif
 
 		for (auto id : Layer::IDs)

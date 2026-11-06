@@ -172,13 +172,15 @@ namespace ms
 		phone_hint = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::SILVERCHALICE, "Lit means other players can do this.");
 		phone_ok = label("OK");
 		phone_cancel = label("Cancel");
-		phone_edit = label("Edit touch controls");
+		phone_edit = label("Edit controls");
 		phone_mute = label("Mute");
 		phone_mute_on = label("Mute", Color::Name::HUD_PANEL);
 		phone_shake = label("Screen shake");
 		phone_shake_on = label("Screen shake", Color::Name::HUD_PANEL);
 		phone_minimap = label("Simple minimap");
 		phone_minimap_on = label("Simple minimap", Color::Name::HUD_PANEL);
+		phone_night = label("Day and night");
+		phone_night_on = label("Day and night", Color::Name::HUD_PANEL);
 		phone_tabs[0] = label("Game");
 		phone_tabs[1] = label("Social");
 
@@ -242,6 +244,7 @@ namespace ms
 
 			draw_toggle(phone_shake_rect(), check_val[CHK_SCREEN_SHAKE] ? phone_shake_on : phone_shake, check_val[CHK_SCREEN_SHAKE]);
 			draw_toggle(phone_minimap_rect(), check_val[CHK_MINIMAP_SIMPLE] ? phone_minimap_on : phone_minimap, check_val[CHK_MINIMAP_SIMPLE]);
+			draw_toggle(phone_night_rect(), day_night ? phone_night_on : phone_night, day_night);
 
 			Rectangle<int16_t> edit = phone_edit_rect();
 
@@ -496,6 +499,11 @@ namespace ms
 		// Screen shake
 		check_val[CHK_SCREEN_SHAKE] = Setting<ScreenShake>::get().load();
 
+		// Day and night stays out of check_val: the desktop panel draws every
+		// check at a spot in its art, and its art has no spot for this one.
+		day_night = Setting<DayNightCycle>::get().load();
+		day_night_orig = day_night;
+
 		// Minimap mode
 		bool simple_mode = Setting<MiniMapSimpleMode>::get().load();
 		check_val[CHK_MINIMAP_NORMAL] = !simple_mode;
@@ -551,6 +559,10 @@ namespace ms
 
 		// Screen shake
 		Setting<ScreenShake>::get().save(check_val[CHK_SCREEN_SHAKE]);
+
+		// Day and night
+		Setting<DayNightCycle>::get().save(day_night);
+		day_night_orig = day_night;
 
 		// Minimap mode — recreate minimap if mode changed
 		bool old_simple = Setting<MiniMapSimpleMode>::get().load();
@@ -648,11 +660,18 @@ namespace ms
 		return Rectangle<int16_t>(tl, tl + Point<int16_t>(150, 34));
 	}
 
-	Rectangle<int16_t> UIOptionMenu::phone_edit_rect() const
+	Rectangle<int16_t> UIOptionMenu::phone_night_rect() const
 	{
 		Point<int16_t> tl = position + Point<int16_t>(348, PHONE_ROWS_Y + static_cast<int16_t>(PHONE_SLIDERS) * PHONE_ROW_STEP);
 
-		return Rectangle<int16_t>(tl, tl + Point<int16_t>(288, 34));
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(150, 34));
+	}
+
+	Rectangle<int16_t> UIOptionMenu::phone_edit_rect() const
+	{
+		Point<int16_t> tl = position + Point<int16_t>(510, PHONE_ROWS_Y + static_cast<int16_t>(PHONE_SLIDERS) * PHONE_ROW_STEP);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(126, 34));
 	}
 
 	Rectangle<int16_t> UIOptionMenu::phone_social_rect(size_t index) const
@@ -801,6 +820,8 @@ namespace ms
 			toggle(CHK_SCREEN_SHAKE);
 		else if (phone_minimap_rect().contains(at))
 			toggle(CHK_MINIMAP_SIMPLE);
+		else if (phone_night_rect().contains(at))
+			day_night = !day_night;
 
 		return Cursor::State::CLICKING;
 	}
@@ -813,6 +834,8 @@ namespace ms
 
 		for (int i = 0; i < NUM_CHECKS; i++)
 			check_val[i] = check_orig[i];
+
+		day_night = day_night_orig;
 
 		Music::set_bgmvolume(check_val[CHK_MUTE_BGM] ? 0 : slider_val[SL_BGM]);
 		Sound::set_sfxvolume(check_val[CHK_MUTE_SFX] ? 0 : slider_val[SL_SFX]);
