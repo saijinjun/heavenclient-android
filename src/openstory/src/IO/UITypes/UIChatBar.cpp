@@ -2340,6 +2340,11 @@ namespace ms
 		send_targeted_message("Party", message);
 	}
 
+	void UIChatBar::say_in_party(const std::string& message)
+	{
+		send_party_message(message);
+	}
+
 	void UIChatBar::send_chat_message(const std::string& message)
 	{
 

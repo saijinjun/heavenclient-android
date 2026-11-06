@@ -118,6 +118,8 @@ namespace ms
 		void focus_chatfield();
 		// Opens typing with the next lines going privately to this player
 		void whisper_to(const std::string& name);
+		// Sends a line to party chat and echoes it, as if typed with the Party chip on
+		void say_in_party(const std::string& message);
 		// Numbered options someone offered ("1. What's up?", ...). On a phone they show
 		// as buttons above the chat line for this many seconds, and a tap answers with
 		// the option's number, which is what typing would have sent.

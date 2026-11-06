@@ -140,7 +140,8 @@ namespace ms
 
 		// Social actions first: on a phone this window is how you meet someone,
 		// so saying hi, partying and adding a buddy are all one tap from a tap on them
-		const char* button_names[PHONE_BUTTONS] = { "Say hi", "Whisper", "Party", "Buddy +", "Trade", "Fame +", "Fame -", "Guild", "Items", "Pet", "Mount" };
+		const char* button_names[PHONE_BUTTONS] = { "Say hi", "Whisper", "Party", "Buddy +", "Trade", "Fame +", "Fame -", "Guild", "Items", "Pet", "Mount",
+			"Follow me", "Fight here", "Free roam" };
 
 		for (size_t i = 0; i < PHONE_BUTTONS; i++)
 			phone_button_labels[i] = Text(Text::Font::A11B, Text::Alignment::CENTER, Color::Name::WHITE, button_names[i]);
@@ -315,6 +316,13 @@ namespace ms
 			preview_look = c->get_look_preview();
 			has_preview = true;
 		}
+
+#ifdef __ANDROID__
+		// Joining or leaving the party adds or drops the order row while the window is open,
+		// and taps are only taken inside the window's dimension
+		if (!bot_tab_active)
+			dimension = Point<int16_t>(PHONE_W, phone_height());
+#endif
 	}
 
 	// Already on the buddy list: a second request would only get an error back
@@ -332,10 +340,46 @@ namespace ms
 		return false;
 	}
 
+	bool UICharInfo::target_in_party() const
+	{
+		if (target_char_id == Stage::get().get_player().get_oid())
+			return false;
+
+		for (const PartyMember& member : Stage::get().get_player().get_party().get_members())
+			if (member.cid == target_char_id)
+				return true;
+
+		return false;
+	}
+
+	// Bot companions take orders from party chat, and lead with a name to pick one
+	// bot out of the party. Naming the target keeps the others doing what they were.
+	void UICharInfo::order_in_party(const std::string& order)
+	{
+		Char* chr = target();
+
+		if (!chr || !target_in_party())
+			return;
+
+		if (auto chatbar = UI::get().get_element<UIChatBar>())
+			chatbar->say_in_party(chr->get_name() + " " + order);
+	}
+
 	Button::State UICharInfo::button_pressed(uint16_t buttonid)
 	{
 		switch (buttonid)
 		{
+		case Buttons::BtOrderFollow:
+			order_in_party("follow me");
+			return Button::State::NORMAL;
+		case Buttons::BtOrderStay:
+			order_in_party("stay here");
+			return Button::State::NORMAL;
+		case Buttons::BtOrderRoam:
+			// Free roam takes the bot out of the party, so the order buttons would go stale
+			order_in_party("free roam");
+			deactivate();
+			return Button::State::NORMAL;
 		case Buttons::BtWhisper:
 			if (target())
 			{
@@ -861,7 +905,15 @@ namespace ms
 
 		int16_t col = static_cast<int16_t>(index % PHONE_BUTTON_COLS);
 		int16_t row = static_cast<int16_t>(index / PHONE_BUTTON_COLS);
-		Point<int16_t> tl = position + Point<int16_t>(14 + col * (W + GAP), 216 + row * (H + GAP));
+
+		// The orders get a row of their own under the social and info buttons
+		if (index >= PHONE_BUTTONS - PHONE_ORDER_BUTTONS)
+		{
+			col = static_cast<int16_t>(index - (PHONE_BUTTONS - PHONE_ORDER_BUTTONS));
+			row = 2;
+		}
+
+		Point<int16_t> tl = position + Point<int16_t>(14 + col * (W + GAP), 216 + row * PHONE_ROW_STEP);
 
 		return Rectangle<int16_t>(tl, tl + Point<int16_t>(W, H));
 	}
@@ -918,10 +970,22 @@ namespace ms
 	{
 		const uint16_t ids[PHONE_BUTTONS] = {
 			Buttons::BtSayHi, Buttons::BtWhisper, Buttons::BtParty, Buttons::BtBuddy, Buttons::BtTrad, Buttons::BtPopUp,
-			Buttons::BtPopDown, Buttons::BtGuild, Buttons::BtItem, Buttons::BtPet, Buttons::BtRide
+			Buttons::BtPopDown, Buttons::BtGuild, Buttons::BtItem, Buttons::BtPet, Buttons::BtRide,
+			Buttons::BtOrderFollow, Buttons::BtOrderStay, Buttons::BtOrderRoam
 		};
 
 		return ids[index];
+	}
+
+	// The order row only exists while the target is in your party
+	size_t UICharInfo::phone_button_count() const
+	{
+		return target_in_party() ? PHONE_BUTTONS : PHONE_BUTTONS - PHONE_ORDER_BUTTONS;
+	}
+
+	int16_t UICharInfo::phone_height() const
+	{
+		return target_in_party() ? PHONE_H + PHONE_ROW_STEP : PHONE_H;
 	}
 
 	bool UICharInfo::phone_button_enabled(size_t index) const
@@ -963,7 +1027,7 @@ namespace ms
 
 	void UICharInfo::draw_phone() const
 	{
-		classic::panel(position, PHONE_W, PHONE_H);
+		classic::panel(position, PHONE_W, phone_height());
 		phone_title.draw(position + Point<int16_t>(PHONE_W / 2, 6));
 
 		Rectangle<int16_t> close = phone_close();
@@ -1008,7 +1072,7 @@ namespace ms
 
 		bool shows_wish_list = !bot_inventory.is_valid();
 
-		for (size_t i = 0; i < PHONE_BUTTONS; i++)
+		for (size_t i = 0; i < phone_button_count(); i++)
 		{
 			Rectangle<int16_t> r = phone_button(i);
 			bool enabled = phone_button_enabled(i);
@@ -1146,7 +1210,7 @@ namespace ms
 			return Cursor::State::IDLE;
 		}
 
-		for (size_t i = 0; i < PHONE_BUTTONS; i++)
+		for (size_t i = 0; i < phone_button_count(); i++)
 		{
 			if (!phone_button(i).contains(at) || !phone_button_enabled(i))
 				continue;
@@ -1162,7 +1226,8 @@ namespace ms
 			button_pressed(id);
 
 			// The desktop window grows for these; this one doesn't
-			dimension = Point<int16_t>(PHONE_W, PHONE_H);
+			if (!bot_tab_active)
+				dimension = Point<int16_t>(PHONE_W, phone_height());
 			dragarea = Point<int16_t>(0, 0);
 
 			return Cursor::State::CLICKING;
