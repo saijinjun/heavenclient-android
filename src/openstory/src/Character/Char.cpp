@@ -123,16 +123,21 @@ namespace ms
 
 		auras.draw_above(auractx, alpha);
 
+		effects.drawabove(absp, alpha);
+
+		for (auto& number : damagenumbers)
+			number.draw(viewx, viewy, alpha);
+	}
+
+	void Char::draw_labels(double viewx, double viewy, float alpha) const
+	{
+		Point<int16_t> absp = phobj.get_absolute(viewx, viewy, alpha) + sit_offset;
+
 		nametag.draw(absp);
 		guildtag.draw(absp);
 		partybar.draw(absp);
 
 		chatballoon.draw(absp - Point<int16_t>(0, 85));
-
-		effects.drawabove(absp, alpha);
-
-		for (auto& number : damagenumbers)
-			number.draw(viewx, viewy, alpha);
 	}
 
 	void Char::draw_preview(Point<int16_t> position, float alpha) const

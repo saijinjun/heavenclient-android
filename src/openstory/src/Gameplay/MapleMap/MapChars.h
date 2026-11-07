@@ -32,6 +32,7 @@ namespace ms
 	public:
 		// Draw all characters on a layer
 		void draw(Layer::Id layer, double viewx, double viewy, float alpha) const;
+		void draw_labels(double viewx, double viewy, float alpha) const;
 		// Update all characters
 		void update(const Physics& physics);
 

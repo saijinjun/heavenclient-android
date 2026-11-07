@@ -792,6 +792,12 @@ namespace ms
 		characters.emplace_back(std::forward<CharEntry>(character));
 
 		characters_count++;
+
+#ifdef __ANDROID__
+		// Phones skip the key layout screen, which is what called this after
+		// the character had arrived.
+		post_add_character();
+#endif
 	}
 
 	void UICharSelect::post_add_character()
