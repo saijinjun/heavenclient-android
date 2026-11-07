@@ -158,9 +158,9 @@ namespace ms
 		send_label = Text(Text::A12B, Text::CENTER, Color::Name::WHITE, "Send");
 		whisper_chip = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, "Whisper");
 
-		const char* chip_names[NUM_CHIPS] = { "All", "Party", "Guild", "Buddy" };
+		const char* chip_names[NUM_TABS] = { "All", "Party", "Guild", "Buddy", "Whisper" };
 
-		for (size_t i = 0; i < NUM_CHIPS; i++)
+		for (size_t i = 0; i < NUM_TABS; i++)
 			chip_labels[i] = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE, chip_names[i]);
 
 		set_chat_open(chatopen);
@@ -1052,10 +1052,10 @@ namespace ms
 		classic::box(left, log.top(), TOUCH_W, log.height(), Color::Name::HUD_PANEL, 0.78f);
 		classic::box(left, log.top(), TOUCH_W, 2, Color::Name::HUD_EXP, 0.9f);
 
-		for (size_t i = 0; i < NUM_CHIPS; i++)
+		for (size_t i = 0; i < NUM_TABS; i++)
 		{
 			Rectangle<int16_t> r = chip_rect(i);
-			bool lit = chattarget == chip_target(i);
+			bool lit = view == static_cast<ChatView>(i);
 
 			classic::tab(r.get_left_top(), r.width(), r.height(), lit);
 			chip_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
@@ -1254,7 +1254,12 @@ namespace ms
 		if (chip >= 0)
 		{
 			Sound(Sound::Name::BUTTONCLICK).play();
-			set_chat_target(chip_target(chip));
+			set_view(static_cast<ChatView>(chip));
+
+			// A channel's tab is also where typed lines go, so reading Party
+			// and answering in Party is one tap
+			if (static_cast<size_t>(chip) < NUM_CHIPS)
+				set_chat_target(chip_target(chip));
 		}
 		else if (log_close_rect().contains(at))
 		{
@@ -1753,6 +1758,89 @@ namespace ms
 			}
 		}
 
+		ChatView channel = line_channel(line);
+
+		history.push_back({ line, type, channel });
+
+		if (history.size() > MAX_HISTORY)
+			history.erase(history.begin());
+
+		if (shown_in_view(channel))
+			add_row(line, type);
+	}
+
+	UIChatBar::ChatView UIChatBar::line_channel(const std::string& line)
+	{
+		// Lines say their channel in their text: "[Party] Name: hi" from
+		// others and "[To Party] hi" from the player. Alliance shares the
+		// Guild tab, since there is no tab of its own.
+		struct Prefix
+		{
+			const char* text;
+			ChatView channel;
+		};
+
+		const Prefix prefixes[] = {
+			{ "[Party] ", VIEW_PARTY },
+			{ "[To Party] ", VIEW_PARTY },
+			{ "[Guild] ", VIEW_GUILD },
+			{ "[To Guild] ", VIEW_GUILD },
+			{ "[Alliance] ", VIEW_GUILD },
+			{ "[To Alliance] ", VIEW_GUILD },
+			{ "[Buddy] ", VIEW_BUDDY },
+			{ "[To Buddy] ", VIEW_BUDDY }
+		};
+
+		for (const Prefix& prefix : prefixes)
+			if (line.rfind(prefix.text, 0) == 0)
+				return prefix.channel;
+
+		if (line_speaker(line).whisper)
+			return VIEW_WHISPER;
+
+		// The server's answer to a whisper that couldn't be delivered belongs
+		// with the whisper it answers
+		const std::string offline = " is not logged in.";
+
+		if (line.rfind("The user ", 0) == 0 && line.size() > offline.size()
+			&& line.compare(line.size() - offline.size(), offline.size(), offline) == 0)
+			return VIEW_WHISPER;
+
+		return VIEW_ALL;
+	}
+
+	bool UIChatBar::shown_in_view(ChatView channel) const
+	{
+		return view == VIEW_ALL || view == channel;
+	}
+
+	void UIChatBar::set_view(ChatView next)
+	{
+		if (next == view)
+			return;
+
+		view = next;
+
+		// Rows are keyed by their place in the log, so the log is rebuilt
+		// from the history with only this tab's lines, newest at the bottom
+		rowtexts.clear();
+		rowstrings.clear();
+		rowicons.clear();
+		mega_rows.clear();
+		rowmax = -1;
+		rowpos = 0;
+		clear_selection();
+
+		for (const LogEntry& entry : history)
+			if (shown_in_view(entry.channel))
+				add_row(entry.line, entry.type);
+
+		rowpos = rowmax;
+		slider.setrows(rowpos, chatrows, rowmax);
+	}
+
+	void UIChatBar::add_row(const std::string& line, LineType type)
+	{
 		bool following = rowpos == rowmax;
 
 		rowmax++;
@@ -1936,7 +2024,7 @@ namespace ms
 
 	int32_t UIChatBar::chip_at(Point<int16_t> cursorpos) const
 	{
-		for (size_t i = 0; i < NUM_CHIPS; i++)
+		for (size_t i = 0; i < NUM_TABS; i++)
 			if (chip_rect(i).contains(cursorpos))
 				return static_cast<int32_t>(i);
 
