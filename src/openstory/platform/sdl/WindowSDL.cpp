@@ -791,8 +791,12 @@ namespace ms
 		// The scene is scaled to cover the whole window, as if the login
 		// screen went edge to edge, and only the strips outside the game's
 		// area are drawn. It is darkened so the eye stays on the middle.
+		// The login scenes have torn, see-through edges that their frame
+		// normally hides, which would show as black holes in the bars, so
+		// the outer part of the scene falls outside the window.
+		constexpr float EDGE_TRIM = 0.08f;
 		float cover = std::max(static_cast<float>(drawable_w) / backdrop.width(),
-			static_cast<float>(drawable_h) / backdrop.height());
+			static_cast<float>(drawable_h) / backdrop.height()) / (1.0f - 2.0f * EDGE_TRIM);
 		float cover_w = backdrop.width() * cover;
 		float cover_h = backdrop.height() * cover;
 		float cover_x = (drawable_w - cover_w) / 2.0f;

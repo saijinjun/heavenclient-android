@@ -405,7 +405,7 @@ namespace ms
 
 		auto drawpos = get_draw_position();
 
-		version.draw(drawpos + Point<int16_t>(680, 10));
+		version.draw(drawpos + Point<int16_t>(707, 4));
 
 		if (phone_layout)
 		{
