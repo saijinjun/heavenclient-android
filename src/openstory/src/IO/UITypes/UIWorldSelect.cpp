@@ -994,14 +994,49 @@ namespace ms
 			break;
 		}
 
+		// How busy each channel is, as the classic channel buttons showed it:
+		// a thin bar under the label, relative to the busiest channel, with
+		// a floor so a quiet server still shows slivers
+		const World* world = nullptr;
+
+		for (auto& w : worlds)
+			if (w.wid == worldid)
+				world = &w;
+
+		int32_t cap = GAUGE_MIN_CAP;
+
+		if (world)
+			for (int32_t load : world->chloads)
+				cap = std::max(cap, load & ~CH_EVENT_BIT);
+
 		for (uint8_t i = 0; i < count; ++i)
 		{
 			Rectangle<int16_t> r = drawn_channel_rect(i);
 			bool lit = i == channelid;
 
 			classic::cell(r.get_left_top(), r.width(), r.height(), lit);
+
+			// Room for the bar only in the taller cells
+			bool gauge = world && r.height() >= 28 * ui_scale;
+			int16_t label_cy = r.top() + r.height() / 2 - (gauge ? 4 : 0);
+
 			drawn_labels[i].change_color(lit ? Color::Name::HUD_PANEL : Color::Name::WHITE);
-			drawn_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(drawn_labels[i], r.top() + r.height() / 2)));
+			drawn_labels[i].draw(Point<int16_t>(r.left() + r.width() / 2, classic::text_y(drawn_labels[i], label_cy)));
+
+			if (gauge)
+			{
+				int32_t load = i < world->chloads.size() ? world->chloads[i] & ~CH_EVENT_BIT : 0;
+				float frac = std::min(load / static_cast<float>(cap), 1.0f);
+				int16_t bar_w = r.width() - 16;
+				int16_t bar_x = r.left() + 8;
+				int16_t bar_y = r.bottom() - 9;
+				int16_t fill = static_cast<int16_t>(bar_w * frac);
+
+				classic::box(bar_x, bar_y, bar_w, 3, Color::Name::BLACK, 0.45f);
+
+				if (fill > 0)
+					classic::box(bar_x, bar_y, std::max<int16_t>(fill, 2), 3, lit ? Color::Name::HUD_PANEL : Color::Name::HUD_EXP, 0.95f);
+			}
 		}
 
 		Rectangle<int16_t> e = drawn_enter_rect();
