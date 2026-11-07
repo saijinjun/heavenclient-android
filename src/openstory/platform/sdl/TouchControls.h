@@ -57,7 +57,9 @@ namespace ms
 			// Opens the server's solo menu (the @solo command).
 			SOLO_MENU,
 			OPTIONS,
-			LOOT_TOGGLE
+			LOOT_TOGGLE,
+			// Talks to the nearest NPC.
+			TALK
 		};
 
 		struct Action
@@ -101,6 +103,8 @@ namespace ms
 		void set_slot_info(uint8_t slot, int32_t count, bool cooling);
 		// Walk-over looting: the loot button is drawn faintly while it is off
 		void set_auto_loot(bool on);
+		// The talk button only shows and takes touches while an NPC is close
+		void set_talk_ready(bool ready);
 
 		// Each returns true when the finger belongs to a control, so the
 		// caller must not also treat it as a tap on the game.
@@ -116,8 +120,9 @@ namespace ms
 		// The quick slot under a point, filled or not; used to drop skills
 		// and items dragged from their windows onto a slot.
 		bool slot_at(float x, float y, uint8_t& slot) const;
-		// On or just beside a control, empty slots included: a touch here was
-		// meant for the controls, not for the world behind them
+		// On or just beside a control that is in use: a touch here was meant
+		// for the controls, not for the world behind them. Empty slots and a
+		// hidden talk button do not count, so NPCs behind them can be tapped.
 		bool is_near_control(float x, float y) const;
 
 		// Starts the layout editor, letting go of anything held
@@ -155,6 +160,7 @@ namespace ms
 			MENU_LAYOUT,
 			MENU_CHAT,
 			MENU_SOLO,
+			TALK,
 			NUM_CONTROLS
 		};
 
@@ -218,6 +224,7 @@ namespace ms
 		std::array<uint32_t, NUM_CONTROLS> pressed_at = {};
 		uint32_t now = 0;
 		bool auto_loot = true;
+		bool talk_ready = false;
 		std::array<bool, NUM_SLOTS> slots_filled = {};
 		std::array<int32_t, NUM_SLOTS> slot_counts = { -1, -1, -1, -1, -1, -1 };
 		std::array<bool, NUM_SLOTS> slots_cooling = {};

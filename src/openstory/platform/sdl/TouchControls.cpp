@@ -70,7 +70,7 @@ namespace ms
 		// at the bottom beside the centered status bar, and the menu sits
 		// below the minimap.
 		// In the order of TouchControls::Control.
-		constexpr std::array<Place, 21> PLACES =
+		constexpr std::array<Place, 22> PLACES =
 		{{
 			{ false, true,  1.40f, 1.50f, 1.00f, NUM_SPRITES, DR, DG, DB },      // STICK, at rest
 			{ true,  true,  1.15f, 1.20f, 0.72f, SWORD, 0.96f, 0.52f, 0.16f },   // ATTACK
@@ -93,15 +93,16 @@ namespace ms
 			{ true,  false, 0.45f, 0.45f, 0.26f, GEAR, DR, DG, DB },             // MENU_LAYOUT
 			{ true,  false, 1.15f, 0.45f, 0.26f, CHAT, DR, DG, DB },             // MENU_CHAT
 			{ true,  false, 1.85f, 0.45f, 0.26f, LIST, 0.80f, 0.56f, 0.18f },    // MENU_SOLO
+			{ true,  true,  3.05f, 1.35f, 0.42f, CHAT, 0.96f, 0.78f, 0.25f },    // TALK
 		}};
 
 		// Names for the settings file, in the order of TouchControls::Control.
-		constexpr std::array<const char*, 21> NAMES =
+		constexpr std::array<const char*, 22> NAMES =
 		{
 			"STICK", "ATTACK", "JUMP", "PICKUP",
 			"SLOT0", "SLOT1", "SLOT2", "SLOT3", "SLOT4", "SLOT5",
 			"INVENTORY", "EQUIPS", "STATS", "SKILLS", "QUESTS", "MAP",
-			"JUMP_DOWN", "SLOT_PAGE", "LAYOUT", "CHAT", "SOLO"
+			"JUMP_DOWN", "SLOT_PAGE", "LAYOUT", "CHAT", "SOLO", "TALK"
 		};
 
 		// The keys the stick and the action buttons hold down, in the order
@@ -144,6 +145,11 @@ namespace ms
 	void TouchControls::set_auto_loot(bool on)
 	{
 		auto_loot = on;
+	}
+
+	void TouchControls::set_talk_ready(bool ready)
+	{
+		talk_ready = ready;
 	}
 
 	void TouchControls::set_slot_filled(uint8_t slot, bool filled)
@@ -220,7 +226,15 @@ namespace ms
 
 		for (uint8_t i = ATTACK; i < NUM_CONTROLS; i++)
 		{
-			Circle circle = area(static_cast<Control>(i));
+			Control control = static_cast<Control>(i);
+
+			if (control >= SLOT0 && control <= SLOT_LAST && !slots_filled[control - SLOT0])
+				continue;
+
+			if (control == TALK && !talk_ready)
+				continue;
+
+			Circle circle = area(control);
 
 			if (std::hypot(x - circle.x, y - circle.y) <= circle.radius * NEAR_SLACK)
 				return true;
@@ -239,6 +253,11 @@ namespace ms
 			Control candidate = static_cast<Control>(i);
 
 			if (candidate >= SLOT0 && candidate <= SLOT_LAST && !slots_filled[candidate - SLOT0])
+			{
+				continue;
+			}
+
+			if (candidate == TALK && !talk_ready)
 			{
 				continue;
 			}
@@ -485,6 +504,8 @@ namespace ms
 			return { Output::CHAT, 0, pressed };
 		case MENU_SOLO:
 			return { Output::SOLO_MENU, 0, pressed };
+		case TALK:
+			return { Output::TALK, 0, pressed };
 		case MENU_LAYOUT:
 			return { Output::OPTIONS, 0, pressed };
 		case SLOT_PAGE:
@@ -570,6 +591,11 @@ namespace ms
 		for (uint8_t i = ATTACK; i < NUM_CONTROLS; i++)
 		{
 			Control control = static_cast<Control>(i);
+
+			// Still shown in the editor, so it can be moved.
+			if (control == TALK && !talk_ready && !editing)
+				continue;
+
 			Circle circle = area(control);
 			bool pressed = buttons[control];
 			bool slot = control >= SLOT0 && control <= SLOT_LAST;
