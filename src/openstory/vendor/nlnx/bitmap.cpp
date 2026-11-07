@@ -50,9 +50,18 @@ namespace nl
 		if (l + 0x20 > bitmap_buf.size())
 			bitmap_buf.resize(l + 0x20);
 
-		uint64_t data_offset = m_offset + 4;
+		// The compressed size is stored just before the data. Reading the
+		// uncompressed size instead runs off the end of the file for bitmaps
+		// near its end, which crashed the client on those maps.
+		uint32_t read_len = 0;
 
-		uint32_t read_len = l;
+		if (!io_read(fd, &read_len, sizeof(read_len), m_offset))
+			return nullptr;
+
+		if (read_len == 0 || read_len > static_cast<uint32_t>(LZ4_compressBound(static_cast<int>(l))))
+			return nullptr;
+
+		uint64_t data_offset = m_offset + 4;
 		std::vector<char> src_buf(read_len);
 
 		if (!io_read(fd, src_buf.data(), read_len, data_offset))
