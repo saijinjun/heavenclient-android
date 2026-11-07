@@ -130,7 +130,7 @@ namespace ms
 			static_cast<int16_t>((UIScale::view_height() - 600.0f * ui_scale) / 2.0f));
 
 		std::string version_text = Configuration::get().get_version();
-		version = Text(Text::Font::A11M, Text::Alignment::LEFT, Color::Name::LEMONGRASS, "Ver. " + version_text);
+		version = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::BLACK, "Ver. " + version_text);
 
 		world_pos = WORLD_POS;
 
@@ -221,6 +221,12 @@ namespace ms
 		buttons[BT_VIEWCHOICE] = std::make_unique<MapleButton>(world_select["BtViewChoice"], lay(8, 53));
 		buttons[BT_VIEWALL]->set_active(false);
 		buttons[BT_VIEWCHOICE]->set_active(true);
+
+#ifdef __ANDROID__
+		// The server sends no recommended worlds, so on a phone this button
+		// only swaps its own label; it is hidden rather than left doing nothing.
+		buttons[BT_VIEWCHOICE]->set_active(false);
+#endif
 
 		// Quit game button
 		if (common["BtExit"])
@@ -421,7 +427,7 @@ namespace ms
 				lay(chpos + CHSELECT_OFF), ui_scale, ui_scale), alpha);
 		}
 
-		version.draw(lay(707, 1));
+		version.draw(lay(707, 4));
 	}
 
 	void UIWorldSelect::update()

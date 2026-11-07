@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 #include "../Configuration.h"
@@ -1069,6 +1070,31 @@ namespace ms
 			height = static_cast<GLshort>(srch * HD_SCALE);
 		}
 
+		// Sprites are packed edge to edge, so a scaled quad's filtered edge
+		// can pick up the neighbour in the atlas, which shows as a stray dark
+		// line along the sprite. A clear texel around each one keeps that
+		// from happening. It is written with the sprite, since an atlas reset
+		// leaves old pixels behind.
+		GLshort gutter = 0;
+
+		if (width + 2 < ATLASW && height + 2 < ATLASH)
+		{
+			gutter = 1;
+
+			const size_t row_bytes = static_cast<size_t>(width) * 4;
+			const size_t full_bytes = row_bytes + 8;
+			const uint8_t* source = static_cast<const uint8_t*>(pixels);
+
+			gutterbuffer.assign(full_bytes * (static_cast<size_t>(height) + 2), 0);
+
+			for (GLshort row = 0; row < height; row++)
+				std::memcpy(gutterbuffer.data() + full_bytes * (static_cast<size_t>(row) + 1) + 4, source + row_bytes * row, row_bytes);
+
+			pixels = gutterbuffer.data();
+			width = static_cast<GLshort>(width + 2);
+			height = static_cast<GLshort>(height + 2);
+		}
+
 		Leftover value = Leftover(x, y, width, height);
 
 		size_t lid = leftovers.findnode(
@@ -1197,7 +1223,11 @@ namespace ms
 		return offsets.emplace(
 			std::piecewise_construct,
 			std::forward_as_tuple(id),
-			std::forward_as_tuple(x, y, width, height)
+			std::forward_as_tuple(
+				static_cast<GLshort>(x + gutter),
+				static_cast<GLshort>(y + gutter),
+				static_cast<GLshort>(width - 2 * gutter),
+				static_cast<GLshort>(height - 2 * gutter))
 		).first->second;
 	}
 

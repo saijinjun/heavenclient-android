@@ -210,6 +210,23 @@ namespace ms
 		}
 	}
 
+	void UICreationBase::set_board_name(Text& label, const std::string& name) const
+	{
+		// The space between a row's arrows, in design pixels
+		constexpr int16_t ROW_W = 118;
+		const int16_t limit = static_cast<int16_t>(ROW_W * (ui_scale > 0.0f ? ui_scale : 1.0f));
+
+		label.change_text(name);
+
+		std::string shortened = name;
+
+		while (label.width() > limit && !shortened.empty())
+		{
+			shortened.pop_back();
+			label.change_text(shortened + "...");
+		}
+	}
+
 	const std::string& UICreationBase::get_equipname(EquipSlot::Id slot) const
 	{
 		if (int32_t item_id = newchar.get_equips().get_equip(slot))

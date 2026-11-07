@@ -171,6 +171,7 @@ namespace ms
 
 		static const int HD_SCALE = 2;
 		std::vector<uint32_t> hdbuffer;
+		std::vector<uint8_t> gutterbuffer;
 		const void* upscale(const void* data, GLshort w, GLshort h);
 
 		struct Leftover

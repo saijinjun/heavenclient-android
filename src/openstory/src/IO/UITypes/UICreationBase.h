@@ -21,6 +21,8 @@
 
 #include "../Components/Textfield.h"
 
+#include "../../Graphics/Text.h"
+
 #include "../../Template/BoolPair.h"
 
 #include "../../Character/Look/CharLook.h"
@@ -44,6 +46,9 @@ namespace ms
 	protected:
 		UICreationBase(uint16_t creation_job);
 
+		// Puts a name on a look board row, shortened if it would run under
+		// the row's arrows
+		void set_board_name(Text& label, const std::string& name) const;
 		Button::State naming_ok_pressed();
 		const std::string& get_equipname(EquipSlot::Id slot) const;
 

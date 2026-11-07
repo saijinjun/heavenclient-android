@@ -73,7 +73,7 @@ namespace ms
 	UIRaceSelect::UIRaceSelect() : UIElement(Point<int16_t>(0, 0), Point<int16_t>(800, 600), ScaleMode::CENTER_OFFSET)
 	{
 		std::string version_text = Configuration::get().get_version();
-		version = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::LEMONGRASS, "Ver. " + version_text);
+		version = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::BLACK, "Ver. " + version_text);
 
 		nl::node Login = nl::nx::ui["Login.img"];
 		nl::node Common = Login["Common"];
@@ -83,6 +83,10 @@ namespace ms
 		backdrop = Texture(nl::nx::map["Back"]["login.img"]["back"]["11"]);
 
 		header = Texture(RaceSelect["textGL"]["0"]);
+
+		// The login scene has torn, see-through edges that this frame hides,
+		// as it does on the sign-in and creation screens
+		sprites.emplace_back(Common["frame"], UIScale::bg_args());
 
 		// The three creatable Explorer-era classes, in v83 order.
 		const char* nodes[CLASS_COUNT] = { "normal", "knight", "aran" };
@@ -172,12 +176,15 @@ namespace ms
 				1.0f, 1.0f, 1.0f, 0.0f));
 		}
 
+		// A dim veil so the white text reads on the bright forest, under the
+		// frame so the frame keeps its color.
+		if (drawn_cards)
+			ColorBox(800, 600, Color::Name::BLACK, 0.25f).draw(DrawArgument(lay(0, 0)));
+
 		UIElement::draw_sprites(inter);
 
 		if (drawn_cards)
 		{
-			// A dim veil so the white text reads on the bright forest.
-			ColorBox(800, 600, Color::Name::BLACK, 0.25f).draw(DrawArgument(lay(0, 0)));
 			title_text.draw(lay(400, CARD_Y - 52));
 
 			for (uint16_t i = 0; i < CLASS_COUNT; i++)
