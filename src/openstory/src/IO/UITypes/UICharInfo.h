@@ -121,7 +121,11 @@ namespace ms
 #ifdef __ANDROID__
 		static constexpr int16_t PHONE_W = 440;
 		static constexpr int16_t PHONE_H = 304;
-		static constexpr size_t PHONE_BUTTONS = 9;
+		// The last PHONE_ORDER_BUTTONS only show for a member of your party
+		static constexpr size_t PHONE_BUTTONS = 14;
+		static constexpr size_t PHONE_ORDER_BUTTONS = 3;
+		static constexpr int16_t PHONE_ROW_STEP = 42;
+		static constexpr int16_t PHONE_BUTTON_COLS = 6;
 		static constexpr size_t PHONE_ROWS = 5;
 		static constexpr size_t PHONE_TABS = 5;
 
@@ -138,6 +142,8 @@ namespace ms
 		uint16_t phone_button_id(size_t index) const;
 		bool phone_button_enabled(size_t index) const;
 		bool phone_button_lit(size_t index) const;
+		size_t phone_button_count() const;
+		int16_t phone_height() const;
 
 		TapGesture gesture;
 		Text phone_title;
@@ -195,7 +201,14 @@ namespace ms
 			BtBotUse,
 			BtBotSetup,
 			BtBotEtc,
-			BtBotEquipped
+			BtBotEquipped,
+			// Phone only: start a chat with the character, and send them a buddy request
+			BtSayHi,
+			BtBuddy,
+			// Phone only, for a party member: party chat orders a bot companion understands
+			BtOrderFollow,
+			BtOrderStay,
+			BtOrderRoam
 		};
 
 		/// Expander panels (vanilla Pet / Ride / Wish List)
@@ -228,6 +241,10 @@ namespace ms
 		// the next draw.
 		Char* target() const;
 		int32_t target_char_id;
+
+		bool target_is_buddy() const;
+		bool target_in_party() const;
+		void order_in_party(const std::string& order);
 
 		// Snapshot of the target's look, refreshed while they are on screen.
 		// When they walk out of view or the map changes their Char is destroyed,
