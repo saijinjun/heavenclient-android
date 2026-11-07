@@ -31,15 +31,21 @@
 
 namespace ms
 {
-	Clothing::Clothing(int32_t id, const BodyDrawInfo& drawinfo) : itemid(id)
+	Clothing::Clothing(int32_t id, const BodyDrawInfo& drawinfo, int32_t cover_prefix) : itemid(id)
 	{
 		bodydrawinfo = &drawinfo;
 
 		const EquipData& equipdata = EquipData::get(itemid);
 
-		eqslot = equipdata.get_eqslot();
+		// A cash weapon has no slot or stances of its own: it is drawn in the
+		// weapon slot with the frames authored for the weapon type it covers
+		const bool cash_cover = itemid / 10000 == Weapon::Type::CASH && cover_prefix != 0;
 
-		if (eqslot == EquipSlot::Id::WEAPON)
+		eqslot = cash_cover ? EquipSlot::Id::WEAPON : equipdata.get_eqslot();
+
+		if (cash_cover)
+			twohanded = WeaponData::is_twohanded_prefix(cover_prefix);
+		else if (eqslot == EquipSlot::Id::WEAPON)
 			twohanded = WeaponData::get(itemid).is_twohanded();
 		else
 			twohanded = false;
@@ -70,7 +76,9 @@ namespace ms
 		Clothing::Layer chlayer;
 		size_t index = (itemid / 10000) - 100;
 
-		if (index < NON_WEAPON_TYPES)
+		if (cash_cover)
+			chlayer = Clothing::Layer::WEAPON;
+		else if (index < NON_WEAPON_TYPES)
 			chlayer = layers[index];
 		else if (index >= WEAPON_OFFSET && index < WEAPON_OFFSET + WEAPON_TYPES)
 			chlayer = Clothing::Layer::WEAPON;
@@ -81,6 +89,11 @@ namespace ms
 		std::string category = equipdata.get_itemdata().get_category();
 		nl::node src = nl::nx::character[category][strid + ".img"];
 		nl::node info = src["info"];
+
+		// The covering frames sit under the type's number ("30" = one-handed
+		// sword); info stays at the top of the item
+		if (cash_cover)
+			src = src[std::to_string(cover_prefix - 100)];
 
 		// AI-skin equips carry an info/aiSkin material bitmap in their .img;
 		// every frame is then retextured from it at load (see AiSkin.h)

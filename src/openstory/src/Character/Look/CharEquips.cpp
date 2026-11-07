@@ -18,8 +18,12 @@
 #include "CharEquips.h"
 
 #include "../../Data/EquipData.h"
+#include "../Inventory/Weapon.h"
 
 #include <nlnx/nx.hpp>
+
+#include <cctype>
+#include <string>
 
 namespace ms
 {
@@ -31,6 +35,13 @@ namespace ms
 
 	void CharEquips::draw(EquipSlot::Id slot, Stance::Id stance, Clothing::Layer layer, uint8_t frame, const DrawArgument& args) const
 	{
+		// A cash weapon covers whatever weapon is underneath
+		if (slot == EquipSlot::Id::WEAPON && cashcover)
+		{
+			cashcover->draw(stance, layer, frame, args);
+			return;
+		}
+
 		// Procedural weapons/hats render themselves (anchored + posed).
 		if (slot == EquipSlot::Id::WEAPON && procweapon.is_valid())
 		{
@@ -59,6 +70,13 @@ namespace ms
 		if (itemid <= 0)
 			return;
 
+		if (itemid / 10000 == Weapon::Type::CASH)
+		{
+			cashweapon = itemid;
+			refresh_cashcover(drawinfo);
+			return;
+		}
+
 		auto iter = cloth_cache.find(itemid);
 
 		if (iter == cloth_cache.end())
@@ -86,6 +104,10 @@ namespace ms
 				procweapon = ProceduralWeapon(src, itemid, drawinfo);
 			else
 				procweapon = ProceduralWeapon(); // authored — clear any prior procedural
+
+			// The cover follows the weapon type underneath it
+			if (cashweapon != 0)
+				refresh_cashcover(drawinfo);
 		}
 		else if (slot == EquipSlot::Id::HAT)
 		{
@@ -104,15 +126,86 @@ namespace ms
 		clothes[slot] = nullptr;
 
 		if (slot == EquipSlot::Id::WEAPON)
+		{
 			procweapon = ProceduralWeapon();
+
+			// Nothing left to cover
+			cashweapon = 0;
+			cashcover = nullptr;
+			cover_standalone = false;
+		}
 		else if (slot == EquipSlot::Id::HAT)
 		{
 			prochat = ProceduralHat();
 		}
 	}
 
+	void CharEquips::refresh_cashcover(const BodyDrawInfo& drawinfo)
+	{
+		cashcover = nullptr;
+		cover_standalone = false;
+
+		if (cashweapon == 0)
+			return;
+
+		nl::node src = nl::nx::character["Weapon"]["0" + std::to_string(cashweapon) + ".img"];
+		int32_t real = get_weapon() / 10000;
+		int32_t prefix = 0;
+
+		if (real >= Weapon::Type::SWORD_1H && real <= Weapon::Type::GUN && src[std::to_string(real - 100)].size() > 0)
+		{
+			prefix = real;
+		}
+		else
+		{
+			// Type folders are numbered 30-49; info and anything else is not
+			for (nl::node child : src)
+			{
+				const std::string name = child.name();
+
+				if (name.size() != 2 || !std::isdigit(static_cast<unsigned char>(name[0])) || !std::isdigit(static_cast<unsigned char>(name[1])))
+					continue;
+
+				int32_t type = std::stoi(name) + 100;
+
+				if (type >= Weapon::Type::SWORD_1H && type <= Weapon::Type::GUN && child.size() > 0)
+				{
+					prefix = type;
+					break;
+				}
+			}
+
+			cover_standalone = true;
+		}
+
+		if (prefix == 0)
+			return;
+
+		int64_t key = static_cast<int64_t>(cashweapon) * 1000 + prefix;
+		auto iter = cover_cache.find(key);
+
+		if (iter == cover_cache.end())
+		{
+			iter = cover_cache.emplace(
+				std::piecewise_construct,
+				std::forward_as_tuple(key),
+				std::forward_as_tuple(cashweapon, drawinfo, prefix)
+				).first;
+		}
+
+		cashcover = &iter->second;
+	}
+
+	const Clothing* CharEquips::stance_weapon() const
+	{
+		return (cashcover && cover_standalone) ? cashcover : clothes[EquipSlot::Id::WEAPON];
+	}
+
 	bool CharEquips::is_visible(EquipSlot::Id slot) const
 	{
+		if (slot == EquipSlot::Id::WEAPON && cashcover)
+			return true;
+
 		if (const Clothing* cloth = clothes[slot])
 			return cloth->is_transparent() == false;
 		else
@@ -121,6 +214,9 @@ namespace ms
 
 	bool CharEquips::comparelayer(EquipSlot::Id slot, Stance::Id stance, Clothing::Layer layer) const
 	{
+		if (slot == EquipSlot::Id::WEAPON && cashcover)
+			return cashcover->contains_layer(stance, layer);
+
 		if (const Clothing* cloth = clothes[slot])
 			return cloth->contains_layer(stance, layer);
 		else
@@ -139,7 +235,7 @@ namespace ms
 
 	bool CharEquips::is_twohanded() const
 	{
-		if (const Clothing* weapon = clothes[EquipSlot::Id::WEAPON])
+		if (const Clothing* weapon = stance_weapon())
 			return weapon->is_twohanded();
 		else
 			return false;
@@ -179,7 +275,7 @@ namespace ms
 
 	Stance::Id CharEquips::adjust_stance(Stance::Id stance) const
 	{
-		if (const Clothing* weapon = clothes[EquipSlot::Id::WEAPON])
+		if (const Clothing* weapon = stance_weapon())
 		{
 			switch (stance)
 			{
@@ -213,4 +309,5 @@ namespace ms
 	}
 
 	std::unordered_map<int32_t, Clothing> CharEquips::cloth_cache;
+	std::unordered_map<int64_t, Clothing> CharEquips::cover_cache;
 }
