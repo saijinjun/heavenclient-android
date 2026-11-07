@@ -33,6 +33,8 @@
 #include "../../Graphics/ClassicStyle.h"
 #include "../../Graphics/Geometry.h"
 
+#include <cctype>
+
 #ifdef USE_NX
 #include <nlnx/nx.hpp>
 #endif
@@ -408,7 +410,9 @@ namespace ms
 
 	std::string UIRaceSelect::to_lower(std::string value) const
 	{
-		std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+		// Through unsigned char: UTF-8 bytes of a Chinese name are negative as plain
+		// char, and passing those to tolower is undefined behaviour.
+		std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
 		return value;
 	}

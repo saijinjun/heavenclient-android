@@ -18,6 +18,7 @@
 #include "GraphicsGL.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -469,6 +470,24 @@ namespace ms
 		fallback_faces.push_back(Setting<FontPathHebrew>().get().load());
 		fallback_faces.push_back(Setting<FontPathCJK>().get().load());
 
+		// The configured CJK path defaults to a Windows font, and settings files
+		// saved by older builds keep that path, so phones and Linux would draw
+		// Chinese chat and names as blanks. Try the fonts those systems ship with
+		// as well; paths that don't exist are skipped when a glyph is looked up.
+		// "#2" picks the Simplified Chinese face inside Noto's CJK collection.
+		for (const char* system_cjk : {
+			"/system/fonts/NotoSansCJK-Regular.ttc#2",
+			"/system/fonts/NotoSansSC-Regular.otf",
+			"/system/fonts/DroidSansFallbackFull.ttf",
+			"/system/fonts/DroidSansFallback.ttf",
+			"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc#2",
+			"/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc#2",
+			"/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+			"C:/Windows/Fonts/msyh.ttc" })
+		{
+			fallback_faces.push_back(system_cjk);
+		}
+
 		const std::string FONT_EMOJI = Setting<FontPathEmoji>().get().load();
 		if (!FONT_EMOJI.empty())
 		{
@@ -542,7 +561,20 @@ namespace ms
 			return FT_New_Memory_Face(ftlibrary, baked->data,
 				static_cast<FT_Long>(baked->size), 0, out);
 
-		return FT_New_Face(ftlibrary, spec.c_str(), 0, out);
+		// A trailing "#N" selects face N of a font collection (.ttc), which
+		// bundles several regional variants of the same glyphs in one file.
+		FT_Long face_index = 0;
+		std::string path = spec;
+		size_t hash = spec.rfind('#');
+
+		if (hash != std::string::npos && hash + 1 < spec.size() && spec.size() - hash - 1 <= 3
+			&& std::all_of(spec.begin() + hash + 1, spec.end(), [](unsigned char c) { return std::isdigit(c) != 0; }))
+		{
+			face_index = static_cast<FT_Long>(std::stol(spec.substr(hash + 1)));
+			path = spec.substr(0, hash);
+		}
+
+		return FT_New_Face(ftlibrary, path.c_str(), face_index, out);
 	}
 
 	bool GraphicsGL::addfont(const char* name, Text::Font id, FT_UInt pixelw, FT_UInt pixelh)

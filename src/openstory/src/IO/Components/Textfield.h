@@ -77,6 +77,10 @@ namespace ms
 	private:
 		void modifytext(const std::string& t);
 		bool belowlimit() const;
+		// Whether `bytes` more bytes fit under the field's limit.
+		bool fits(size_t bytes) const;
+		// Byte length of the UTF-8 character that starts with `lead`.
+		static size_t utf8_sequence_length(unsigned char lead);
 		// Byte offsets of the character boundaries either side of `pos`.
 		// The caret and every edit must land on a boundary: a UTF-8 Hebrew
 		// character is two bytes, so byte-wise editing would split it and
