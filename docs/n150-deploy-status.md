@@ -6,11 +6,12 @@
 
 | | deployed | state |
 |---|---|---|
-| server | `2a81c6b` | ok |
+| server | `235fa63` | ok |
 | client | `9668495` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-07 14:40 · server · ✅ deployed `235fa63` - online, 8484 open
 - 2026-11-07 04:48 · client · ⚠ deploy check errored: git fetch -q origin main -> 128: ssh: connect to host github.com port 22: No route to host
 fatal: Could not read from remote repository.
 
@@ -42,4 +43,3 @@ and the repository exists.
 - 2026-11-05 14:14 · client · ✅ deployed `05990e9` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 13:21 · client · ✅ deployed `d658b71` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 13:06 · client · ✅ deployed `ef6a1dc` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-05 12:20 · client · ✅ deployed `1278373` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
