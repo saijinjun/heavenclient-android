@@ -66,6 +66,7 @@ namespace ms
 		// v83 login-map Rien band: shared sky gradient + clouds and the snowy
 		// gazebo (back/33) the new Aran stands on.
 		sky = Texture(back["2"]);
+		UI::get().set_side_backdrop(sky);
 		cloud = Texture(back["27"]);
 
 		// Gazebo drawn aspect-correct: uniform scale anchored at its map spot.

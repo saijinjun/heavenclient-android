@@ -774,6 +774,58 @@ namespace ms
 		glViewport(view_x, view_y, view_w, view_h);
 	}
 
+	void Window::draw_side_fill() const
+	{
+		const Texture& backdrop = UI::get().get_side_backdrop();
+
+		if (!backdrop.is_valid() || (view_x <= 0 && view_y <= 0))
+			return;
+
+		int32_t drawable_w = 0;
+		int32_t drawable_h = 0;
+		SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
+
+		if (drawable_w <= 0 || drawable_h <= 0)
+			return;
+
+		// The scene is scaled to cover the whole window, as if the login
+		// screen went edge to edge, and only the strips outside the game's
+		// area are drawn. It is darkened so the eye stays on the middle.
+		float cover = std::max(static_cast<float>(drawable_w) / backdrop.width(),
+			static_cast<float>(drawable_h) / backdrop.height());
+		float cover_w = backdrop.width() * cover;
+		float cover_h = backdrop.height() * cover;
+		float cover_x = (drawable_w - cover_w) / 2.0f;
+		float cover_y = (drawable_h - cover_h) / 2.0f;
+		float shade = 0.45f * opacity;
+		Color tint(shade, shade, shade * 1.1f, 1.0f);
+
+		auto strip = [&](int32_t left, int32_t top, int32_t right, int32_t bottom)
+		{
+			if (right <= left || bottom <= top)
+				return;
+
+			backdrop.draw_screen_part(
+				static_cast<int16_t>(left), static_cast<int16_t>(top),
+				static_cast<int16_t>(right), static_cast<int16_t>(bottom),
+				(left - cover_x) / cover_w, (top - cover_y) / cover_h,
+				(right - cover_x) / cover_w, (bottom - cover_y) / cover_h,
+				tint);
+		};
+
+		// Bars at the sides, or above and below on a tall screen
+		strip(0, 0, view_x, drawable_h);
+		strip(view_x + view_w, 0, drawable_w, drawable_h);
+		strip(view_x, 0, view_x + view_w, view_y);
+		strip(view_x, view_y + view_h, view_x + view_w, drawable_h);
+
+		GraphicsGL& graphics = GraphicsGL::get();
+
+		glViewport(0, 0, drawable_w, drawable_h);
+		graphics.flush_screen(static_cast<int16_t>(drawable_w), static_cast<int16_t>(drawable_h));
+		glViewport(view_x, view_y, view_w, view_h);
+	}
+
 	void Window::on_app_event(uint32_t type)
 	{
 		switch (type)
@@ -1226,6 +1278,11 @@ namespace ms
 		}
 
 		GraphicsGL::get().flush(opacity);
+
+		// The cash shop has bars too, but they stay black: the login
+		// scene would be out of place there.
+		if (UI::get().in_login())
+			draw_side_fill();
 
 		if (touch_seen && UI::get().in_game() && !UI::get().in_mobile_panel())
 			draw_touch_controls();
