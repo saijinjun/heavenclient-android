@@ -106,6 +106,8 @@ namespace ms
 		Point<int16_t> check_positions[NUM_CHECKS];
 		bool check_val[NUM_CHECKS];
 		bool check_orig[NUM_CHECKS];
+		bool day_night = true;
+		bool day_night_orig = true;
 
 		static constexpr int16_t CHECK_HIT_SIZE = 14;
 
@@ -136,6 +138,7 @@ namespace ms
 		Rectangle<int16_t> phone_mute_rect(size_t index) const;
 		Rectangle<int16_t> phone_shake_rect() const;
 		Rectangle<int16_t> phone_minimap_rect() const;
+		Rectangle<int16_t> phone_night_rect() const;
 		Rectangle<int16_t> phone_edit_rect() const;
 		Rectangle<int16_t> phone_social_rect(size_t index) const;
 		Rectangle<int16_t> phone_ok_rect() const;
@@ -154,6 +157,8 @@ namespace ms
 		Text phone_shake_on;
 		Text phone_minimap;
 		Text phone_minimap_on;
+		Text phone_night;
+		Text phone_night_on;
 		Text phone_tabs[PHONE_TABS];
 		Text phone_slider_names[PHONE_SLIDERS];
 		Text phone_social_names[PHONE_SOCIAL];
