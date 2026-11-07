@@ -7,10 +7,11 @@
 | | deployed | state |
 |---|---|---|
 | server | `235fa63` | held |
-| client | `688545a` | ok |
+| client | `13e961b` | ok |
 
 ## Recent events (newest first)
 
+- 2026-11-07 18:08 · client · ✅ deployed `13e961b` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-07 16:17 · client · ✅ deployed `688545a` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-07 16:17 · server · **HELD for Onyx review** `235fa63..281ebb9` - sensitive: config.yaml (PROXY_PROTOCOL_TRUSTED)
 - 2026-11-07 16:00 · client · ✅ deployed `f4af705` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
@@ -42,4 +43,3 @@ and the repository exists.
 - 2026-11-06 10:44 · client · ✅ deployed `fc759a3` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-06 01:19 · client · ✅ deployed `3bac3b9` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
 - 2026-11-05 20:50 · client · ✅ deployed `b549838` - wasm rebuilt; page+wasm 200, proxy->8484 handshake ok
-- 2026-11-05 18:44 · client · ✅ deployed `8ed4536` - no runtime change (docs/android/tests only)
