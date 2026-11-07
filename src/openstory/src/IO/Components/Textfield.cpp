@@ -312,11 +312,14 @@ namespace ms
 		if (has_selection())
 			erase_selection();
 
-		if (!belowlimit())
-			return;
-
 		std::string encoded;
 		Text::utf8_encode(codepoint, encoded);
+
+		// Limits count bytes because that is what the server's fields hold, and a
+		// Chinese character is three of them. Refuse a character that would spill
+		// past the limit instead of letting a name or message run over it.
+		if (!fits(encoded.size()))
+			return;
 
 		text.insert(markerpos, encoded);
 		markerpos += encoded.size();
@@ -329,17 +332,23 @@ namespace ms
 		if (has_selection())
 			erase_selection();
 
-		for (char c : str)
+		// Insert whole UTF-8 characters only, so a pasted string that hits the
+		// limit is cut between characters rather than through the middle of one.
+		size_t i = 0;
+
+		while (i < str.size())
 		{
-			if (belowlimit())
-			{
-				text.insert(markerpos, 1, c);
+			size_t length = utf8_sequence_length(static_cast<unsigned char>(str[i]));
 
-				markerpos++;
+			if (i + length > str.size() || !fits(length))
+				break;
 
-				modifytext(text);
-			}
+			text.insert(markerpos, str, i, length);
+			markerpos += length;
+			i += length;
 		}
+
+		modifytext(text);
 	}
 
 	void Textfield::modifytext(const std::string& t)
@@ -509,6 +518,23 @@ namespace ms
 	void Textfield::set_cryptchar(int8_t character)
 	{
 		crypt = character;
+	}
+
+	size_t Textfield::utf8_sequence_length(unsigned char lead)
+	{
+		if (lead >= 0xF0) return 4;
+		if (lead >= 0xE0) return 3;
+		if (lead >= 0xC0) return 2;
+		return 1;
+	}
+
+	bool Textfield::fits(size_t bytes) const
+	{
+		// Fields without a byte limit are bounded by width, which belowlimit checks.
+		if (limit > 0)
+			return text.size() + bytes <= limit;
+
+		return belowlimit();
 	}
 
 	bool Textfield::belowlimit() const
