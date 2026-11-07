@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "MapleButton.h"
 
+#include <algorithm>
+
 namespace ms
 {
 	MapleButton::MapleButton(nl::node src, Point<int16_t> pos)
@@ -100,6 +102,13 @@ namespace ms
 		Point<int16_t> rb = lt + Point<int16_t>(
 			static_cast<int16_t>(dim.x() * btn_scale),
 			static_cast<int16_t>(dim.y() * btn_scale));
+
+		// Grow the area evenly around the art up to the touch size
+		int16_t grow_x = std::max<int16_t>(0, static_cast<int16_t>((touch_size.x() - dim.x()) * btn_scale / 2));
+		int16_t grow_y = std::max<int16_t>(0, static_cast<int16_t>((touch_size.y() - dim.y()) * btn_scale / 2));
+
+		lt -= Point<int16_t>(grow_x, grow_y);
+		rb += Point<int16_t>(grow_x, grow_y);
 
 		return Rectangle<int16_t>(lt, rb);
 	}

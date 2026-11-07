@@ -31,6 +31,22 @@
 
 namespace ms
 {
+	namespace
+	{
+		// The notice buttons are drawn for a mouse. On a phone each one takes
+		// presses a little around its art; neighbours sit 60 design pixels
+		// apart, so they never overlap.
+		void widen_for_touch(std::map<uint16_t, std::unique_ptr<Button>>& buttons)
+		{
+#ifdef __ANDROID__
+			for (auto& button : buttons)
+				button.second->set_touch_size(Point<int16_t>(56, 28));
+#else
+			(void)buttons;
+#endif
+		}
+	}
+
 	UILoginNotice::UILoginNotice(uint16_t message, std::function<void()> okhandler, std::function<void()> cancelhandler) : okhandler(okhandler), cancelhandler(cancelhandler)
 	{
 		multiple = false;
@@ -68,6 +84,7 @@ namespace ms
 
 		position = UIScale::at(275, 209);
 		dimension = Texture(backgrnd).get_dimensions();
+		widen_for_touch(buttons);
 	}
 
 	UILoginNotice::UILoginNotice(uint16_t message, std::function<void()> okhandler) : UILoginNotice(message, okhandler, []() {}) {}
@@ -124,6 +141,7 @@ namespace ms
 
 		position = UIScale::at(275, 209);
 		dimension = Texture(backgrnd).get_dimensions();
+		widen_for_touch(buttons);
 	}
 
 	void UIQuitConfirm::send_key(int32_t keycode, bool pressed, bool escape)
@@ -183,6 +201,7 @@ namespace ms
 		}
 
 		dimension = Texture(backgrnd).get_dimensions();
+		widen_for_touch(buttons);
 
 		position = UIScale::at((800 - dimension.x()) / 2, (600 - dimension.y()) / 2);
 	}
@@ -260,6 +279,7 @@ namespace ms
 
 		position = UIScale::at(181, 145);
 		dimension = Texture(backgrnd).get_dimensions();
+		widen_for_touch(buttons);
 	}
 
 	void UIKeySelect::send_key(int32_t keycode, bool pressed, bool escape)
@@ -317,6 +337,7 @@ namespace ms
 
 		position = UIScale::at(276, 229);
 		dimension = Texture(background).get_dimensions();
+		widen_for_touch(buttons);
 	}
 
 	void UIKeyConfirm::send_key(int32_t keycode, bool pressed, bool escape)

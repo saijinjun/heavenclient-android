@@ -3,7 +3,10 @@ package com.saijinjun.heavenclient;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.Gravity;
@@ -29,6 +32,8 @@ public class SetupActivity extends Activity {
     private static final long PROGRESS_INTERVAL_MS = 250;
     private static final String PREFS = "setup";
     private static final String PREF_STREAM = "stream";
+    /** The gold of the game's window rims. */
+    private static final int GOLD = Color.rgb(232, 190, 92);
 
     private AssetDownloader downloader;
     private Map<String, Long> sizes;
@@ -79,8 +84,10 @@ public class SetupActivity extends Activity {
 
         TextView title = new TextView(this);
         title.setText(R.string.setup_title);
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(24);
+        title.setTextColor(GOLD);
+        title.setTextSize(26);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setShadowLayer(dp(2), 0, dp(1), Color.BLACK);
         title.setGravity(Gravity.CENTER);
 
         status = new TextView(this);
@@ -92,26 +99,47 @@ public class SetupActivity extends Activity {
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(1000);
         progress.setVisibility(View.GONE);
+        progress.setProgressTintList(ColorStateList.valueOf(GOLD));
+        progress.setProgressBackgroundTintList(ColorStateList.valueOf(Color.rgb(40, 52, 88)));
 
-        action = new Button(this);
+        // The same navy and gold as the game's own windows, so the first
+        // screen of the app already looks like the game
+        action = styledButton(Color.rgb(236, 128, 28), Color.rgb(196, 88, 12));
         action.setVisibility(View.GONE);
 
-        secondary = new Button(this);
+        secondary = styledButton(Color.rgb(36, 48, 84), Color.rgb(22, 30, 58));
         secondary.setVisibility(View.GONE);
+
+        // A card in the middle of a dark navy backdrop holds everything
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER);
+        card.setPadding(pad, pad, pad, pad);
+        GradientDrawable cardFill = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { Color.rgb(30, 40, 74), Color.rgb(14, 20, 42) });
+        cardFill.setCornerRadius(dp(14));
+        cardFill.setStroke(dp(2), GOLD);
+        card.setBackground(cardFill);
+        card.addView(title);
+        card.addView(status);
+        card.addView(progress, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout.LayoutParams buttonSize = new LinearLayout.LayoutParams(
+                dp(260), LinearLayout.LayoutParams.WRAP_CONTENT);
+        buttonSize.topMargin = dp(12);
+        card.addView(action, buttonSize);
+        card.addView(secondary, new LinearLayout.LayoutParams(buttonSize));
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
-        layout.setBackgroundColor(Color.rgb(16, 16, 24));
+        layout.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { Color.rgb(12, 18, 40), Color.rgb(4, 6, 16) }));
         layout.setPadding(pad, pad, pad, pad);
-        layout.addView(title);
-        layout.addView(status);
-        layout.addView(progress, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        layout.addView(action, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        layout.addView(secondary, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        layout.addView(card, new LinearLayout.LayoutParams(
+                Math.min(dp(520), getResources().getDisplayMetrics().widthPixels - 2 * pad),
+                LinearLayout.LayoutParams.WRAP_CONTENT));
 
         setContentView(layout);
     }
@@ -232,6 +260,23 @@ public class SetupActivity extends Activity {
     private void runInBackground(Runnable task) {
         worker = new Thread(task, "asset-download");
         worker.start();
+    }
+
+    /** A rounded, gold-rimmed button with a soft top-to-bottom shine. */
+    private Button styledButton(int top, int bottom) {
+        Button button = new Button(this);
+        GradientDrawable fill = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { top, bottom });
+        fill.setCornerRadius(dp(10));
+        fill.setStroke(dp(2), GOLD);
+        button.setBackground(fill);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(17);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
+        button.setAllCaps(false);
+        button.setShadowLayer(dp(1), 0, dp(1), Color.BLACK);
+        button.setPadding(dp(16), dp(12), dp(16), dp(12));
+        return button;
     }
 
     private int dp(int value) {

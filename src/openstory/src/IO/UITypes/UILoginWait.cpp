@@ -40,6 +40,12 @@ namespace ms
 
 		buttons[Buttons::CANCEL] = std::make_unique<MapleButton>(Loading["BtCancel"], Point<int16_t>(101, 106));
 
+#ifdef __ANDROID__
+		// Cancel is the way out of a stuck login, so on a phone it takes
+		// presses a little around its small art
+		buttons[Buttons::CANCEL]->set_touch_size(Point<int16_t>(64, 30));
+#endif
+
 		position = UIScale::at(276, 229);
 		dimension = Texture(backgrnd).get_dimensions();
 	}

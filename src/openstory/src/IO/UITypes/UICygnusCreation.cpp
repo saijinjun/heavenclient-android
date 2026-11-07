@@ -135,6 +135,7 @@ namespace ms
 		namechar = Textfield(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::BLACK, Rectangle<int16_t>(lay(539, 209), lay(631, 252)), 12);
 
 		buttons[Buttons::BT_BACK] = std::make_unique<MapleButton>(Login["Common"]["BtStart"], lay(0, 515));
+		widen_touch_areas();
 
 		for (auto& btit : buttons)
 			btit.second->set_scale(ui_scale);

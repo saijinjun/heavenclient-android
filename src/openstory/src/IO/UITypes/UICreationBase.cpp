@@ -207,4 +207,20 @@ namespace ms
 			return nullstr;
 		}
 	}
+
+	void UICreationBase::widen_touch_areas()
+	{
+#ifdef __ANDROID__
+		// The arrows sit 18 design pixels apart in their column, so they may
+		// grow sideways but not taller than a row. The hair color chips are
+		// packed edge to edge and keep their own size.
+		for (uint16_t id = BT_CHARC_FACEL; id <= BT_CHARC_WEPR; ++id)
+			if (buttons.count(id))
+				buttons[id]->set_touch_size(Point<int16_t>(36, 18));
+
+		for (uint16_t id : { BT_CHARC_OK, BT_CHARC_CANCEL })
+			if (buttons.count(id))
+				buttons[id]->set_touch_size(Point<int16_t>(64, 30));
+#endif
+	}
 }
