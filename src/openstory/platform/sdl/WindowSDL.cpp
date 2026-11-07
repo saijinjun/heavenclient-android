@@ -416,6 +416,9 @@ namespace ms
 
 		glViewport(view_x, view_y, view_w, view_h);
 		touch.set_screen(drawable_w, drawable_h);
+
+		laid_out_w = drawable_w;
+		laid_out_h = drawable_h;
 	}
 
 	Point<int16_t> Window::to_view(int32_t x, int32_t y) const
@@ -948,22 +951,8 @@ namespace ms
 				UI::get().send_focus(0);
 				break;
 			case SDL_WINDOWEVENT_SIZE_CHANGED:
-			{
-				int32_t drawable_w = 0;
-				int32_t drawable_h = 0;
-				SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
-
-				if (drawable_w > 0 && drawable_h > 0)
-				{
-					apply_screen_size(drawable_w, drawable_h);
-					width = Constants::Constants::get().get_physicalwidth();
-					height = Constants::Constants::get().get_physicalheight();
-					update_viewport();
-					GraphicsGL::get().reinit();
-				}
-
+				follow_drawable_size();
 				break;
-			}
 			default:
 				break;
 			}
@@ -986,7 +975,32 @@ namespace ms
 
 	void Window::update()
 	{
+		// On Android the size event can come before the surface has its new
+		// size. After the keyboard closed, the game then stayed laid out for
+		// the window with the navigation bar, leaving a black strip on the
+		// right that hid the settings button. Checking every frame catches
+		// the surface once it has really changed.
+		follow_drawable_size();
 		updateopc();
+	}
+
+	void Window::follow_drawable_size()
+	{
+		int32_t drawable_w = 0;
+		int32_t drawable_h = 0;
+		SDL_GL_GetDrawableSize(glwnd, &drawable_w, &drawable_h);
+
+		if (drawable_w <= 0 || drawable_h <= 0)
+			return;
+
+		if (drawable_w == laid_out_w && drawable_h == laid_out_h)
+			return;
+
+		apply_screen_size(drawable_w, drawable_h);
+		width = Constants::Constants::get().get_physicalwidth();
+		height = Constants::Constants::get().get_physicalheight();
+		update_viewport();
+		GraphicsGL::get().reinit();
 	}
 
 	void Window::updateopc()
