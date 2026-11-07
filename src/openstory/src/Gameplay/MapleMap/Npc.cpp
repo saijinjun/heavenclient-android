@@ -25,6 +25,8 @@
 #include "../../Constants.h"
 
 #ifdef USE_NX
+#include <algorithm>
+
 #include <nlnx/nx.hpp>
 #endif
 
@@ -435,6 +437,26 @@ namespace ms
 			animations.count(stance) ?
 			animations.at(stance).get_dimensions() :
 			Point<int16_t>();
+
+#ifdef __ANDROID__
+		// Some NPCs are painted by the map and own only a sliver of a frame
+		// (the Empress's is 1 by 60), and nobody hits that with a thumb. Their
+		// name tags count too, since that is the part people can always read.
+		constexpr int16_t TOUCH_MIN_W = 100;
+		constexpr int16_t TOUCH_MIN_H = 70;
+		constexpr int16_t TOUCH_NAME_H = 40;
+
+		dim = Point<int16_t>(
+			std::max<int16_t>(dim.x(), TOUCH_MIN_W),
+			std::max<int16_t>(dim.y(), TOUCH_MIN_H));
+
+		return Rectangle<int16_t>(
+			absp.x() - dim.x() / 2,
+			absp.x() + dim.x() / 2,
+			absp.y() - dim.y(),
+			absp.y() + TOUCH_NAME_H
+			).contains(cursorpos);
+#endif
 
 		return Rectangle<int16_t>(
 			absp.x() - dim.x() / 2,
