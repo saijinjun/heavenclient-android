@@ -668,6 +668,11 @@ namespace ms
 					UI::get().emplace<UIOptionMenu>();
 
 				break;
+			case TouchControls::Output::TALK:
+				if (action.pressed)
+					Stage::get().get_npcs().talk_nearest(Stage::get().get_player().get_position());
+
+				break;
 			case TouchControls::Output::LOOT_TOGGLE:
 			{
 				bool on = !Setting<AutoPickup>::get().load();
@@ -737,6 +742,10 @@ namespace ms
 
 		std::array<const Texture*, TouchControls::NUM_SLOTS> icons = {};
 		const Player& player = Stage::get().get_player();
+
+		auto npc_talk = UI::get().get_element<UINpcTalk>();
+		bool talking = npc_talk && npc_talk->is_active();
+		touch.set_talk_ready(!talking && Stage::get().get_npcs().has_near(player.get_position()));
 
 		for (uint8_t slot = 0; slot < TouchControls::NUM_SLOTS; slot++)
 		{

@@ -110,6 +110,59 @@ namespace ms
 		}
 	}
 
+	namespace
+	{
+		// How far, in game units, the talk button reaches.
+		constexpr int32_t TALK_REACH_X = 170;
+		constexpr int32_t TALK_REACH_Y = 110;
+
+		Npc* nearest_npc(MapObjects& npcs, Point<int16_t> position)
+		{
+			Npc* nearest = nullptr;
+			int32_t nearest_dist = 0;
+
+			for (auto& map_object : npcs)
+			{
+				Npc* npc = static_cast<Npc*>(map_object.second.get());
+
+				if (!npc || !npc->is_active())
+					continue;
+
+				Point<int16_t> npc_pos = npc->get_position();
+				int32_t dx = std::abs(npc_pos.x() - position.x());
+				int32_t dy = std::abs(npc_pos.y() - position.y());
+
+				if (dx > TALK_REACH_X || dy > TALK_REACH_Y)
+					continue;
+
+				if (!nearest || dx < nearest_dist)
+				{
+					nearest = npc;
+					nearest_dist = dx;
+				}
+			}
+
+			return nearest;
+		}
+	}
+
+	bool MapNpcs::has_near(Point<int16_t> position)
+	{
+		return nearest_npc(npcs, position) != nullptr;
+	}
+
+	void MapNpcs::talk_nearest(Point<int16_t> position)
+	{
+		Npc* npc = nearest_npc(npcs, position);
+
+		if (!npc || !NpcResponseTracker::get().can_click_now())
+			return;
+
+		NpcResponseTracker::get().mark_clicked_now();
+		NpcResponseTracker::get().mark_pending(npc->get_npcid());
+		TalkToNPCPacket(npc->get_oid()).dispatch();
+	}
+
 	Cursor::State MapNpcs::send_cursor(bool pressed, Point<int16_t> position, Point<int16_t> viewpos)
 	{
 #ifdef __ANDROID__
