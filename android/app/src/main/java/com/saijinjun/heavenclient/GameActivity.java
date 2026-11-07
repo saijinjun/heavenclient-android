@@ -38,6 +38,12 @@ public class GameActivity extends SDLActivity {
             window.setAttributes(attributes);
         }
 
+        // A key press from a keyboard or gamepad otherwise lights Android's
+        // focus highlight, a thin colored rim around the whole game.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && mSurface != null) {
+            mSurface.setDefaultFocusHighlightEnabled(false);
+        }
+
         // Hide the bars before the surface exists. Hiding them afterwards
         // resizes it, and with 3-button navigation the game kept drawing to
         // the smaller size, cutting off the right edge.

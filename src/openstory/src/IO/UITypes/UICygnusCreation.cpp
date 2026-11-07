@@ -54,7 +54,7 @@ namespace ms
 			static_cast<int16_t>((UIScale::view_height() - 600.0f * ui_scale) / 2.0f));
 
 		std::string version_text = Configuration::get().get_version();
-		version = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::LEMONGRASS, "Ver. " + version_text);
+		version = Text(Text::Font::A11B, Text::Alignment::LEFT, Color::Name::BLACK, "Ver. " + version_text);
 
 		nl::node Login = nl::nx::ui["Login.img"];
 		nl::node CustomizeChar = Login["CustomizeChar"]["1000"];
@@ -475,7 +475,7 @@ namespace ms
 			{
 				face = (face > 0) ? face - 1 : faces[female].size() - 1;
 				newchar.set_face(faces[female][face]);
-				facename.change_text(newchar.get_face()->get_name());
+				set_board_name(facename, newchar.get_face()->get_name());
 
 				return Button::State::NORMAL;
 			}
@@ -483,7 +483,7 @@ namespace ms
 			{
 				face = (face < faces[female].size() - 1) ? face + 1 : 0;
 				newchar.set_face(faces[female][face]);
-				facename.change_text(newchar.get_face()->get_name());
+				set_board_name(facename, newchar.get_face()->get_name());
 
 				return Button::State::NORMAL;
 			}
@@ -491,7 +491,7 @@ namespace ms
 			{
 				hair = (hair > 0) ? hair - 1 : hairs[female].size() - 1;
 				newchar.set_hair(hairs[female][hair] + haircolors[female][haircolor]);
-				hairname.change_text(newchar.get_hair()->get_name());
+				set_board_name(hairname, newchar.get_hair()->get_name());
 
 				return Button::State::NORMAL;
 			}
@@ -499,7 +499,7 @@ namespace ms
 			{
 				hair = (hair < hairs[female].size() - 1) ? hair + 1 : 0;
 				newchar.set_hair(hairs[female][hair] + haircolors[female][haircolor]);
-				hairname.change_text(newchar.get_hair()->get_name());
+				set_board_name(hairname, newchar.get_hair()->get_name());
 
 				return Button::State::NORMAL;
 			}
@@ -518,7 +518,7 @@ namespace ms
 				{
 					haircolor = colorindex;
 					newchar.set_hair(hairs[female][hair] + haircolors[female][haircolor]);
-					hairname.change_text(newchar.get_hair()->get_name());
+					set_board_name(hairname, newchar.get_hair()->get_name());
 				}
 
 				return Button::State::NORMAL;
@@ -527,7 +527,7 @@ namespace ms
 			{
 				skin = (skin > 0) ? skin - 1 : skins[female].size() - 1;
 				newchar.set_body(skins[female][skin]);
-				bodyname.change_text(newchar.get_body()->get_name());
+				set_board_name(bodyname, newchar.get_body()->get_name());
 
 				return Button::State::NORMAL;
 			}
@@ -535,7 +535,7 @@ namespace ms
 			{
 				skin = (skin < skins[female].size() - 1) ? skin + 1 : 0;
 				newchar.set_body(skins[female][skin]);
-				bodyname.change_text(newchar.get_body()->get_name());
+				set_board_name(bodyname, newchar.get_body()->get_name());
 
 				return Button::State::NORMAL;
 			}
@@ -543,7 +543,7 @@ namespace ms
 			{
 				weapon = (weapon > 0) ? weapon - 1 : weapons[female].size() - 1;
 				newchar.add_equip(weapons[female][weapon]);
-				wepname.change_text(get_equipname(EquipSlot::Id::WEAPON));
+				set_board_name(wepname, get_equipname(EquipSlot::Id::WEAPON));
 
 				return Button::State::NORMAL;
 			}
@@ -551,7 +551,7 @@ namespace ms
 			{
 				weapon = (weapon < weapons[female].size() - 1) ? weapon + 1 : 0;
 				newchar.add_equip(weapons[female][weapon]);
-				wepname.change_text(get_equipname(EquipSlot::Id::WEAPON));
+				set_board_name(wepname, get_equipname(EquipSlot::Id::WEAPON));
 
 				return Button::State::NORMAL;
 			}
@@ -599,12 +599,12 @@ namespace ms
 		newchar.add_equip(shoes[female][shoe]);
 		newchar.add_equip(weapons[female][weapon]);
 
-		bodyname.change_text(newchar.get_body()->get_name());
-		facename.change_text(newchar.get_face()->get_name());
-		hairname.change_text(newchar.get_hair()->get_name());
-		topname.change_text(get_equipname(EquipSlot::Id::TOP));
-		botname.change_text(get_equipname(EquipSlot::Id::BOTTOM));
-		shoename.change_text(get_equipname(EquipSlot::Id::SHOES));
-		wepname.change_text(get_equipname(EquipSlot::Id::WEAPON));
+		set_board_name(bodyname, newchar.get_body()->get_name());
+		set_board_name(facename, newchar.get_face()->get_name());
+		set_board_name(hairname, newchar.get_hair()->get_name());
+		set_board_name(topname, get_equipname(EquipSlot::Id::TOP));
+		set_board_name(botname, get_equipname(EquipSlot::Id::BOTTOM));
+		set_board_name(shoename, get_equipname(EquipSlot::Id::SHOES));
+		set_board_name(wepname, get_equipname(EquipSlot::Id::WEAPON));
 	}
 }

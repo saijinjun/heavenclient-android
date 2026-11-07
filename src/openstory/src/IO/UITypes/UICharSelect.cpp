@@ -251,9 +251,9 @@ namespace ms
 
 		for (size_t i = 0; i < PAGESIZE; i++)
 			buttons[Buttons::CHARACTER_SLOT0 + i] = std::make_unique<AreaButton>(
-				lay(static_cast<int16_t>(253 + (72 * i)), 298),
+				lay(static_cast<int16_t>(243 + (84 * i)), 298),
 				Point<int16_t>(
-					static_cast<int16_t>(50 * ui_scale),
+					static_cast<int16_t>(70 * ui_scale),
 					static_cast<int16_t>(80 * ui_scale))
 			);
 
@@ -425,7 +425,8 @@ namespace ms
 						constexpr int16_t CH = 150;
 
 						int16_t cx = static_cast<int16_t>(get_character_slot_pos(i, 278, 374).x() - CW / 2);
-						cx = std::clamp<int16_t>(cx, 8, 800 - CW - 8);
+						// Stops short of the signpost's buttons on the right
+						cx = std::clamp<int16_t>(cx, 8, 320);
 						Point<int16_t> c = lay(cx, 140);
 
 						auto box = [&](int16_t x, int16_t y, int16_t w, int16_t h, Color::Name color, float a)
@@ -1172,7 +1173,8 @@ namespace ms
 	Point<int16_t> UICharSelect::get_character_slot_pos(size_t index, uint16_t x_adj, uint16_t y_adj) const
 	{
 		// Characters stand in one row on the bridge walkway between the arrows
-		int16_t x = static_cast<int16_t>(72 * index);
+		// 84 apart so even a 12 letter name tag clears its neighbour
+		int16_t x = static_cast<int16_t>(84 * index);
 
 		return Point<int16_t>(x + x_adj, y_adj);
 	}
