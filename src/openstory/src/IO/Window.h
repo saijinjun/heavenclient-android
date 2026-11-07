@@ -103,6 +103,9 @@ namespace ms
 		void poll_pad();
 		void repeat_held_slots();
 		void update_viewport();
+		// Resizes the game to the window's current drawable size, if it
+		// differs from the size the game was last laid out for
+		void follow_drawable_size();
 		void update_text_input();
 		Point<int16_t> to_view(int32_t x, int32_t y) const;
 
@@ -131,6 +134,9 @@ namespace ms
 		int32_t view_y = 0;
 		int32_t view_w = 1;
 		int32_t view_h = 1;
+		// The drawable size the game was last laid out for
+		int32_t laid_out_w = 0;
+		int32_t laid_out_h = 0;
 		bool touch_seen;
 		bool touch_editing;
 		bool backgrounded = false;
