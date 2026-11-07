@@ -70,7 +70,20 @@ namespace ms
 		int32_t get_weapon() const;
 
 	private:
+		// Pick the cash weapon's frames for the real weapon's type. With no
+		// real weapon, or one of a type the cash weapon has no frames for,
+		// the first type it does have stands in, so a try-on still shows it.
+		void refresh_cashcover(const BodyDrawInfo& drawinfo);
+		// The weapon whose stand/walk stances and hands the character uses
+		const Clothing* stance_weapon() const;
+
 		EnumMap<EquipSlot::Id, const Clothing*> clothes;
+		// A cash weapon (170xxxx) drawn in place of the real weapon
+		int32_t cashweapon = 0;
+		const Clothing* cashcover = nullptr;
+		bool cover_standalone = false;
+		// Cash weapon frames per (item, covered type)
+		static std::unordered_map<int64_t, Clothing> cover_cache;
 		// Set when a weapon/hat in the single-image "procedural" format is equipped;
 		// takes over that slot's draw. Invalid for authored items.
 		ProceduralWeapon procweapon;

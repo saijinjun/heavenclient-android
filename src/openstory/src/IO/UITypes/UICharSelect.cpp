@@ -130,6 +130,7 @@ namespace ms
 
 		// sky gradient strip stretched over the whole view
 		backdrop = Texture(backs["1"]);
+		UI::get().set_side_backdrop(backdrop);
 
 		if (backdrop.is_valid())
 		{
@@ -177,7 +178,7 @@ namespace ms
 
 
 		if (Common["step"]["2"])
-			sprites.emplace_back(Common["step"]["2"], DrawArgument(lay(40, -6), ui_scale, ui_scale));
+			sprites.emplace_back(Common["step"]["2"], DrawArgument(lay(40, 0), ui_scale, ui_scale));
 
 		burning_notice = Common["Burning"]["BurningNotice"];
 		burning_count = Text(Text::Font::A12B, Text::Alignment::LEFT, Color::Name::CREAM, "1");
@@ -246,7 +247,7 @@ namespace ms
 		{
 			// "Back to world select" — always visible, bottom-left (matches the
 			// creation screens). It was being created inactive, so it never drew.
-			buttons[Buttons::BACK] = std::make_unique<MapleButton>(Common["BtStart"], lay(-6, 515));
+			buttons[Buttons::BACK] = std::make_unique<MapleButton>(Common["BtStart"], lay(0, 515));
 		}
 
 		for (size_t i = 0; i < PAGESIZE; i++)
@@ -792,6 +793,12 @@ namespace ms
 		characters.emplace_back(std::forward<CharEntry>(character));
 
 		characters_count++;
+
+#ifdef __ANDROID__
+		// Phones skip the key layout screen, which is what called this after
+		// the character had arrived.
+		post_add_character();
+#endif
 	}
 
 	void UICharSelect::post_add_character()

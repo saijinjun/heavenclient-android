@@ -201,6 +201,13 @@ namespace ms
 		if (bitmap.id() != 0)
 			GraphicsGL::get().draw_screen_bitmap(bitmap, left, top, right, bottom, color);
 	}
+
+	void Texture::draw_screen_part(int16_t left, int16_t top, int16_t right, int16_t bottom,
+		float u0, float v0, float u1, float v1, const Color& color) const
+	{
+		if (bitmap.id() != 0)
+			GraphicsGL::get().draw_screen_bitmap_part(bitmap, left, top, right, bottom, u0, v0, u1, v1, color);
+	}
 #endif
 
 	void Texture::draw(const DrawArgument& args, const Range<int16_t>& vertical) const

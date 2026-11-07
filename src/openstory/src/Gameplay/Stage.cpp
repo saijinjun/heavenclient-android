@@ -145,6 +145,23 @@ namespace ms
 		camera.set_view(mapinfo.get_walls(), mapinfo.get_borders());
 	}
 
+	void Stage::draw_labels(float alpha) const
+	{
+		if (state != State::ACTIVE)
+			return;
+
+		Point<double> viewrpos = camera.realposition(alpha);
+		double viewx = viewrpos.x();
+		double viewy = viewrpos.y();
+
+		for (auto id : Layer::IDs)
+			npcs.draw_names(id, viewx, viewy, alpha);
+
+		// The player's own last, so their name is never under someone else's
+		chars.draw_labels(viewx, viewy, alpha);
+		player.draw_labels(viewx, viewy, alpha);
+	}
+
 	void Stage::draw(float alpha) const
 	{
 		if (state != State::ACTIVE)
@@ -164,9 +181,12 @@ namespace ms
 		// look blurs; the world after it is tinted by the time of day.
 		GraphicsGL::get().mark_world();
 
-		static const bool day_night = Setting<DayNightCycle>::get().load();
-		if (day_night)
+		// Read every frame, so the Options toggle applies at once. The neutral
+		// tint clears whatever color the cycle last left in the post process.
+		if (Setting<DayNightCycle>::get().load())
 			GraphicsGL::get().set_tint(DayNight::tint(static_cast<int64_t>(std::time(nullptr))));
+		else
+			GraphicsGL::get().set_tint({ 1.0f, 1.0f, 1.0f });
 #endif
 
 		for (auto id : Layer::IDs)
@@ -175,7 +195,6 @@ namespace ms
 
 			reactors.draw(id, viewx, viewy, alpha);
 			npcs.draw(id, viewx, viewy, alpha);
-			npcs.draw_names(id, viewx, viewy, alpha);
 			mobs.draw(id, viewx, viewy, alpha);
 			summons.draw(id, viewx, viewy, alpha);
 			dragons.draw(id, viewx, viewy, alpha);

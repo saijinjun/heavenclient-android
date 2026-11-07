@@ -98,6 +98,8 @@ namespace ms
 		void handle_finger(const SDL_TouchFingerEvent& finger, uint32_t type);
 		void send_touch_actions(const std::vector<TouchControls::Action>& actions);
 		void draw_touch_controls() const;
+		// Fills the bars beside a login screen narrower than the window
+		void draw_side_fill() const;
 		// The controller's extras on top of Gamepad's button mapping:
 		// quick slots on the bumpers and triggers, a cursor on the right stick.
 		void poll_pad();

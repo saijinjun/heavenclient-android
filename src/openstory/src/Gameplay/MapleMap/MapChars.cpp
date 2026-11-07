@@ -18,6 +18,7 @@
 #include "MapChars.h"
 
 #include "../MiniRooms.h"
+#include "../../Constants.h"
 #include "../../Net/Packets/TradePackets.h"
 
 #include "../../IO/UI.h"
@@ -82,6 +83,32 @@ namespace ms
 	void MapChars::draw(Layer::Id layer, double viewx, double viewy, float alpha) const
 	{
 		chars.draw(layer, viewx, viewy, alpha);
+	}
+
+	void MapChars::draw_labels(double viewx, double viewy, float alpha) const
+	{
+		// A busy town has dozens of characters, most of them off screen. The
+		// margin matches MapObjects::draw so a label never outlives its body.
+		const int16_t vwidth = Constants::Constants::get().get_viewwidth();
+		const int16_t vheight = Constants::Constants::get().get_viewheight();
+		constexpr double MARGIN = 320.0;
+
+		for (auto it = chars.begin(); it != chars.end(); ++it)
+		{
+			auto* other = static_cast<const OtherChar*>(it->second.get());
+
+			if (!other || !other->is_active())
+				continue;
+
+			Point<int16_t> pos = other->get_position();
+			double sx = pos.x() + viewx;
+			double sy = pos.y() + viewy;
+
+			if (sx < -MARGIN || sx > vwidth + MARGIN || sy < -MARGIN || sy > vheight + MARGIN)
+				continue;
+
+			other->draw_labels(viewx, viewy, alpha);
+		}
 	}
 
 	void MapChars::update(const Physics& physics)

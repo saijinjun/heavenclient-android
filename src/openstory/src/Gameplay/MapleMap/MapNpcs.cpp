@@ -19,6 +19,8 @@
 
 #include "Npc.h"
 
+#include <cstdlib>
+
 #include "../../Net/NpcResponseTracker.h"
 #include "../../Net/Packets/NpcInteractionPackets.h"
 #include "../../IO/UI.h"
@@ -110,9 +112,37 @@ namespace ms
 
 	Cursor::State MapNpcs::send_cursor(bool pressed, Point<int16_t> position, Point<int16_t> viewpos)
 	{
+#ifdef __ANDROID__
+		// Touch hit areas are generous and can overlap, so the NPC nearest
+		// the tap wins rather than whichever the map listed first.
+		Npc* nearest = nullptr;
+		int32_t nearest_dist = 0;
+
 		for (auto& map_object : npcs)
 		{
 			Npc* npc = static_cast<Npc*>(map_object.second.get());
+
+			if (npc && npc->is_active() && npc->inrange(position, viewpos))
+			{
+				int32_t dist = std::abs(npc->get_position().x() + viewpos.x() - position.x());
+
+				if (!nearest || dist < nearest_dist)
+				{
+					nearest = npc;
+					nearest_dist = dist;
+				}
+			}
+		}
+#endif
+
+		for (auto& map_object : npcs)
+		{
+			Npc* npc = static_cast<Npc*>(map_object.second.get());
+
+#ifdef __ANDROID__
+			if (npc != nearest)
+				continue;
+#endif
 
 			if (npc && npc->is_active() && npc->inrange(position, viewpos))
 			{

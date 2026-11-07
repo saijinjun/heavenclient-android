@@ -81,7 +81,7 @@ namespace ms
 	{
 		int32_t prefix = equipid / 10000;
 		type = Weapon::by_value(prefix);
-		twohanded = prefix == Weapon::Type::STAFF || (prefix >= Weapon::Type::SWORD_2H && prefix <= Weapon::Type::POLEARM) || prefix == Weapon::Type::CROSSBOW;
+		twohanded = is_twohanded_prefix(prefix);
 
 		nl::node src = nl::nx::character["Weapon"]["0" + std::to_string(equipid) + ".img"]["info"];
 
@@ -127,6 +127,11 @@ namespace ms
 	WeaponData::operator bool() const
 	{
 		return is_valid();
+	}
+
+	bool WeaponData::is_twohanded_prefix(int32_t prefix)
+	{
+		return prefix == Weapon::Type::STAFF || (prefix >= Weapon::Type::SWORD_2H && prefix <= Weapon::Type::POLEARM) || prefix == Weapon::Type::CROSSBOW;
 	}
 
 	bool WeaponData::is_twohanded() const

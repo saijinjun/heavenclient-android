@@ -51,6 +51,15 @@ namespace ms
 	private:
 		void open_url(uint16_t id);
 
+		// The phone layout: one navy and gold sign-in card with large fields
+		// in place of the small classic signboard, see draw_card()
+		void draw_card(Point<int16_t> drawpos) const;
+		Cursor::State send_card_cursor(bool clicked, Point<int16_t> cursorpos);
+		void toggle_saveid();
+		// Where the card's parts are, in screen coordinates for drawpos
+		Point<int16_t> card_origin(Point<int16_t> drawpos) const;
+		Rectangle<int16_t> card_part(Point<int16_t> drawpos, int16_t y, int16_t h) const;
+
 		enum Buttons
 		{
 			BT_LOGIN,
@@ -74,5 +83,15 @@ namespace ms
 		Point<int16_t> signboard_pos;
 
 		bool saveid;
+
+		bool phone_layout;
+		// How far the card has slid up to stay above the phone keyboard
+		float card_shift;
+		bool cursor_was_down;
+		Text account_hint;
+		Text password_hint;
+		Text login_label;
+		Text saveid_label;
+		Text new_account_tip;
 	};
 }

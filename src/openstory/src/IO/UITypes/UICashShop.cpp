@@ -24,6 +24,7 @@
 #include "../Components/MapleButton.h"
 
 #include "../../Constants.h"
+#include "../../Data/EquipData.h"
 #include "../../Graphics/ClassicStyle.h"
 #include "../../Graphics/Geometry.h"
 #include "../../Gameplay/Stage.h"
@@ -540,6 +541,43 @@ namespace ms
 			cur_stance = want;
 			preview_look.set_stance(static_cast<Stance::Id>(cur_stance));
 		}
+
+#ifdef __ANDROID__
+		// The try-on stage's extras
+		if (m_effect_src.size() > 0)
+		{
+			mobile_update_effect();
+			m_effect.update();
+		}
+
+		m_auras.update(dx, char_vy);
+
+		if (m_has_star)
+		{
+			// One throw is about 1.6 s: 0.5 s in flight, the burst, a pause
+			if (++m_star_ticks >= STAR_CYCLE)
+				m_star_ticks = 0;
+
+			if (m_star_ticks == STAR_FLIGHT)
+			{
+				m_star_hit.reset();
+				m_star_hit_done = false;
+			}
+
+			// The burst plays once per throw
+			if (m_star_ticks < STAR_FLIGHT)
+				m_star_bullet.update();
+			else if (!m_star_hit_done && m_star_hit.update())
+				m_star_hit_done = true;
+		}
+
+		if (m_emote != Expression::Id::DEFAULT && m_emote_ticks-- == 0)
+		{
+			// The face plays once, so start it again every 2.5 s
+			preview_look.set_expression(m_emote);
+			m_emote_ticks = 2500 / Constants::TIMESTEP;
+		}
+#endif
 	}
 
 	Button::State UICashShop::button_pressed(uint16_t buttonid)
@@ -892,6 +930,7 @@ namespace ms
 		m_action = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE);
 		m_status = Text(Text::Font::A12B, Text::Alignment::CENTER, Color::Name::WHITE);
 		m_hint = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, "Tap an item to try it on", M_DETAIL_W - 20);
+		m_jump_hint = Text(Text::Font::A11M, Text::Alignment::RIGHT, Color::Name::SILVERCHALICE, "Tap to jump");
 		m_empty = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::SILVERCHALICE, "Nothing here yet");
 
 		mobile_filter();
@@ -1009,43 +1048,78 @@ namespace ms
 		m_first = std::clamp<int16_t>(m_first, 0, std::max<int16_t>(0, rows - l.rows));
 	}
 
+	void UICashShop::mobile_clear_preview()
+	{
+		preview_has_pet = false;
+		preview_icon_id = 0;
+		preview_has_balloon = false;
+		m_effect_src = nl::node();
+		m_effect_stance.clear();
+		m_auras = CharAuras();
+		m_has_star = false;
+		m_star_ticks = 0;
+		m_emote = Expression::Id::DEFAULT;
+		m_emote_ticks = 0;
+		m_sample = Texture();
+	}
+
 	void UICashShop::mobile_select(int16_t index)
 	{
 		m_selected = index;
 		buy_armed = false;
 
 		int32_t itemid = mobile_itemid(index);
+		std::string strid = "0" + std::to_string(itemid);
 
-		// Try-on: your look plus the selected equip
+		// Try-on: your look plus the selected item
 		preview_look = Stage::get().get_player().get_look();
-		preview_has_pet = false;
-		preview_icon_id = 0;
+		mobile_clear_preview();
 
 		// Your name, plain unless the item is a name tag ring
 		preview_nametag = std::make_unique<NameTagStyle>(Stage::get().get_player().get_stats().get_name());
-		preview_has_balloon = false;
 
 		if (itemid >= 1000000 && itemid < 2000000)
 		{
 			preview_look.add_equip(itemid);
 
-			// Label and quote rings name their plate and balloon in info
-			nl::node info = nl::nx::character["Ring"]["0" + std::to_string(itemid) + ".img"]["info"];
+			// Pet equips and the like have no look on you; a cash weapon
+			// (170) is drawn over your weapon by add_equip
+			if (EquipData::get(itemid).get_eqslot() == EquipSlot::Id::NONE && itemid / 10000 != 170)
+				preview_icon_id = itemid;
 
+			const std::string& category = EquipData::get(itemid).get_itemdata().get_category();
+			nl::node info = nl::nx::character[category][strid + ".img"]["info"];
+			bool shown = true;
+
+			// Label and quote rings name their plate and balloon in info
 			if (nl::node tag = info["nameTag"])
-				preview_nametag->apply_style(tag.get_integer());
+				shown = preview_nametag->apply_style(static_cast<int32_t>(tag.get_integer()));
 
 			if (nl::node balloon = info["chatBalloon"])
 			{
 				int64_t style = balloon.get_integer();
 
-				if (style >= 0 && style <= INT8_MAX)
+				if (style >= 0 && style <= INT8_MAX && nl::nx::ui["ChatBalloon.img"][std::to_string(style)].size() > 0)
 				{
 					preview_balloon = ChatBalloon(static_cast<int8_t>(style));
 					preview_balloon.change_text("Hello, Maple World!");
 					preview_has_balloon = true;
 				}
+				else
+				{
+					shown = false;
+				}
 			}
+
+			// The ring's sample picture shows the plate or balloon instead
+			if (!shown)
+				m_sample = Texture(info["sample"]);
+
+			// Effect rings and other equips with an aura, as worn in game
+			m_auras.refresh(preview_look.get_equips());
+
+			if (m_auras.get_item_effect_id() == 0 && nl::nx::effect["ItemEff.img"][std::to_string(itemid)])
+				m_auras.set_item_effect(itemid);
 		}
 		else if (itemid / 10000 == 500)
 		{
@@ -1062,13 +1136,101 @@ namespace ms
 				preview_icon_id = itemid;
 			}
 		}
+		else if (itemid / 10000 == 501)
+		{
+			// Cash effects play around you, with walk and jump frames
+			// where the item has them
+			m_effect_src = nl::nx::item["Cash"]["0501.img"][strid]["effect"];
+
+			if (m_effect_src.size() > 0)
+				mobile_update_effect();
+			else
+				preview_icon_id = itemid;
+		}
+		else if (itemid / 10000 == 502)
+		{
+			// Throwing star skins: the star you would throw, and its burst
+			nl::node src = nl::nx::item["Cash"]["0502.img"][strid];
+
+			if (src["bullet"].size() > 0)
+			{
+				m_star_bullet = Animation(src["bullet"]);
+				m_star_hit = Animation(src["hit"]);
+				m_has_star = true;
+			}
+			else
+			{
+				preview_icon_id = itemid;
+			}
+		}
+		else if (itemid / 10000 == 503)
+		{
+			// Hired merchants stand beside you, greeting customers
+			nl::node src = nl::nx::item["Cash"]["0503.img"][strid]["employee"]["say"];
+
+			if (src.size() > 0)
+			{
+				preview_pet = Animation(src);
+				preview_has_pet = true;
+			}
+			else
+			{
+				preview_icon_id = itemid;
+			}
+		}
+		else if (itemid / 10000 == 516)
+		{
+			// Emotion items add faces 8 and up (5160000 is face 8)
+			m_emote = Expression::byemote(itemid - 5159992);
+			preview_icon_id = itemid;
+		}
 		else if (itemid != 0)
 		{
-			// Stars, effects, scrolls and the like: show the item itself
+			// Scrolls, coupons and the like: show the item itself
 			preview_icon_id = itemid;
 		}
 
 		preview_look.set_stance(Stance::Id::STAND1);
+		cur_stance = Stance::Id::STAND1;
+		char_jumping = false;
+		char_yoff = 0.0f;
+		char_vy = 0.0f;
+	}
+
+	void UICashShop::mobile_update_effect()
+	{
+		if (m_effect_src.size() == 0)
+			return;
+
+		// Effects are keyed by stance name, with default for the rest; a few
+		// hold their frames (or particle groups) directly
+		std::string stance = Stance::names[static_cast<Stance::Id>(cur_stance)];
+		nl::node src = m_effect_src[stance];
+
+		if (src.size() == 0)
+		{
+			stance = "default";
+			src = m_effect_src["default"];
+		}
+
+		if (src.size() == 0)
+		{
+			stance = "";
+			src = m_effect_src["0"].data_type() == nl::node::type::bitmap ? m_effect_src : m_effect_src["0"];
+		}
+
+		// The direct-frames case has no stance name, so it gets its own key
+		std::string key = stance.empty() ? "-" : stance;
+
+		if (key == m_effect_stance)
+			return;
+
+		m_effect_stance = key;
+		m_effect = Animation(src);
+
+		// A negative z draws the effect behind you
+		nl::node z = src["z"] ? src["z"] : m_effect_src["z"];
+		m_effect_behind = static_cast<int32_t>(z) < 0;
 	}
 
 	void UICashShop::mobile_draw_icon(int32_t itemid, Rectangle<int16_t> box) const
@@ -1225,35 +1387,76 @@ namespace ms
 		classic::frame(l.detail.left(), l.detail.top(), l.detail.width(), l.detail.height(), Color::Name::HUD_EXP, 0.4f);
 
 		classic::cell(l.stage.get_left_top(), l.stage.width(), l.stage.height(), false);
+		m_jump_hint.draw(Point<int16_t>(l.stage.right() - 6, l.stage.top() + 4));
+
 		// Room under the feet for the name tag
-		Point<int16_t> feet(l.stage.left() + l.stage.width() / 2, l.stage.bottom() - 26);
+		Point<int16_t> floor(l.stage.left() + l.stage.width() / 2, l.stage.bottom() - 26);
+
+		// Where you stand: aside when something shares the stage (to the
+		// right for a star, so it flies across the stage in front of you)
+		int16_t aside = preview_has_pet ? -30 : (preview_icon_id ? -50 : (m_has_star ? 70 : 0));
+		Point<int16_t> wearer = floor + Point<int16_t>(aside, 0);
+
+		// A jump on this small stage rises half as high as in the field
+		Point<int16_t> body = wearer + Point<int16_t>(0, static_cast<int16_t>(char_yoff * 0.5f));
+
+		// Equip effects, framed the way the field draws them
+		CharAuras::Context ctx{ body, false, false, !char_jumping, false, preview_look.get_stance(), preview_look.get_frame() };
+		m_auras.draw_below(ctx, inter);
+
+		if (m_effect_src.size() > 0 && m_effect_behind)
+			m_effect.draw(DrawArgument(body, false), inter);
+
+		preview_look.draw(DrawArgument(body, false), inter);
+
+		if (m_effect_src.size() > 0 && !m_effect_behind)
+			m_effect.draw(DrawArgument(body, false), inter);
+
+		m_auras.draw_above(ctx, inter);
 
 		if (preview_has_pet)
 		{
-			// The pet beside you, both on the same floor
-			preview_look.draw(DrawArgument(feet - Point<int16_t>(30, 0), false), inter);
-			preview_pet.draw(DrawArgument(feet + Point<int16_t>(40, 0), true), inter);
+			// The pet or merchant beside you, on the same floor
+			preview_pet.draw(DrawArgument(floor + Point<int16_t>(40, 0), true), inter);
 		}
 		else if (preview_icon_id)
 		{
-			preview_look.draw(DrawArgument(feet - Point<int16_t>(50, 0), false), inter);
-
-			Rectangle<int16_t> big(Point<int16_t>(feet.x() + 10, l.stage.top() + 20), Point<int16_t>(feet.x() + 90, l.stage.top() + 100));
+			Rectangle<int16_t> big(Point<int16_t>(floor.x() + 10, l.stage.top() + 20), Point<int16_t>(floor.x() + 90, l.stage.top() + 100));
 			mobile_draw_icon(preview_icon_id, big);
 		}
-		else
+
+		if (m_has_star)
 		{
-			preview_look.draw(DrawArgument(feet, false), inter);
+			// Thrown from about hand height, left across the stage
+			int16_t hand_y = body.y() - 30;
+			int16_t from = body.x() - 30;
+			int16_t to = l.stage.left() + 30;
+
+			if (m_star_ticks < STAR_FLIGHT)
+			{
+				int16_t x = from + static_cast<int16_t>((to - from) * m_star_ticks / STAR_FLIGHT);
+				m_star_bullet.draw(DrawArgument(Point<int16_t>(x, hand_y), false), inter);
+			}
+			else if (!m_star_hit_done)
+			{
+				m_star_hit.draw(DrawArgument(Point<int16_t>(to, hand_y), false), inter);
+			}
 		}
 
 		// Name tag and chat balloon, placed as in game (Char::draw)
-		Point<int16_t> wearer = feet - Point<int16_t>(preview_has_pet ? 30 : (preview_icon_id ? 50 : 0), 0);
-
 		if (preview_nametag)
-			preview_nametag->draw(wearer);
+			preview_nametag->draw(body);
 
 		if (preview_has_balloon)
-			preview_balloon.draw(wearer - Point<int16_t>(0, 85));
+			preview_balloon.draw(body - Point<int16_t>(0, 85));
+
+		if (m_sample.is_valid())
+		{
+			// The ring's own picture of its plate or balloon, over your head
+			Point<int16_t> dim = m_sample.get_dimensions();
+			Point<int16_t> origin = m_sample.get_origin();
+			m_sample.draw(DrawArgument(body + origin - Point<int16_t>(dim.x() / 2, 85 + dim.y())));
+		}
 
 		int32_t itemid = mobile_itemid(m_selected);
 
@@ -1347,6 +1550,10 @@ namespace ms
 		if (pressed_now)
 		{
 			MobileLayout pl = mobile_layout();
+
+			// A tap on the stage jumps, to see jump frames and effects
+			if (pl.stage.contains(cursorpos))
+				send_key(KeyAction::Id::JUMP, true, false);
 
 			if (pl.grid.contains(cursorpos))
 			{

@@ -22,6 +22,8 @@
 #include "Components/ScrollingNotice.h"
 #include "Components/Textfield.h"
 
+#include "../Graphics/Texture.h"
+
 namespace ms
 {
 	class UI : public Singleton<UI>
@@ -57,6 +59,11 @@ namespace ms
 		bool window_at(Point<int16_t> pos);
 		// Sets the view for the login screens on a screen of this size.
 		void fit_login_view(int16_t screen_width, int16_t screen_height);
+		// The picture shown in the bars beside a login screen that is
+		// narrower than the phone. Each login screen sets its own scene so
+		// the bars carry on its colors instead of being plain black.
+		void set_side_backdrop(const Texture& backdrop);
+		const Texture& get_side_backdrop() const;
 		// Whether a soft keyboard covers the bottom of the screen, so text
 		// being typed has to be shown at the top instead.
 		void set_typing_on_top(bool on_top);
@@ -141,6 +148,7 @@ namespace ms
 		void bring_to_front(UIElement::Type type, bool focus);
 
 	private:
+		Texture side_backdrop;
 		std::unique_ptr<UIState> state;
 		Keyboard keyboard;
 		Cursor cursor;

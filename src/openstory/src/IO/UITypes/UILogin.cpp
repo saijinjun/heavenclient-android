@@ -25,10 +25,14 @@
 
 #include "../Components/MapleButton.h"
 
+#include "../../Graphics/ClassicStyle.h"
+
 #include "../../Audio/Audio.h"
 #include "../../Constants.h"
 
 #include "../../Net/Packets/LoginPackets.h"
+
+#include <cmath>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -109,11 +113,46 @@ namespace ms
 			Setting<DefaultPassword>::get().save(value);
 #endif
 		}
+
+		// The phone sign-in card, in the 800x600 design space. The fields
+		// and the Log In button are tall enough for a thumb, and the card
+		// sits under the logo so the scene still shows.
+		constexpr int16_t CARD_W = 320;
+		constexpr int16_t CARD_X = (800 - CARD_W) / 2;
+		constexpr int16_t CARD_Y = 250;
+		constexpr int16_t CARD_PAD = 18;
+		constexpr int16_t FIELD_H = 40;
+		constexpr int16_t ACCOUNT_Y = 18;
+		constexpr int16_t PASSWORD_Y = 68;
+		constexpr int16_t SAVEID_Y = 118;
+		constexpr int16_t SAVEID_H = 28;
+		constexpr int16_t LOGIN_Y = 156;
+		constexpr int16_t LOGIN_H = 44;
+		constexpr int16_t CARD_H = LOGIN_Y + LOGIN_H + CARD_PAD;
+		// Text inside a field starts this far in, past the gem on the
+		// field art's left end
+		constexpr int16_t FIELD_TEXT_X = 34;
+		constexpr int16_t FIELD_TEXT_H = 20;
+		// The keyboard covers about the lower half of a phone held sideways,
+		// so while typing the card slides up to the top of the screen.
+		constexpr float TYPING_SHIFT = -(CARD_Y - 10.0f);
+
+		bool uses_phone_layout()
+		{
+#ifdef __ANDROID__
+			return true;
+#else
+			return false;
+#endif
+		}
 	}
 
 	UILogin::UILogin() : UIElement(Point<int16_t>(0, 0), Point<int16_t>(800, 600), ScaleMode::CENTER_OFFSET)
 	{
 		signboard_pos = Point<int16_t>(510, 330);
+		phone_layout = uses_phone_layout();
+		card_shift = 0.0f;
+		cursor_was_down = false;
 
 		LoginStartPacket().dispatch();
 
@@ -136,8 +175,11 @@ namespace ms
 		nl::node frame = nl::nx::ui["Login.img"]["Common"]["frame"];
 
 		sprites.emplace_back(back["11"], UIScale::bg_args());
+		UI::get().set_side_backdrop(Texture(back["11"]));
 		sprites.emplace_back(logo, Point<int16_t>(409, 144));
-		sprites.emplace_back(signboard, signboard_pos);
+
+		if (!phone_layout)
+			sprites.emplace_back(signboard, signboard_pos);
 		// The light rays are 6 SEPARATE animated elements (effect/0..5, each its
 		// own animation), layered at the same spot to build the full sunbeam.
 		sprites.emplace_back(loginUI["effect"]["0"], Point<int16_t>(735, -10));
@@ -149,14 +191,21 @@ namespace ms
 		sprites.emplace_back(frame, UIScale::bg_args());
 
 
-		buttons[Buttons::BT_LOGIN] = std::make_unique<MapleButton>(loginUI["BtLogin"], signboard_pos + Point<int16_t>(85, -105));
-		buttons[Buttons::BT_GUEST_LOGIN] = std::make_unique<MapleButton>(loginUI["BtGuestLogin"], signboard_pos + Point<int16_t>(85, -62));
-		buttons[Buttons::BT_SAVEID] = std::make_unique<MapleButton>(loginUI["BtLoginIDSave"], signboard_pos + Point<int16_t>(-100, -25));
-		buttons[Buttons::BT_IDLOST] = std::make_unique<MapleButton>(loginUI["BtLoginIDLost"], signboard_pos + Point<int16_t>(-20, -25));
-		buttons[Buttons::BT_PASSLOST] = std::make_unique<MapleButton>(loginUI["BtPasswdLost"], signboard_pos + Point<int16_t>(70, -25));
-		buttons[Buttons::BT_REGISTER] = std::make_unique<MapleButton>(loginUI["BtNew"], signboard_pos + Point<int16_t>(-120, 20));
-		buttons[Buttons::BT_HOMEPAGE] = std::make_unique<MapleButton>(loginUI["BtHomePage"], signboard_pos + Point<int16_t>(-20, 20));
-		buttons[Buttons::BT_QUIT] = std::make_unique<MapleButton>(loginUI["BtQuit"], signboard_pos + Point<int16_t>(80, 20));
+		// The phone card draws its own Log In button and save toggle. The
+		// classic signboard's other buttons open web pages, which only works
+		// on Windows, and Guest Login would share one account between
+		// everyone, so the card leaves them out.
+		if (!phone_layout)
+		{
+			buttons[Buttons::BT_LOGIN] = std::make_unique<MapleButton>(loginUI["BtLogin"], signboard_pos + Point<int16_t>(85, -105));
+			buttons[Buttons::BT_GUEST_LOGIN] = std::make_unique<MapleButton>(loginUI["BtGuestLogin"], signboard_pos + Point<int16_t>(85, -62));
+			buttons[Buttons::BT_SAVEID] = std::make_unique<MapleButton>(loginUI["BtLoginIDSave"], signboard_pos + Point<int16_t>(-100, -25));
+			buttons[Buttons::BT_IDLOST] = std::make_unique<MapleButton>(loginUI["BtLoginIDLost"], signboard_pos + Point<int16_t>(-20, -25));
+			buttons[Buttons::BT_PASSLOST] = std::make_unique<MapleButton>(loginUI["BtPasswdLost"], signboard_pos + Point<int16_t>(70, -25));
+			buttons[Buttons::BT_REGISTER] = std::make_unique<MapleButton>(loginUI["BtNew"], signboard_pos + Point<int16_t>(-120, 20));
+			buttons[Buttons::BT_HOMEPAGE] = std::make_unique<MapleButton>(loginUI["BtHomePage"], signboard_pos + Point<int16_t>(-20, 20));
+			buttons[Buttons::BT_QUIT] = std::make_unique<MapleButton>(loginUI["BtQuit"], signboard_pos + Point<int16_t>(80, 20));
+		}
 
 		checkbox[false] = loginUI["check"]["0"];
 		checkbox[true] = loginUI["check"]["1"];
@@ -167,8 +216,28 @@ namespace ms
 		Point<int16_t> textbox_dim = Point<int16_t>(150, 45);
 		int16_t textbox_limit = 12;
 
+		// On the card the text sits on light field art, so it is dark, and
+		// the fields are the card's width
+		Color::Name field_text = Color::Name::WHITE;
+		int16_t password_step = 30;
+
+		if (phone_layout)
+		{
+			field_text = Color::Name::BLACK;
+			textbox_pos = Point<int16_t>(CARD_X + CARD_PAD + FIELD_TEXT_X, CARD_Y + ACCOUNT_Y + (FIELD_H - FIELD_TEXT_H) / 2);
+			textbox_dim = Point<int16_t>(CARD_W - 2 * CARD_PAD - FIELD_TEXT_X - 8, FIELD_TEXT_H);
+			password_step = PASSWORD_Y - ACCOUNT_Y;
+
+			account_hint = Text(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::DUSTYGRAY, "Login ID");
+			password_hint = Text(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::DUSTYGRAY, "Password");
+			login_label = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "Log In");
+			saveid_label = Text(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::WHITE, "Remember me");
+			new_account_tip = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE,
+				"New here? Type a new Login ID and password to make an account.");
+		}
+
 #pragma region Account
-		account = Textfield(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::WHITE, Color::Name::SMALT, 0.75f, Rectangle<int16_t>(textbox_pos, textbox_pos + textbox_dim), textbox_limit);
+		account = Textfield(Text::Font::A13M, Text::Alignment::LEFT, field_text, Color::Name::SMALT, 0.75f, Rectangle<int16_t>(textbox_pos, textbox_pos + textbox_dim), textbox_limit);
 
 		account.set_key_callback
 		(
@@ -200,9 +269,9 @@ namespace ms
 #pragma endregion
 
 #pragma region Password
-		textbox_pos.shift_y(30);
+		textbox_pos.shift_y(password_step);
 
-		password = Textfield(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::WHITE, Color::Name::PRUSSIANBLUE, 0.85f, Rectangle<int16_t>(textbox_pos, textbox_pos + textbox_dim), textbox_limit);
+		password = Textfield(Text::Font::A13M, Text::Alignment::LEFT, field_text, Color::Name::PRUSSIANBLUE, 0.85f, Rectangle<int16_t>(textbox_pos, textbox_pos + textbox_dim), textbox_limit);
 
 		password.set_key_callback
 		(
@@ -267,9 +336,179 @@ namespace ms
 		auto drawpos = get_draw_position();
 
 		version.draw(drawpos + Point<int16_t>(680, 10));
+
+		if (phone_layout)
+		{
+			draw_card(drawpos);
+			return;
+		}
+
 		account.draw(drawpos);
 		password.draw(drawpos);
 		checkbox[saveid].draw(drawpos + signboard_pos + Point<int16_t>(-120, -25));
+	}
+
+	Point<int16_t> UILogin::card_origin(Point<int16_t> drawpos) const
+	{
+		return drawpos + Point<int16_t>(CARD_X, static_cast<int16_t>(CARD_Y + card_shift));
+	}
+
+	Rectangle<int16_t> UILogin::card_part(Point<int16_t> drawpos, int16_t y, int16_t h) const
+	{
+		Point<int16_t> tl = card_origin(drawpos) + Point<int16_t>(CARD_PAD, y);
+
+		return Rectangle<int16_t>(tl, tl + Point<int16_t>(CARD_W - 2 * CARD_PAD, h));
+	}
+
+	void UILogin::draw_card(Point<int16_t> drawpos) const
+	{
+		Point<int16_t> card = card_origin(drawpos);
+		Point<int16_t> field_offset(0, static_cast<int16_t>(card_shift));
+
+		classic::panel(card, CARD_W, CARD_H);
+
+		// The two fields: the light field art, a grey hint while empty, and
+		// the typed text drawn by the Textfield itself
+		auto field = [&](const Textfield& textfield, const Text& hint, int16_t y)
+		{
+			Rectangle<int16_t> r = card_part(drawpos, y, FIELD_H);
+
+			if (!classic::input(r.get_left_top(), r.width(), r.height()))
+			{
+				classic::box(r.left(), r.top(), r.width(), r.height(), Color::Name::GALLERY, 0.97f);
+				classic::frame(r.left(), r.top(), r.width(), r.height(), Color::Name::HUD_EXP);
+			}
+
+			// A disabled field hides its text while the login is sent, so
+			// the hint stays away then too
+			Textfield::State state = textfield.get_state();
+
+			if (textfield.empty() && state == Textfield::State::NORMAL)
+				hint.draw(Point<int16_t>(r.left() + FIELD_TEXT_X, classic::text_y(hint, r.top() + r.height() / 2)));
+		};
+
+		field(account, account_hint, ACCOUNT_Y);
+		field(password, password_hint, PASSWORD_Y);
+
+		account.draw(drawpos + field_offset);
+		password.draw(drawpos + field_offset);
+
+		// Remember me: a small cell that lights up gold when on
+		Rectangle<int16_t> save = card_part(drawpos, SAVEID_Y, SAVEID_H);
+		constexpr int16_t BOX = 20;
+		Point<int16_t> box_tl(save.left() + 2, save.top() + (SAVEID_H - BOX) / 2);
+
+		classic::cell(box_tl, BOX, BOX, saveid);
+
+		if (saveid)
+			classic::box(box_tl.x() + 6, box_tl.y() + 6, BOX - 12, BOX - 12, Color::Name::WHITE, 0.9f);
+
+		saveid_label.draw(Point<int16_t>(box_tl.x() + BOX + 10, classic::text_y(saveid_label, save.top() + SAVEID_H / 2)));
+
+		Rectangle<int16_t> login_rect = card_part(drawpos, LOGIN_Y, LOGIN_H);
+		classic::button(login_rect.get_left_top(), login_rect.width(), login_rect.height());
+		classic::shadowed(login_label, Point<int16_t>(login_rect.left() + login_rect.width() / 2,
+			classic::text_y(login_label, login_rect.top() + login_rect.height() / 2)));
+
+		// The server signs up a Login ID it hasn't seen on its first login,
+		// so the tip under the card stands in for the classic New button.
+		// It is hidden while typing, when the card covers its spot.
+		if (card_shift > TYPING_SHIFT / 2)
+			classic::shadowed(new_account_tip, card + Point<int16_t>(CARD_W / 2, CARD_H + 12));
+	}
+
+	Cursor::State UILogin::send_card_cursor(bool clicked, Point<int16_t> cursorpos)
+	{
+		bool pressed_now = clicked && !cursor_was_down;
+		cursor_was_down = clicked;
+
+		Point<int16_t> drawpos = get_draw_position();
+		Rectangle<int16_t> account_rect = card_part(drawpos, ACCOUNT_Y, FIELD_H);
+		Rectangle<int16_t> password_rect = card_part(drawpos, PASSWORD_Y, FIELD_H);
+
+		// A Textfield lets go of focus on any press outside its text line, so
+		// it only hears presses on that line, where it places the caret. A
+		// lift always reaches both, which ends a text selection.
+		if (!clicked)
+		{
+			account.send_cursor(cursorpos, false);
+			password.send_cursor(cursorpos, false);
+		}
+		else if (account.get_bounds().contains(cursorpos))
+		{
+			return account.send_cursor(cursorpos, true);
+		}
+		else if (password.get_bounds().contains(cursorpos))
+		{
+			return password.send_cursor(cursorpos, true);
+		}
+
+		// Buttons act the moment the finger lands. The card slides when the
+		// keyboard opens or closes, so by the lift it may have moved away
+		// from under the finger.
+		if (!pressed_now)
+			return clicked ? Cursor::State::CLICKING : Cursor::State::IDLE;
+
+		auto focus = [&](Textfield& on, Textfield& off)
+		{
+			if (on.get_state() == Textfield::State::DISABLED)
+				return;
+
+			off.set_state(Textfield::State::NORMAL);
+			on.set_state(Textfield::State::FOCUSED);
+		};
+
+		if (account_rect.contains(cursorpos))
+		{
+			focus(account, password);
+			return Cursor::State::CLICKING;
+		}
+
+		if (password_rect.contains(cursorpos))
+		{
+			focus(password, account);
+			return Cursor::State::CLICKING;
+		}
+
+		if (card_part(drawpos, SAVEID_Y, SAVEID_H).contains(cursorpos))
+		{
+			toggle_saveid();
+			return Cursor::State::CLICKING;
+		}
+
+		if (card_part(drawpos, LOGIN_Y, LOGIN_H).contains(cursorpos))
+		{
+			if (account.get_state() != Textfield::State::DISABLED)
+			{
+				Sound(Sound::Name::BUTTONCLICK).play();
+				login();
+			}
+
+			return Cursor::State::CLICKING;
+		}
+
+		// A tap on the scene puts the keyboard away
+		if (account.get_state() == Textfield::State::FOCUSED)
+			account.set_state(Textfield::State::NORMAL);
+
+		if (password.get_state() == Textfield::State::FOCUSED)
+			password.set_state(Textfield::State::NORMAL);
+
+		UI::get().remove_textfield();
+
+		return Cursor::State::CLICKING;
+	}
+
+	void UILogin::toggle_saveid()
+	{
+		saveid = !saveid;
+
+		// Turning "save login" off forgets the saved password.
+		if (!saveid)
+			save_password("");
+
+		Setting<SaveLogin>::get().save(saveid);
+		Configuration::get().save();
 	}
 
 	void UILogin::update()
@@ -290,8 +529,23 @@ namespace ms
 
 		UIElement::update();
 
-		account.update(get_draw_position());
-		password.update(get_draw_position());
+		Point<int16_t> drawpos = get_draw_position();
+
+		if (phone_layout)
+		{
+			// Glide toward the spot above the keyboard while it is open, and
+			// back under the logo when it closes
+			float target = UI::get().is_typing_on_top() ? TYPING_SHIFT : 0.0f;
+			card_shift += (target - card_shift) * 0.3f;
+
+			if (std::abs(target - card_shift) < 0.5f)
+				card_shift = target;
+
+			drawpos.shift_y(static_cast<int16_t>(card_shift));
+		}
+
+		account.update(drawpos);
+		password.update(drawpos);
 	}
 
 	void UILogin::login()
@@ -405,14 +659,7 @@ namespace ms
 			}
 			case Buttons::BT_SAVEID:
 			{
-				saveid = !saveid;
-
-				// Turning "save login" off forgets the saved password.
-				if (!saveid)
-					save_password("");
-
-				Setting<SaveLogin>::get().save(saveid);
-				Configuration::get().save();
+				toggle_saveid();
 
 				return Button::State::MOUSEOVER;
 			}
@@ -431,6 +678,9 @@ namespace ms
 
 	Cursor::State UILogin::send_cursor(bool clicked, Point<int16_t> cursorpos)
 	{
+		if (phone_layout)
+			return send_card_cursor(clicked, cursorpos);
+
 		if (Cursor::State new_state = account.send_cursor(cursorpos, clicked))
 			return new_state;
 

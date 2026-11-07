@@ -66,6 +66,7 @@ namespace ms
 		// v83 login-map Ereve band: shared sky gradient + clouds, the Cygnus
 		// gazebo (back/30) with its vine decorations (31/32), map-authored spots.
 		sky = Texture(back["2"]);
+		UI::get().set_side_backdrop(sky);
 		cloud = Texture(back["27"]);
 
 		// Gazebo drawn aspect-correct: uniform scale anchored at its map spot,

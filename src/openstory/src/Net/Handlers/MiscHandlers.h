@@ -19,6 +19,9 @@
 
 #include "../PacketHandler.h"
 
+#include <string>
+#include <vector>
+
 namespace ms
 {
 	class NpcActionHandler : public PacketHandler
@@ -29,6 +32,12 @@ namespace ms
 	class YellowTipHandler : public PacketHandler
 	{
 		void handle(InPacket& recv) const override;
+
+		// How long numbered options stay tappable when the hint gives no time
+		static constexpr int16_t DEFAULT_OPTION_SECONDS = 25;
+
+	public:
+		static std::vector<std::string> numbered_options(const std::string& message);
 	};
 
 	class BroadcastMsgHandler : public PacketHandler

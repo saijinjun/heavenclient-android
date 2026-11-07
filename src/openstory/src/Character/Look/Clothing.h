@@ -65,8 +65,10 @@ namespace ms
 			NUM_LAYERS
 		};
 
-		// Construct a new equip
-		Clothing(int32_t itemid, const BodyDrawInfo& drawinfo);
+		// Construct a new equip. A cash weapon (170xxxx) keeps one set of
+		// frames per weapon type it can cover; cover_prefix picks the set,
+		// as the real weapon's prefix (130 one-handed sword ... 149 gun).
+		Clothing(int32_t itemid, const BodyDrawInfo& drawinfo, int32_t cover_prefix = 0);
 
 		// Draw the equip
 		void draw(Stance::Id stance, Layer layer, uint8_t frame, const DrawArgument& args) const;

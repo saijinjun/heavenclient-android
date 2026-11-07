@@ -118,6 +118,13 @@ namespace ms
 		void focus_chatfield();
 		// Opens typing with the next lines going privately to this player
 		void whisper_to(const std::string& name);
+		// Sends a line to party chat and echoes it, as if typed with the Party chip on
+		void say_in_party(const std::string& message);
+		// Numbered options someone offered ("1. What's up?", ...). On a phone they show
+		// as buttons above the chat line for this many seconds, and a tap answers with
+		// the option's number, which is what typing would have sent.
+		void set_reply_options(const std::vector<std::string>& options, int16_t seconds);
+		void clear_reply_options();
 		void toggle_chat();
 		void toggle_chatfield();
 		void toggle_chatfield(bool open);
@@ -207,12 +214,45 @@ namespace ms
 
 		// Phone: big "send to" chips above the chat log in place of the
 		// small classic target menu
-		static constexpr int16_t CHIP_W = 84;
+		// Five tabs fit beside the emoticon and close buttons at this width
+		static constexpr int16_t CHIP_W = 76;
 		static constexpr int16_t CHIP_H = 34;
+		// The first chips are also "send to" targets. The Whisper tab after
+		// them only filters, since a whisper needs a name to go to.
 		static constexpr size_t NUM_CHIPS = 4;
+		static constexpr size_t NUM_TABS = NUM_CHIPS + 1;
 		Rectangle<int16_t> chip_rect(size_t index) const;
 		int32_t chip_at(Point<int16_t> cursorpos) const;
-		mutable Text chip_labels[NUM_CHIPS];
+		mutable Text chip_labels[NUM_TABS];
+
+		// Which lines the log shows. Tabs are in the same order as the chips.
+		enum ChatView : uint8_t
+		{
+			VIEW_ALL,
+			VIEW_PARTY,
+			VIEW_GUILD,
+			VIEW_BUDDY,
+			VIEW_WHISPER
+		};
+
+		// Every line received, so switching tabs can rebuild the log from it
+		struct LogEntry
+		{
+			std::string line;
+			LineType type;
+			ChatView channel;
+		};
+
+		// Old lines drop off past this, so a tab switch stays quick
+		static constexpr size_t MAX_HISTORY = 1000;
+		std::vector<LogEntry> history;
+		ChatView view = VIEW_ALL;
+
+		static ChatView line_channel(const std::string& line);
+		bool shown_in_view(ChatView channel) const;
+		void set_view(ChatView next);
+		// Adds a line to the log rows the current tab shows
+		void add_row(const std::string& line, LineType type);
 
 		// The phone layout. Everything sits in the free space above the dock,
 		// between the touch stick's zone and the attack buttons, so nothing
@@ -255,6 +295,13 @@ namespace ms
 		void touch_tap(Point<int16_t> at);
 		void scroll_log(bool older);
 
+		static constexpr int16_t REPLY_H = 34;
+		static constexpr int16_t REPLY_GAP = 6;
+		static constexpr int16_t REPLY_PAD = 14;
+		std::vector<Rectangle<int16_t>> reply_rects() const;
+		int32_t reply_at(Point<int16_t> cursorpos) const;
+		void draw_reply_options() const;
+
 		TapGesture tap;
 		bool swiping_log = false;
 		int16_t swipe_anchor_y = 0;
@@ -269,6 +316,9 @@ namespace ms
 		// Who whispered while the log was closed, until it's next opened
 		std::string unread_whisper_from;
 		Text whisper_alert;
+		std::vector<Text> reply_labels;
+		// Counted down in update(); the options stop being offered when it reaches 0
+		int32_t reply_ticks_left = 0;
 		mutable Text whisper_chip;
 		Text whisper_label;
 		Texture chatspace[2];

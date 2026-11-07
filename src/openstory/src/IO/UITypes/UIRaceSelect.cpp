@@ -81,6 +81,7 @@ namespace ms
 
 		// v83 login sky, stretched over the whole view (matches char select).
 		backdrop = Texture(nl::nx::map["Back"]["login.img"]["back"]["11"]);
+		UI::get().set_side_backdrop(backdrop);
 
 		header = Texture(RaceSelect["textGL"]["0"]);
 

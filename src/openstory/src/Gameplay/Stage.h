@@ -56,6 +56,9 @@ namespace ms
 
 		// Call 'draw()' of all objects on stage
 		void draw(float alpha) const;
+		// Names and speech. Drawn with the UI, after the map's effects, so
+		// night stays readable and scenery can't cover them.
+		void draw_labels(float alpha) const;
 		// Calls 'update()' of all objects on stage
 		void update();
 
