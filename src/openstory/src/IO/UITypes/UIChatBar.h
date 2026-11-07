@@ -207,12 +207,45 @@ namespace ms
 
 		// Phone: big "send to" chips above the chat log in place of the
 		// small classic target menu
-		static constexpr int16_t CHIP_W = 84;
+		// Five tabs fit beside the emoticon and close buttons at this width
+		static constexpr int16_t CHIP_W = 76;
 		static constexpr int16_t CHIP_H = 34;
+		// The first chips are also "send to" targets. The Whisper tab after
+		// them only filters, since a whisper needs a name to go to.
 		static constexpr size_t NUM_CHIPS = 4;
+		static constexpr size_t NUM_TABS = NUM_CHIPS + 1;
 		Rectangle<int16_t> chip_rect(size_t index) const;
 		int32_t chip_at(Point<int16_t> cursorpos) const;
-		mutable Text chip_labels[NUM_CHIPS];
+		mutable Text chip_labels[NUM_TABS];
+
+		// Which lines the log shows. Tabs are in the same order as the chips.
+		enum ChatView : uint8_t
+		{
+			VIEW_ALL,
+			VIEW_PARTY,
+			VIEW_GUILD,
+			VIEW_BUDDY,
+			VIEW_WHISPER
+		};
+
+		// Every line received, so switching tabs can rebuild the log from it
+		struct LogEntry
+		{
+			std::string line;
+			LineType type;
+			ChatView channel;
+		};
+
+		// Old lines drop off past this, so a tab switch stays quick
+		static constexpr size_t MAX_HISTORY = 1000;
+		std::vector<LogEntry> history;
+		ChatView view = VIEW_ALL;
+
+		static ChatView line_channel(const std::string& line);
+		bool shown_in_view(ChatView channel) const;
+		void set_view(ChatView next);
+		// Adds a line to the log rows the current tab shows
+		void add_row(const std::string& line, LineType type);
 
 		// The phone layout. Everything sits in the free space above the dock,
 		// between the touch stick's zone and the attack buttons, so nothing
