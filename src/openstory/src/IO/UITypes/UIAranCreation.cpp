@@ -111,10 +111,12 @@ namespace ms
 		namechar = Textfield(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::WHITE, Rectangle<int16_t>(lay(524, 196), lay(630, 253)), 12);
 
 		buttons[Buttons::BT_BACK] = std::make_unique<MapleButton>(Login["Common"]["BtStart"], lay(0, 515));
-		widen_touch_areas();
 
 		for (auto& btit : buttons)
 			btit.second->set_scale(ui_scale);
+
+		// After the scale, which the arrows' gaps are measured in
+		widen_touch_areas();
 
 		namechar.set_state(Textfield::DISABLED);
 

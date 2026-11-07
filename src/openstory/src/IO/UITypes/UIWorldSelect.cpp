@@ -865,8 +865,14 @@ namespace ms
 					// last time is picked again, so Enter is one tap away
 					uint8_t last_channel = Setting<DefaultChannel>::get().load();
 
-					if (worldid == Setting<DefaultWorld>::get().load() && last_channel < w.channelcount)
+					if (worldid == Setting<DefaultWorld>::get().load() && last_channel < w.channelcount && last_channel != channelid)
+					{
+						// clear_selected_world() lit channel 1's button
+						if (buttons.count(BT_CHANNEL0))
+							buttons[BT_CHANNEL0]->set_state(Button::State::NORMAL);
+
 						channelid = last_channel;
+					}
 
 					change_world(w);
 					break;

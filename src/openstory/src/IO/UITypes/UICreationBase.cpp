@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 #include "UICreationBase.h"
 
+#include <algorithm>
+
 #include "UICharSelect.h"
 #include "UILoginNotice.h"
 #include "UIRaceSelect.h"
@@ -212,11 +214,37 @@ namespace ms
 	{
 #ifdef __ANDROID__
 		// The arrows sit 18 design pixels apart in their column, so they may
-		// grow sideways but not taller than a row. The hair color chips are
-		// packed edge to edge and keep their own size.
-		for (uint16_t id = BT_CHARC_FACEL; id <= BT_CHARC_WEPR; ++id)
-			if (buttons.count(id))
-				buttons[id]->set_touch_size(Point<int16_t>(36, 18));
+		// grow sideways but not taller than a row. Each left/right pair may
+		// only grow into half the gap between its two arrows, so a press can
+		// never land on both; the creation screens place the pairs
+		// differently. The hair color chips are packed edge to edge and
+		// keep their own size.
+		constexpr int16_t ARROW_W = 36;
+		constexpr int16_t ARROW_H = 18;
+
+		for (uint16_t left = BT_CHARC_FACEL; left < BT_CHARC_WEPR; left += 2)
+		{
+			uint16_t right = left + 1;
+
+			if (!buttons.count(left) || !buttons.count(right))
+				continue;
+
+			Rectangle<int16_t> a = buttons[left]->bounds(Point<int16_t>());
+			Rectangle<int16_t> b = buttons[right]->bounds(Point<int16_t>());
+			int gap = std::max(b.left() - a.right(), a.left() - b.right());
+			// The bounds are on screen; the touch size is in design pixels
+			float scale = ui_scale > 0.0f ? ui_scale : 1.0f;
+			int16_t room = static_cast<int16_t>(std::max(0, gap) / scale);
+
+			for (uint16_t id : { left, right })
+			{
+				Rectangle<int16_t> art = buttons[id]->bounds(Point<int16_t>());
+				int16_t art_w = static_cast<int16_t>(art.width() / scale);
+				int16_t width = std::min<int16_t>(ARROW_W, art_w + room);
+
+				buttons[id]->set_touch_size(Point<int16_t>(width, ARROW_H));
+			}
+		}
 
 		for (uint16_t id : { BT_CHARC_OK, BT_CHARC_CANCEL })
 			if (buttons.count(id))
