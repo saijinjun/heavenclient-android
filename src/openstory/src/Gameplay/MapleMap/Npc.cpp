@@ -24,9 +24,9 @@
 #include "../../Net/NpcResponseTracker.h"
 #include "../../Constants.h"
 
-#ifdef USE_NX
 #include <algorithm>
 
+#ifdef USE_NX
 #include <nlnx/nx.hpp>
 #endif
 
