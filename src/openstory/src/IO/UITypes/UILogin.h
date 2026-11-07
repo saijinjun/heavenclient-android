@@ -56,6 +56,7 @@ namespace ms
 		void draw_card(Point<int16_t> drawpos) const;
 		Cursor::State send_card_cursor(bool clicked, Point<int16_t> cursorpos);
 		void toggle_saveid();
+		void guest_login();
 		// Where the card's parts are, in screen coordinates for drawpos
 		Point<int16_t> card_origin(Point<int16_t> drawpos) const;
 		Rectangle<int16_t> card_part(Point<int16_t> drawpos, int16_t y, int16_t h) const;
@@ -93,5 +94,7 @@ namespace ms
 		Text login_label;
 		Text saveid_label;
 		Text new_account_tip;
+		Text guest_label;
+		Text guest_note;
 	};
 }

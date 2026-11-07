@@ -33,6 +33,9 @@
 #include "../../Net/Packets/LoginPackets.h"
 
 #include <cmath>
+#include <fstream>
+#include <random>
+#include <utility>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -114,6 +117,70 @@ namespace ms
 #endif
 		}
 
+		// The guest login made for this phone: "id\npassword" in the app's
+		// private storage. Empty when none was made yet, or off Android.
+		std::string guest_path()
+		{
+#ifdef __ANDROID__
+			const char* internal = SDL_AndroidGetInternalStoragePath();
+
+			return internal ? std::string(internal) + "/guest" : std::string();
+#else
+			return std::string();
+#endif
+		}
+
+		std::pair<std::string, std::string> load_guest()
+		{
+			std::string path = guest_path();
+			std::string id;
+			std::string password;
+
+			if (!path.empty())
+			{
+				std::ifstream file(path, std::ios::binary);
+				std::getline(file, id);
+				std::getline(file, password);
+			}
+
+			return { id, password };
+		}
+
+		bool save_guest(const std::string& id, const std::string& password)
+		{
+			std::string path = guest_path();
+
+			if (path.empty())
+				return false;
+
+			{
+				std::ofstream file(path, std::ios::binary | std::ios::trunc);
+				file << id << '\n' << password << '\n';
+
+				if (!file)
+					return false;
+			}
+
+#ifdef __ANDROID__
+			::chmod(path.c_str(), S_IRUSR | S_IWUSR);
+#endif
+			return true;
+		}
+
+		// Letters and digits that can't be mixed up when read off a screen
+		std::string random_text(size_t length)
+		{
+			static constexpr char LETTERS[] = "abcdefghjkmnpqrstuvwxyz23456789";
+			std::random_device device;
+			std::uniform_int_distribution<size_t> pick(0, sizeof(LETTERS) - 2);
+			std::string text;
+
+			for (size_t i = 0; i < length; i++)
+				text += LETTERS[pick(device)];
+
+			return text;
+		}
+
 		// The phone sign-in card, in the 800x600 design space. The fields
 		// and the Log In button are tall enough for a thumb, and the card
 		// sits under the logo so the scene still shows.
@@ -128,7 +195,9 @@ namespace ms
 		constexpr int16_t SAVEID_H = 28;
 		constexpr int16_t LOGIN_Y = 156;
 		constexpr int16_t LOGIN_H = 44;
-		constexpr int16_t CARD_H = LOGIN_Y + LOGIN_H + CARD_PAD;
+		constexpr int16_t GUEST_Y = 210;
+		constexpr int16_t GUEST_H = 34;
+		constexpr int16_t CARD_H = GUEST_Y + GUEST_H + CARD_PAD;
 		// Text inside a field starts this far in, past the gem on the
 		// field art's left end
 		constexpr int16_t FIELD_TEXT_X = 34;
@@ -191,10 +260,9 @@ namespace ms
 		sprites.emplace_back(frame, UIScale::bg_args());
 
 
-		// The phone card draws its own Log In button and save toggle. The
-		// classic signboard's other buttons open web pages, which only works
-		// on Windows, and Guest Login would share one account between
-		// everyone, so the card leaves them out.
+		// The phone card draws its own Log In, Play as guest and save
+		// toggle. The classic signboard's other buttons open web pages,
+		// which only works on Windows, so the card leaves them out.
 		if (!phone_layout)
 		{
 			buttons[Buttons::BT_LOGIN] = std::make_unique<MapleButton>(loginUI["BtLogin"], signboard_pos + Point<int16_t>(85, -105));
@@ -232,6 +300,8 @@ namespace ms
 			password_hint = Text(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::DUSTYGRAY, "Password");
 			login_label = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "Log In");
 			saveid_label = Text(Text::Font::A13M, Text::Alignment::LEFT, Color::Name::WHITE, "Remember me");
+			guest_label = Text(Text::Font::A13B, Text::Alignment::CENTER, Color::Name::WHITE, "Play as guest");
+			guest_note = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE, "");
 			new_account_tip = Text(Text::Font::A12M, Text::Alignment::CENTER, Color::Name::WHITE,
 				"New here? Type a new Login ID and password to make an account.");
 		}
@@ -410,11 +480,20 @@ namespace ms
 		classic::shadowed(login_label, Point<int16_t>(login_rect.left() + login_rect.width() / 2,
 			classic::text_y(login_label, login_rect.top() + login_rect.height() / 2)));
 
+		Rectangle<int16_t> guest_rect = card_part(drawpos, GUEST_Y, GUEST_H);
+		classic::cell(guest_rect.get_left_top(), guest_rect.width(), guest_rect.height(), false);
+		classic::shadowed(guest_label, Point<int16_t>(guest_rect.left() + guest_rect.width() / 2,
+			classic::text_y(guest_label, guest_rect.top() + guest_rect.height() / 2)));
+
 		// The server signs up a Login ID it hasn't seen on its first login,
 		// so the tip under the card stands in for the classic New button.
-		// It is hidden while typing, when the card covers its spot.
+		// Right after a guest login is made, its details take that spot.
+		// Both are hidden while typing, when the card covers their spot.
 		if (card_shift > TYPING_SHIFT / 2)
-			classic::shadowed(new_account_tip, card + Point<int16_t>(CARD_W / 2, CARD_H + 12));
+		{
+			const Text& tip = guest_note.get_text().empty() ? new_account_tip : guest_note;
+			classic::shadowed(tip, card + Point<int16_t>(CARD_W / 2, CARD_H + 12));
+		}
 	}
 
 	Cursor::State UILogin::send_card_cursor(bool clicked, Point<int16_t> cursorpos)
@@ -487,6 +566,17 @@ namespace ms
 			return Cursor::State::CLICKING;
 		}
 
+		if (card_part(drawpos, GUEST_Y, GUEST_H).contains(cursorpos))
+		{
+			if (account.get_state() != Textfield::State::DISABLED)
+			{
+				Sound(Sound::Name::BUTTONCLICK).play();
+				guest_login();
+			}
+
+			return Cursor::State::CLICKING;
+		}
+
 		// A tap on the scene puts the keyboard away
 		if (account.get_state() == Textfield::State::FOCUSED)
 			account.set_state(Textfield::State::NORMAL);
@@ -497,6 +587,37 @@ namespace ms
 		UI::get().remove_textfield();
 
 		return Cursor::State::CLICKING;
+	}
+
+	void UILogin::guest_login()
+	{
+		// Each phone gets its own guest account: the first tap makes a
+		// random Login ID and password and keeps them on the phone, and the
+		// server signs the new ID up on its first login. A fixed "guest"
+		// account would put every player into the same characters.
+		auto [id, guest_password] = load_guest();
+
+		if (id.empty() || guest_password.empty())
+		{
+			id = "guest" + random_text(6);
+			guest_password = random_text(8);
+
+			if (!save_guest(id, guest_password))
+			{
+				guest_note.change_text("This phone's storage isn't available, so no guest login could be made.");
+				return;
+			}
+
+			// Shown before the first sign in, so the player can note the
+			// details down and play the same account on another device
+			guest_note.change_text("Your guest login: " + id + " / " + guest_password + ". Note it down, then tap Play as guest.");
+			return;
+		}
+
+		guest_note.change_text("");
+		account.change_text(id);
+		password.change_text(guest_password);
+		login();
 	}
 
 	void UILogin::toggle_saveid()
