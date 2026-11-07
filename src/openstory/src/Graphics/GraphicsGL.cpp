@@ -2079,6 +2079,36 @@ namespace ms
 		}
 	}
 
+	void GraphicsGL::draw_screen_bitmap_part(const nl::bitmap& bmp, int16_t left, int16_t top, int16_t right, int16_t bottom,
+		float u0, float v0, float u1, float v1, const Color& color)
+	{
+		Offset offset = getoffset(bmp);
+		GLshort width = offset.right - offset.left;
+		GLshort height = offset.bottom - offset.top;
+
+		if (width <= 0 || height <= 0)
+			return;
+
+		// The fractions are clamped so a strip never samples a neighbour in
+		// the atlas, which would show as a stray colored edge.
+		auto at = [](GLshort start, GLshort size, float f)
+		{
+			return static_cast<GLshort>(start + std::lround(std::clamp(f, 0.0f, 1.0f) * size));
+		};
+
+		Offset part;
+		part.left = at(offset.left, width, u0);
+		part.right = at(offset.left, width, u1);
+		part.top = at(offset.top, height, v0);
+		part.bottom = at(offset.top, height, v1);
+
+		if (part.right <= part.left || part.bottom <= part.top)
+			return;
+
+		screen_quads.emplace_back(left, right, top, bottom, part, color, 0.0f);
+		screen_from_overlay.push_back(false);
+	}
+
 	void GraphicsGL::flush_screen(int16_t width, int16_t height)
 	{
 		if (screen_quads.empty())

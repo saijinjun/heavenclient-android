@@ -51,6 +51,10 @@ namespace ms
 		// Draws over a rectangle in window pixels, after the scene (see
 		// GraphicsGL::flush_screen).
 		void draw_screen(int16_t left, int16_t top, int16_t right, int16_t bottom, const Color& color) const;
+		// Draws the part u0..u1 across and v0..v1 down (fractions of the
+		// texture) over a rectangle in window pixels.
+		void draw_screen_part(int16_t left, int16_t top, int16_t right, int16_t bottom,
+			float u0, float v0, float u1, float v1, const Color& color) const;
 #endif
 		void shift(Point<int16_t> amount);
 

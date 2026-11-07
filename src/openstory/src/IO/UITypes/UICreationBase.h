@@ -45,6 +45,9 @@ namespace ms
 		UICreationBase(uint16_t creation_job);
 
 		Button::State naming_ok_pressed();
+		// On a phone, widens the touch areas of the look board's small
+		// arrows and the OK and Cancel buttons; call after making them
+		void widen_touch_areas();
 		const std::string& get_equipname(EquipSlot::Id slot) const;
 
 		// Uniform 800x600 content scaling, centered in the view (same treatment

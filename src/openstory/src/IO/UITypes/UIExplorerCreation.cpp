@@ -69,6 +69,7 @@ namespace ms
 		// Reference v83 composition (HeavenClient): sky strip back/2 tiled,
 		// cloud back/27 drifting, scene pieces 15-18 and the Common frame.
 		sky = Texture(back["2"]);
+		UI::get().set_side_backdrop(sky);
 		cloud = back["27"];
 
 		auto scenepc = [&](nl::node src, int16_t x, int16_t y)
@@ -149,6 +150,9 @@ namespace ms
 		// Uniform-scale every button (draw + hit bounds).
 		for (auto& btit : buttons)
 			btit.second->set_scale(ui_scale);
+
+		// After the scale, which the arrows' gaps are measured in
+		widen_touch_areas();
 
 		// Cards span +20..+182 from a shared anchor (origins bake the offsets);
 		// board is 201 wide, so anchoring at board_x - 0.5 centers the pair.

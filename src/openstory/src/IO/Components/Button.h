@@ -54,6 +54,11 @@ namespace ms
 		// Uniform draw/bounds scale, used by login-flow screens that render
 		// the whole 800x600 design scaled up for large views
 		void set_scale(float scale) { btn_scale = scale; }
+		// The smallest area (in design pixels, before the scale) that takes
+		// a press. Classic buttons such as the creation arrows are drawn
+		// smaller than a fingertip, so on a phone their touch area is
+		// widened around the same art. Zero keeps the art's own size.
+		void set_touch_size(Point<int16_t> size) { touch_size = size; }
 
 		bool is_active() const;
 		State get_state() const;
@@ -66,5 +71,6 @@ namespace ms
 		bool active = true;
 		bool pressed = false;
 		float btn_scale = 1.0f;
+		Point<int16_t> touch_size;
 	};
 }

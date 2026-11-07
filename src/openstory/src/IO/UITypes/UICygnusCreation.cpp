@@ -66,6 +66,7 @@ namespace ms
 		// v83 login-map Ereve band: shared sky gradient + clouds, the Cygnus
 		// gazebo (back/30) with its vine decorations (31/32), map-authored spots.
 		sky = Texture(back["2"]);
+		UI::get().set_side_backdrop(sky);
 		cloud = Texture(back["27"]);
 
 		// Gazebo drawn aspect-correct: uniform scale anchored at its map spot,
@@ -137,6 +138,9 @@ namespace ms
 
 		for (auto& btit : buttons)
 			btit.second->set_scale(ui_scale);
+
+		// After the scale, which the arrows' gaps are measured in
+		widen_touch_areas();
 
 		namechar.set_state(Textfield::DISABLED);
 

@@ -142,6 +142,7 @@ namespace ms
 		bool drawn_pressed = false;
 		mutable std::vector<Text> drawn_labels;
 		Text drawn_enter;
+		mutable Text drawn_title;
 
 		uint8_t selected_channel_count() const;
 		Rectangle<int16_t> drawn_channel_rect(uint8_t index) const;
