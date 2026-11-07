@@ -36,6 +36,9 @@ namespace ms
 
 		// Return whether this weapon uses two-handed stances
 		bool is_twohanded() const;
+		// Whether a weapon prefix (130-149) uses the two-handed stances. Cash
+		// weapons borrow this from the weapon type they cover.
+		static bool is_twohanded_prefix(int32_t prefix);
 		// Return the attack speed
 		uint8_t get_speed() const;
 		// Return the attack type

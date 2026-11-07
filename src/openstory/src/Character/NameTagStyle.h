@@ -36,13 +36,14 @@ namespace ms
 		// plain default name.
 		void apply(bool is_gm);
 		// Use the plate NameTag.img/<style>, as a name tag ring sets it.
-		// Keeps the current plate if the style has no art.
-		void apply_style(int32_t style);
+		// Keeps the current plate and returns false if the style has no art.
+		bool apply_style(int32_t style);
 		std::string get_name() const;
 
 	private:
-		// Loads the plate and name color from NameTag.img/<key>
-		void load_style(const std::string& key);
+		// Loads the plate and name color from NameTag.img/<key>; false when
+		// that style has no plate art
+		bool load_style(const std::string& key);
 
 		Text namelabel;
 		Color name_color;

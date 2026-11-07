@@ -101,22 +101,23 @@ namespace ms
 #endif
 	}
 
-	void NameTagStyle::apply_style(int32_t style)
+	bool NameTagStyle::apply_style(int32_t style)
 	{
 #ifdef USE_NX
-		load_style(std::to_string(style));
+		return load_style(std::to_string(style));
 #else
 		(void)style;
+		return false;
 #endif
 	}
 
-	void NameTagStyle::load_style(const std::string& key)
+	bool NameTagStyle::load_style(const std::string& key)
 	{
 #ifdef USE_NX
 		nl::node style = nl::nx::ui["NameTag.img"][key];
 
 		if (!style["c"])
-			return;
+			return false;
 
 		// The plate provides its own background — drop the default one so they
 		// don't stack.
@@ -143,8 +144,11 @@ namespace ms
 			}
 			catch (...) {}
 		}
+
+		return true;
 #else
 		(void)key;
+		return false;
 #endif
 	}
 
