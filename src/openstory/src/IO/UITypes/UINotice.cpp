@@ -89,6 +89,7 @@ namespace ms
 		constexpr int16_t TOUCH_BUTTON_W = 132;
 		constexpr int16_t TOUCH_BUTTON_H = 42;
 		constexpr int16_t TOUCH_BUTTON_GAP = 18;
+		constexpr int16_t TOUCH_INVITE_Y = 44;
 	}
 
 	bool UINotice::touch()
@@ -723,11 +724,57 @@ namespace ms
 		buttons[Buttons::DECLINE] = std::make_unique<MapleButton>(
 			root["BtCancel"], Point<int16_t>(dims.x() - 16, dims.y() / 2 - 3));
 
+#ifdef __ANDROID__
+		touch_layout(message);
+#endif
+
 		Sound(Sound::Name::DLGNOTICE).play();
+	}
+
+	void UIAlarmInvite::touch_layout(const std::string& message)
+	{
+		// The NX strip and its two tiny buttons are drawn for a mouse pointer.
+		// A wrong tap here joins a party or a trade, so a phone gets buttons
+		// the same size as every other dialog's.
+		finger_sized = true;
+
+		int16_t vw = Constants::Constants::get().get_viewwidth();
+		int16_t width = std::min<int16_t>(TOUCH_WIDTH, vw - 32);
+
+		title = Text(Text::Font::A15B, Text::Alignment::CENTER, Color::Name::WHITE, "Invite");
+		label = Text(Text::Font::A13M, Text::Alignment::CENTER, Color::Name::WHITE, message,
+			static_cast<uint16_t>(width - TOUCH_PAD * 2));
+
+		int16_t buttons_y = TOUCH_MSG_Y + std::max<int16_t>(label.height(), 22) + 20;
+
+		dimension = Point<int16_t>(width, buttons_y + TOUCH_BUTTON_H + 20);
+		dragarea = Point<int16_t>(0, 0);
+
+		// At the top, between the minimap and the quest list: an invite can
+		// arrive mid-fight, and this keeps the character and the controls clear.
+		position = Point<int16_t>((vw - width) / 2, TOUCH_INVITE_Y);
+
+		int16_t row = TOUCH_BUTTON_W * 2 + TOUCH_BUTTON_GAP;
+		int16_t left = (width - row) / 2;
+		Point<int16_t> size(TOUCH_BUTTON_W, TOUCH_BUTTON_H);
+
+		buttons[Buttons::ACCEPT] = std::make_unique<ClassicButton>(
+			"Accept", Point<int16_t>(left, buttons_y), size);
+		buttons[Buttons::DECLINE] = std::make_unique<ClassicButton>(
+			"Decline", Point<int16_t>(left + TOUCH_BUTTON_W + TOUCH_BUTTON_GAP, buttons_y), size);
 	}
 
 	void UIAlarmInvite::draw(float alpha) const
 	{
+		if (finger_sized)
+		{
+			classic::panel(position, dimension.x(), dimension.y());
+			title.draw(position + Point<int16_t>(dimension.x() / 2, 6));
+			label.draw(position + Point<int16_t>(dimension.x() / 2, TOUCH_MSG_Y));
+			UIElement::draw(alpha);
+			return;
+		}
+
 		// Fade in over the first 300ms, fade out over the last 600ms
 		// before the popup stashes itself into the drawer.
 		float a = 1.0f;
